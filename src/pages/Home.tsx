@@ -95,6 +95,14 @@ export default function Home() {
       <div className="px-4 -mt-4 mb-6">
         <div className="card-elevated p-4 space-y-3">
           <div className="flex items-center gap-2">
+            <Car className="w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Qual carro? Ex: Onix, HB20..."
+              className="flex-1"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-muted-foreground" />
             <Input
               placeholder="Cidade ou região de retirada"
