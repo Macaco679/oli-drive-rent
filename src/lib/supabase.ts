@@ -1,5 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
+// ============================================================
+// SUPABASE DESCONECTADO - Funções Mock
+// Quando você conectar um novo Supabase, atualize este arquivo
+// ============================================================
 
 export interface OliProfile {
   id: string;
@@ -63,216 +65,287 @@ export interface OliRental {
   updated_at: string;
 }
 
-// Auth helpers
+// ============================================================
+// DADOS MOCK PARA DEMONSTRAÇÃO
+// ============================================================
+
+const MOCK_USER_ID = "mock-user-123";
+
+const mockProfile: OliProfile = {
+  id: MOCK_USER_ID,
+  full_name: "Usuário Demo",
+  cpf: null,
+  birth_date: null,
+  phone: "(11) 99999-9999",
+  whatsapp_phone: "(11) 99999-9999",
+  role: "both",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
+const mockVehicles: OliVehicle[] = [
+  {
+    id: "vehicle-1",
+    owner_id: "owner-1",
+    title: "Chevrolet Onix Plus 2023",
+    brand: "Chevrolet",
+    model: "Onix Plus",
+    year: 2023,
+    color: "Prata",
+    plate: "ABC-1234",
+    renavam: null,
+    transmission: "automático",
+    fuel_type: "Flex",
+    seats: 5,
+    daily_price: 120,
+    weekly_price: 700,
+    monthly_price: 2500,
+    deposit_amount: 500,
+    location_city: "São Paulo",
+    location_state: "SP",
+    is_active: true,
+    status: "available",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "vehicle-2",
+    owner_id: "owner-2",
+    title: "Hyundai HB20 2022",
+    brand: "Hyundai",
+    model: "HB20",
+    year: 2022,
+    color: "Branco",
+    plate: "DEF-5678",
+    renavam: null,
+    transmission: "manual",
+    fuel_type: "Flex",
+    seats: 5,
+    daily_price: 100,
+    weekly_price: 600,
+    monthly_price: 2200,
+    deposit_amount: 400,
+    location_city: "São Paulo",
+    location_state: "SP",
+    is_active: true,
+    status: "available",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "vehicle-3",
+    owner_id: "owner-3",
+    title: "Fiat Argo 2023",
+    brand: "Fiat",
+    model: "Argo",
+    year: 2023,
+    color: "Vermelho",
+    plate: "GHI-9012",
+    renavam: null,
+    transmission: "automático",
+    fuel_type: "Flex",
+    seats: 5,
+    daily_price: 110,
+    weekly_price: 650,
+    monthly_price: 2400,
+    deposit_amount: 450,
+    location_city: "Campinas",
+    location_state: "SP",
+    is_active: true,
+    status: "available",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "vehicle-4",
+    owner_id: "owner-1",
+    title: "Volkswagen Polo 2022",
+    brand: "Volkswagen",
+    model: "Polo",
+    year: 2022,
+    color: "Cinza",
+    plate: "JKL-3456",
+    renavam: null,
+    transmission: "automático",
+    fuel_type: "Flex",
+    seats: 5,
+    daily_price: 130,
+    weekly_price: 750,
+    monthly_price: 2800,
+    deposit_amount: 550,
+    location_city: "São Paulo",
+    location_state: "SP",
+    is_active: true,
+    status: "available",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const mockRentals: OliRental[] = [];
+
+// Estado local para simular persistência durante a sessão
+let localProfile: OliProfile | null = null;
+let isLoggedIn = false;
+
+// ============================================================
+// AUTH HELPERS (MOCK)
+// ============================================================
+
 export const signUp = async (email: string, password: string, fullName: string) => {
-  const redirectUrl = `${window.location.origin}/onboarding`;
+  // Simula criação de conta
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: redirectUrl,
-      data: {
-        full_name: fullName,
-      }
-    }
-  });
+  localProfile = {
+    ...mockProfile,
+    full_name: fullName,
+  };
+  isLoggedIn = true;
   
-  return { data, error };
+  return { 
+    data: { user: { id: MOCK_USER_ID, email } }, 
+    error: null 
+  };
 };
 
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // Simula login
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  return { data, error };
+  isLoggedIn = true;
+  if (!localProfile) {
+    localProfile = { ...mockProfile };
+  }
+  
+  return { 
+    data: { user: { id: MOCK_USER_ID, email } }, 
+    error: null 
+  };
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  await new Promise(resolve => setTimeout(resolve, 300));
+  isLoggedIn = false;
+  localProfile = null;
+  return { error: null };
 };
 
-export const getCurrentUser = async (): Promise<{ user: User | null; session: Session | null }> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { user: session?.user || null, session };
-};
-
-// Profile helpers
-export const getProfile = async (userId: string): Promise<OliProfile | null> => {
-  const { data, error } = await supabase
-    .from("oli_profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+export const getCurrentUser = async (): Promise<{ user: { id: string; email: string } | null; session: null }> => {
+  await new Promise(resolve => setTimeout(resolve, 100));
   
-  if (error) {
-    console.error("Error fetching profile:", error);
-    return null;
+  if (isLoggedIn) {
+    return { 
+      user: { id: MOCK_USER_ID, email: "demo@oliapp.com" }, 
+      session: null 
+    };
   }
   
-  return data;
+  return { user: null, session: null };
+};
+
+// ============================================================
+// PROFILE HELPERS (MOCK)
+// ============================================================
+
+export const getProfile = async (userId: string): Promise<OliProfile | null> => {
+  await new Promise(resolve => setTimeout(resolve, 200));
+  return localProfile;
 };
 
 export const createProfile = async (profile: Partial<OliProfile>): Promise<OliProfile | null> => {
-  const { data, error } = await supabase
-    .from("oli_profiles")
-    .insert([profile as any])
-    .select()
-    .single();
+  await new Promise(resolve => setTimeout(resolve, 300));
   
-  if (error) {
-    console.error("Error creating profile:", error);
-    return null;
-  }
+  localProfile = {
+    ...mockProfile,
+    ...profile,
+    id: MOCK_USER_ID,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as OliProfile;
   
-  return data;
+  return localProfile;
 };
 
 export const updateProfile = async (userId: string, updates: Partial<OliProfile>): Promise<OliProfile | null> => {
-  const { data, error } = await supabase
-    .from("oli_profiles")
-    .update(updates)
-    .eq("id", userId)
-    .select()
-    .single();
+  await new Promise(resolve => setTimeout(resolve, 300));
   
-  if (error) {
-    console.error("Error updating profile:", error);
-    return null;
+  if (localProfile) {
+    localProfile = {
+      ...localProfile,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
   }
   
-  return data;
+  return localProfile;
 };
 
-// Vehicle helpers
+// ============================================================
+// VEHICLE HELPERS (MOCK)
+// ============================================================
+
 export const getAvailableVehicles = async (limit?: number): Promise<OliVehicle[]> => {
-  let query = supabase
-    .from("oli_vehicles")
-    .select("*")
-    .eq("is_active", true)
-    .eq("status", "available")
-    .order("created_at", { ascending: false });
+  await new Promise(resolve => setTimeout(resolve, 300));
   
-  if (limit) {
-    query = query.limit(limit);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error("Error fetching vehicles:", error);
-    return [];
-  }
-  
-  return data || [];
+  const available = mockVehicles.filter(v => v.is_active && v.status === "available");
+  return limit ? available.slice(0, limit) : available;
 };
 
 export const getVehicleById = async (vehicleId: string): Promise<OliVehicle | null> => {
-  const { data, error } = await supabase
-    .from("oli_vehicles")
-    .select("*")
-    .eq("id", vehicleId)
-    .maybeSingle();
-  
-  if (error) {
-    console.error("Error fetching vehicle:", error);
-    return null;
-  }
-  
-  return data;
+  await new Promise(resolve => setTimeout(resolve, 200));
+  return mockVehicles.find(v => v.id === vehicleId) || null;
 };
 
 export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePhoto[]> => {
-  const { data, error } = await supabase
-    .from("oli_vehicle_photos")
-    .select("*")
-    .eq("vehicle_id", vehicleId)
-    .order("is_cover", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching vehicle photos:", error);
-    return [];
-  }
-  
-  return data || [];
+  await new Promise(resolve => setTimeout(resolve, 200));
+  // Retorna array vazio - sem fotos no mock
+  return [];
 };
 
 export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | null> => {
-  const { data, error } = await supabase
-    .from("oli_vehicle_photos")
-    .select("image_url")
-    .eq("vehicle_id", vehicleId)
-    .eq("is_cover", true)
-    .limit(1)
-    .maybeSingle();
-  
-  if (error || !data) {
-    return null;
-  }
-  
-  return data.image_url;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  return null;
 };
 
 export const getMyVehicles = async (ownerId: string): Promise<OliVehicle[]> => {
-  const { data, error } = await supabase
-    .from("oli_vehicles")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching my vehicles:", error);
-    return [];
-  }
-  
-  return data || [];
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return mockVehicles.filter(v => v.owner_id === ownerId);
 };
 
-// Rental helpers
+// ============================================================
+// RENTAL HELPERS (MOCK)
+// ============================================================
+
 export const createRental = async (rental: Partial<OliRental>): Promise<OliRental | null> => {
-  const { data, error } = await supabase
-    .from("oli_rentals")
-    .insert([rental as any])
-    .select()
-    .single();
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  if (error) {
-    console.error("Error creating rental:", error);
-    return null;
-  }
+  const newRental: OliRental = {
+    id: `rental-${Date.now()}`,
+    vehicle_id: rental.vehicle_id || "",
+    renter_id: rental.renter_id || MOCK_USER_ID,
+    owner_id: rental.owner_id || "",
+    start_date: rental.start_date || "",
+    end_date: rental.end_date || "",
+    pickup_location: rental.pickup_location || null,
+    dropoff_location: rental.dropoff_location || null,
+    total_price: rental.total_price || null,
+    deposit_amount: rental.deposit_amount || null,
+    status: rental.status || "pending_approval",
+    notes: rental.notes || null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
   
-  return data;
+  mockRentals.push(newRental);
+  return newRental;
 };
 
 export const getMyRentalsAsRenter = async (renterId: string): Promise<OliRental[]> => {
-  const { data, error } = await supabase
-    .from("oli_rentals")
-    .select("*")
-    .eq("renter_id", renterId)
-    .order("created_at", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching rentals as renter:", error);
-    return [];
-  }
-  
-  return data || [];
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return mockRentals.filter(r => r.renter_id === renterId);
 };
 
 export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]> => {
-  const { data, error } = await supabase
-    .from("oli_rentals")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-  
-  if (error) {
-    console.error("Error fetching rentals as owner:", error);
-    return [];
-  }
-  
-  return data || [];
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return mockRentals.filter(r => r.owner_id === ownerId);
 };
