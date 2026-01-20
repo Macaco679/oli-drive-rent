@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp } from "@/lib/supabase";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 
@@ -54,6 +56,14 @@ export default function Auth() {
             <h1 className="text-4xl font-bold text-white mb-2">OLI</h1>
             <p className="text-white/90">Aluguel de carros entre particulares</p>
           </div>
+
+          {/* Aviso de modo demo */}
+          <Alert className="bg-secondary border-border">
+            <AlertTriangle className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-foreground text-sm">
+              <strong>Modo Demo:</strong> Supabase desconectado. Use qualquer e-mail/senha para testar.
+            </AlertDescription>
+          </Alert>
 
           <div className="bg-card p-6 rounded-2xl shadow-xl">
             <h2 className="text-2xl font-semibold mb-6 text-center">
