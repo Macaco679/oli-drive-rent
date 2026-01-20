@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentUser, createProfile, getProfile } from "@/lib/supabase";
 import { toast } from "sonner";
-import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Car, UserCheck, Users } from "lucide-react";
 
 type UserRole = "renter" | "owner" | "both";
@@ -30,7 +29,7 @@ export default function Onboarding() {
 
     const profile = await getProfile(user.id);
     if (profile) {
-      navigate("/");
+      navigate("/home");
     }
   };
 
@@ -66,7 +65,7 @@ export default function Onboarding() {
 
     if (profile) {
       toast.success("Perfil criado com sucesso!");
-      navigate("/");
+      navigate("/home");
     } else {
       toast.error("Erro ao criar perfil");
     }
@@ -94,78 +93,97 @@ export default function Onboarding() {
   ];
 
   return (
-    <MobileLayout showBottomNav={false}>
-      <div className="min-h-screen p-6 bg-background">
-        <div className="max-w-md mx-auto space-y-8 pt-8">
+    <div className="min-h-screen flex">
+      {/* Left side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-accent items-center justify-center p-12">
+        <div className="text-center text-white max-w-md">
+          <h1 className="text-6xl font-bold mb-6">OLI</h1>
+          <p className="text-2xl mb-4">Bem-vindo!</p>
+          <p className="text-white/80 text-lg">
+            Vamos configurar seu perfil para você começar a usar a plataforma de aluguel de carros.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile branding */}
+          <div className="lg:hidden text-center">
+            <h1 className="text-4xl font-bold text-primary mb-2">OLI</h1>
+          </div>
+
           <div className="text-center">
-            <h1 className="text-3xl font-bold mb-2">Bem-vindo ao OLI!</h1>
+            <h2 className="text-3xl font-bold mb-2">Configurar perfil</h2>
             <p className="text-muted-foreground">
-              Vamos configurar seu perfil
+              Complete suas informações para começar
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="fullName">Nome completo</Label>
-              <Input
-                id="fullName"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Seu nome completo"
-                className="mt-1"
-              />
+          <div className="bg-card p-8 rounded-2xl shadow-xl border border-border space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="fullName">Nome completo</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="mt-1 h-12"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Telefone/WhatsApp</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                  className="mt-1 h-12"
+                />
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="phone">Telefone/WhatsApp</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(00) 00000-0000"
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label>Tipo de conta</Label>
-            {roleOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setSelectedRole(option.value)}
-                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                  selectedRole === option.value
-                    ? "border-primary bg-secondary/50"
-                    : "border-border bg-card hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <option.icon className={`w-6 h-6 mt-0.5 ${
-                    selectedRole === option.value ? "text-primary" : "text-muted-foreground"
-                  }`} />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{option.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {option.description}
-                    </p>
+            <div className="space-y-3">
+              <Label>Tipo de conta</Label>
+              {roleOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setSelectedRole(option.value)}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedRole === option.value
+                      ? "border-primary bg-secondary/50"
+                      : "border-border bg-background hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <option.icon className={`w-6 h-6 mt-0.5 ${
+                      selectedRole === option.value ? "text-primary" : "text-muted-foreground"
+                    }`} />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{option.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {option.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
 
-          <Button
-            onClick={handleComplete}
-            disabled={loading || !selectedRole}
-            className="w-full btn-pill bg-primary hover:bg-primary/90 text-lg h-12"
-          >
-            {loading ? "Salvando..." : "Começar a usar"}
-          </Button>
+            <Button
+              onClick={handleComplete}
+              disabled={loading || !selectedRole}
+              className="w-full h-12 text-lg"
+            >
+              {loading ? "Salvando..." : "Começar a usar"}
+            </Button>
+          </div>
         </div>
       </div>
-    </MobileLayout>
+    </div>
   );
 }
