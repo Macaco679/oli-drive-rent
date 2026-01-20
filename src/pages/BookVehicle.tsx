@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MobileLayout } from "@/components/layout/MobileLayout";
+import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getVehicleById, getCurrentUser, createRental, OliVehicle } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Car } from "lucide-react";
 
 export default function BookVehicle() {
   const { id } = useParams<{ id: string }>();
@@ -101,11 +101,11 @@ export default function BookVehicle() {
 
   if (!vehicle) {
     return (
-      <MobileLayout showBottomNav={false}>
-        <div className="flex items-center justify-center min-h-screen">
+      <WebLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </MobileLayout>
+      </WebLayout>
     );
   }
 
@@ -114,126 +114,160 @@ export default function BookVehicle() {
   const total = calculateTotal();
 
   return (
-    <MobileLayout showBottomNav={false}>
-      <div className="sticky top-0 bg-card border-b border-border z-10 p-4 flex items-center gap-3">
+    <WebLayout>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="p-2 hover:bg-secondary rounded-full transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
+          <span>Voltar</span>
         </button>
-        <h1 className="font-semibold">Fazer Reserva</h1>
-      </div>
 
-      <div className="p-4 space-y-6">
-        <div className="card-elevated p-4">
-          <h2 className="font-semibold mb-1">{vehicleTitle}</h2>
-          <p className="text-sm text-muted-foreground">
-            {vehicle.location_city} - {vehicle.location_state}
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold mb-8">Fazer Reserva</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startDate">Data de início</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="endDate">Data de término</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-                min={startDate}
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="pickupLocation">Local de retirada</Label>
-            <Input
-              id="pickupLocation"
-              type="text"
-              value={pickupLocation}
-              onChange={(e) => setPickupLocation(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="dropoffLocation">Local de devolução</Label>
-            <Input
-              id="dropoffLocation"
-              type="text"
-              value={dropoffLocation}
-              onChange={(e) => setDropoffLocation(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Observações (opcional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Alguma informação adicional..."
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-
-          {days > 0 && (
-            <div className="card-elevated p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Período</span>
-                <span className="font-medium">{days} dia{days !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Diária</span>
-                <span className="font-medium">
-                  R$ {vehicle.daily_price?.toLocaleString('pt-BR')}
-                </span>
-              </div>
-              {vehicle.deposit_amount && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Caução</span>
-                  <span className="font-medium">
-                    R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
-                  </span>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Form */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Vehicle Info */}
+              <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4">
+                <div className="w-16 h-16 bg-secondary rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Car className="w-8 h-8 text-primary" />
                 </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-border">
-                <span className="font-semibold">Total</span>
-                <span className="font-bold text-primary text-lg">
-                  R$ {total.toLocaleString('pt-BR')}
-                </span>
+                <div>
+                  <h2 className="font-semibold text-lg">{vehicleTitle}</h2>
+                  <p className="text-muted-foreground">
+                    {vehicle.location_city} - {vehicle.location_state}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
 
-          <Button
-            type="submit"
-            disabled={loading || days === 0}
-            className="w-full btn-pill bg-primary hover:bg-primary/90 text-lg h-12"
-          >
-            {loading ? "Criando reserva..." : "Confirmar reserva"}
-          </Button>
-        </form>
+              {/* Dates */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h3 className="font-semibold text-lg">Período</h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startDate">Data de início</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                      className="mt-1 h-12"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">Data de término</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      required
+                      min={startDate}
+                      className="mt-1 h-12"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Locations */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h3 className="font-semibold text-lg">Locais</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="pickupLocation">Local de retirada</Label>
+                    <Input
+                      id="pickupLocation"
+                      type="text"
+                      value={pickupLocation}
+                      onChange={(e) => setPickupLocation(e.target.value)}
+                      required
+                      className="mt-1 h-12"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dropoffLocation">Local de devolução</Label>
+                    <Input
+                      id="dropoffLocation"
+                      type="text"
+                      value={dropoffLocation}
+                      onChange={(e) => setDropoffLocation(e.target.value)}
+                      required
+                      className="mt-1 h-12"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="bg-card border border-border rounded-2xl p-6">
+                <Label htmlFor="notes">Observações (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Alguma informação adicional..."
+                  className="mt-2"
+                  rows={4}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading || days === 0}
+                className="w-full h-14 text-lg"
+                size="lg"
+              >
+                {loading ? "Criando reserva..." : "Confirmar reserva"}
+              </Button>
+            </form>
+          </div>
+
+          {/* Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4 sticky top-24">
+              <h3 className="font-semibold text-lg">Resumo</h3>
+              
+              {days > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Período</span>
+                    <span className="font-medium">{days} dia{days !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Diária</span>
+                    <span className="font-medium">
+                      R$ {vehicle.daily_price?.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  {vehicle.deposit_amount && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Caução</span>
+                      <span className="font-medium">
+                        R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-4 border-t border-border">
+                    <span className="font-semibold">Total</span>
+                    <span className="text-2xl font-bold text-primary">
+                      R$ {total.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Selecione as datas para ver o resumo
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </MobileLayout>
+    </WebLayout>
   );
 }
