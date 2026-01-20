@@ -28,20 +28,19 @@ export default function Home() {
   }, []);
 
   const loadData = async () => {
-    const { user } = await getCurrentUser();
-    if (!user) {
-      navigate("/auth");
-      return;
+    // Tenta carregar o perfil se o usuário estiver logado, mas não obriga login
+    try {
+      const { user } = await getCurrentUser();
+      if (user) {
+        const userProfile = await getProfile(user.id);
+        setProfile(userProfile);
+      }
+    } catch (error) {
+      // Usuário não logado - continua sem perfil
+      console.log("Usuário não autenticado, navegando como visitante");
     }
 
-    const userProfile = await getProfile(user.id);
-    if (!userProfile) {
-      navigate("/onboarding");
-      return;
-    }
-
-    setProfile(userProfile);
-
+    // Carrega veículos independente do login
     const availableVehicles = await getAvailableVehicles(6);
     
     const vehiclesWithCovers = await Promise.all(
@@ -75,12 +74,22 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-                {profile ? `Olá, ${profile.full_name?.split(' ')[0] || 'Usuário'}!` : 'Olá!'}<br />
-                Qual carro você quer alugar hoje?
+                {profile ? `Olá, ${profile.full_name?.split(' ')[0] || 'Usuário'}!` : 'Alugue carros com facilidade'}<br />
+                {profile ? 'Qual carro você quer alugar hoje?' : 'Conectamos motoristas e proprietários'}
               </h1>
               <p className="text-white/90 text-lg mb-6">
                 Planos semanais e diários para motoristas de app e uso comum. Encontre o veículo ideal para suas necessidades.
               </p>
+              {!profile && (
+                <Button
+                  onClick={() => navigate("/auth")}
+                  variant="secondary"
+                  size="lg"
+                  className="mb-4"
+                >
+                  Entrar ou criar conta
+                </Button>
+              )}
             </div>
 
             {/* Search Card */}
@@ -230,7 +239,9 @@ export default function Home() {
             
             <button
               onClick={() => {
-                if (profile?.role === "owner" || profile?.role === "both") {
+                if (!profile) {
+                  navigate("/auth");
+                } else if (profile?.role === "owner" || profile?.role === "both") {
                   navigate("/my-vehicles");
                 } else {
                   alert("Para cadastrar veículos, atualize seu tipo de conta no perfil");
