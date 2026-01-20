@@ -85,7 +85,7 @@ export default function BookVehicle() {
       dropoff_location: dropoffLocation,
       total_price: calculateTotal(),
       deposit_amount: vehicle.deposit_amount || 0,
-      status: "pending_approval",
+      
       notes: notes || null,
     });
 
