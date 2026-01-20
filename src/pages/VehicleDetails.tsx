@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
-import { getVehicleById, getVehiclePhotos, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
-import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car } from "lucide-react";
+import { getVehicleById, getVehiclePhotos, getCurrentUser, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
+import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, FileText } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 export default function VehicleDetails() {
@@ -12,12 +12,23 @@ export default function VehicleDetails() {
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
   const [photos, setPhotos] = useState<OliVehiclePhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadVehicleData(id);
     }
+    checkAuth();
   }, [id]);
+
+  const checkAuth = async () => {
+    try {
+      const { user } = await getCurrentUser();
+      setIsAuthenticated(!!user);
+    } catch {
+      setIsAuthenticated(false);
+    }
+  };
 
   const loadVehicleData = async (vehicleId: string) => {
     const vehicleData = await getVehicleById(vehicleId);
@@ -26,6 +37,14 @@ export default function VehicleDetails() {
     setVehicle(vehicleData);
     setPhotos(vehiclePhotos);
     setLoading(false);
+  };
+
+  const handleReservation = () => {
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { returnTo: `/book/${vehicle?.id}` } });
+    } else {
+      navigate(`/book/${vehicle?.id}`);
+    }
   };
 
   if (loading) {
@@ -80,7 +99,7 @@ export default function VehicleDetails() {
                         <img
                           src={photo.image_url}
                           alt={vehicleTitle}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain bg-gradient-to-br from-muted to-muted/50"
                         />
                       </div>
                     </CarouselItem>
@@ -163,6 +182,17 @@ export default function VehicleDetails() {
               )}
             </div>
 
+            {/* Description */}
+            {vehicle.description && (
+              <div className="bg-card border border-border rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Descrição do proprietário</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">{vehicle.description}</p>
+              </div>
+            )}
+
             {/* Prices */}
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <h3 className="text-xl font-semibold">Valores</h3>
@@ -204,7 +234,7 @@ export default function VehicleDetails() {
 
             {/* Action Button */}
             <Button
-              onClick={() => navigate(`/book/${vehicle.id}`)}
+              onClick={handleReservation}
               className="w-full h-14 text-lg"
               size="lg"
             >
