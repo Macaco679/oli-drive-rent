@@ -13,6 +13,11 @@ type VehicleSample = {
   is_popular: boolean;
 };
 
+type AuthInfo = {
+  userId: string | null;
+  email: string | null;
+};
+
 type DebugState = {
   running: boolean;
   url: string;
@@ -20,6 +25,7 @@ type DebugState = {
   activeCount: number | null;
   totalCount: number | null;
   activeSample: VehicleSample[];
+  authInfo: AuthInfo;
   error: string | null;
 };
 
@@ -41,6 +47,7 @@ export function SupabaseDebugPanel() {
     activeCount: null,
     totalCount: null,
     activeSample: [],
+    authInfo: { userId: null, email: null },
     error: null,
   });
 
@@ -53,6 +60,13 @@ export function SupabaseDebugPanel() {
     setState((s) => ({ ...s, running: true, error: null }));
     try {
       const url = (supabase as any)?.supabaseUrl ?? "(unknown)";
+
+      // Auth info
+      const { data: { user } } = await supabase.auth.getUser();
+      const authInfo: AuthInfo = {
+        userId: user?.id ?? null,
+        email: user?.email ?? null,
+      };
 
       // Sample com novos campos
       const sampleRes = await supabase
@@ -84,11 +98,13 @@ export function SupabaseDebugPanel() {
         activeCount: activeCountRes.count ?? null,
         totalCount: totalCountRes.count ?? null,
         activeSample: (sampleRes.data as unknown as VehicleSample[]) ?? [],
+        authInfo,
         error: sampleErr || countErr,
       }));
 
       // Log no console
       console.log("[SUPABASE DEBUG] url=", url);
+      console.log("[SUPABASE DEBUG] auth=", authInfo);
       console.log("[SUPABASE DEBUG] totalCount=", totalCountRes.count, "activeCount=", activeCountRes.count);
       console.log("[SUPABASE DEBUG] sample=", sampleRes.data);
     } catch (e: any) {
@@ -126,6 +142,17 @@ export function SupabaseDebugPanel() {
       </div>
 
       <div className="mt-4 grid gap-2">
+        {/* Auth Info */}
+        <div className="text-sm border-b pb-2 mb-2">
+          <span className="font-medium">Auth:</span>{" "}
+          {state.authInfo.userId ? (
+            <span className="text-primary">
+              Logado — {state.authInfo.email} ({state.authInfo.userId.slice(0, 8)}...)
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Não autenticado</span>
+          )}
+        </div>
         <div className="text-sm">
           <span className="font-medium">Count total:</span>{" "}
           <span className="font-mono">{state.totalCount ?? "(null)"}</span>
