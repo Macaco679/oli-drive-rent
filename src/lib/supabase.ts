@@ -38,6 +38,10 @@ export interface OliVehicle {
   description: string | null;
   is_active: boolean;
   status: "available" | "unavailable" | "maintenance";
+  // Novos campos para filtros
+  body_type: string | null;
+  segment: string | null;
+  is_popular: boolean;
   created_at: string;
   updated_at: string;
 }
