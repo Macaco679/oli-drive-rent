@@ -1,13 +1,20 @@
-import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Calendar, MessageSquare, User, HelpCircle } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Search, Calendar, MessageSquare, User, HelpCircle, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/supabase";
 
 interface WebLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const publicNavItems = [
+  { path: "/home", label: "Início", icon: Home },
+  { path: "/search", label: "Buscar", icon: Search },
+];
+
+const authNavItems = [
   { path: "/home", label: "Início", icon: Home },
   { path: "/search", label: "Buscar", icon: Search },
   { path: "/reservations", label: "Reservas", icon: Calendar },
@@ -17,6 +24,25 @@ const navItems = [
 
 export function WebLayout({ children }: WebLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { user } = await getCurrentUser();
+      setIsAuthenticated(!!user);
+    } catch {
+      setIsAuthenticated(false);
+    }
+    setLoading(false);
+  };
+
+  const navItems = isAuthenticated ? authNavItems : publicNavItems;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -51,10 +77,23 @@ export function WebLayout({ children }: WebLayoutProps) {
               })}
             </nav>
 
-            {/* Help Button */}
-            <button className="p-2 hover:bg-primary-foreground/10 rounded-full transition-colors">
-              <HelpCircle className="w-6 h-6" />
-            </button>
+            {/* Auth Buttons */}
+            <div className="flex items-center gap-2">
+              {!loading && !isAuthenticated && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate("/auth")}
+                  className="hidden md:flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Entrar
+                </Button>
+              )}
+              <button className="p-2 hover:bg-primary-foreground/10 rounded-full transition-colors">
+                <HelpCircle className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -79,6 +118,15 @@ export function WebLayout({ children }: WebLayoutProps) {
                 </Link>
               );
             })}
+            {!loading && !isAuthenticated && (
+              <Link
+                to="/auth"
+                className="flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors text-primary-foreground/60 hover:text-primary-foreground"
+              >
+                <LogIn className="w-5 h-5" />
+                <span className="text-xs font-medium">Entrar</span>
+              </Link>
+            )}
           </div>
         </nav>
       </header>

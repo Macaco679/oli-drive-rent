@@ -1,32 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser, getProfile } from "@/lib/supabase";
 
 const Index = () => {
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const { user } = await getCurrentUser();
-    
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const profile = await getProfile(user.id);
-    
-    if (!profile) {
-      navigate("/onboarding");
-      return;
-    }
-
-    navigate("/home");
-  };
+    // Redireciona direto para a Home - login não é obrigatório
+    navigate("/home", { replace: true });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
