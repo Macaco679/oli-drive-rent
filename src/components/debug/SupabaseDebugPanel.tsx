@@ -3,12 +3,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+type VehicleSample = {
+  id: string;
+  title: string | null;
+  is_active: boolean;
+  transmission: string | null;
+  body_type: string | null;
+  segment: string | null;
+  is_popular: boolean;
+};
+
 type DebugState = {
   running: boolean;
   url: string;
   projectRefFromUrl: string;
   activeCount: number | null;
-  activeSample: Array<{ id: string; title: string | null; is_active: boolean }>;
+  totalCount: number | null;
+  activeSample: VehicleSample[];
   error: string | null;
 };
 
@@ -28,6 +39,7 @@ export function SupabaseDebugPanel() {
     url: (supabase as any)?.supabaseUrl ?? "(unknown)",
     projectRefFromUrl: getProjectRefFromUrl((supabase as any)?.supabaseUrl ?? ""),
     activeCount: null,
+    totalCount: null,
     activeSample: [],
     error: null,
   });
@@ -42,37 +54,43 @@ export function SupabaseDebugPanel() {
     try {
       const url = (supabase as any)?.supabaseUrl ?? "(unknown)";
 
+      // Sample com novos campos
       const sampleRes = await supabase
         .from("oli_vehicles")
-        .select("id,title,is_active")
+        .select("id,title,is_active,transmission,body_type,segment,is_popular")
         .eq("is_active", true)
+        .order("created_at", { ascending: false })
         .limit(3);
 
-      const countRes = await supabase
+      // Count de ativos
+      const activeCountRes = await supabase
         .from("oli_vehicles")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
+      // Count total
+      const totalCountRes = await supabase
+        .from("oli_vehicles")
+        .select("*", { count: "exact", head: true });
+
       const sampleErr = sampleRes.error?.message ?? null;
-      const countErr = countRes.error?.message ?? null;
+      const countErr = activeCountRes.error?.message ?? totalCountRes.error?.message ?? null;
 
       setState((s) => ({
         ...s,
         running: false,
         url,
         projectRefFromUrl: getProjectRefFromUrl(url),
-        activeCount: countRes.count ?? null,
-        activeSample: (sampleRes.data ?? []) as any,
+        activeCount: activeCountRes.count ?? null,
+        totalCount: totalCountRes.count ?? null,
+        activeSample: (sampleRes.data as unknown as VehicleSample[]) ?? [],
         error: sampleErr || countErr,
       }));
 
-      // Também loga no console para evidência
-      // eslint-disable-next-line no-console
+      // Log no console
       console.log("[SUPABASE DEBUG] url=", url);
-      // eslint-disable-next-line no-console
-      console.log("[SUPABASE DEBUG] activeCount=", countRes.count, "error=", countRes.error);
-      // eslint-disable-next-line no-console
-      console.log("[SUPABASE DEBUG] sampleLen=", sampleRes.data?.length, "sample=", sampleRes.data, "error=", sampleRes.error);
+      console.log("[SUPABASE DEBUG] totalCount=", totalCountRes.count, "activeCount=", activeCountRes.count);
+      console.log("[SUPABASE DEBUG] sample=", sampleRes.data);
     } catch (e: any) {
       setState((s) => ({ ...s, running: false, error: e?.message ?? String(e) }));
     }
@@ -109,6 +127,10 @@ export function SupabaseDebugPanel() {
 
       <div className="mt-4 grid gap-2">
         <div className="text-sm">
+          <span className="font-medium">Count total:</span>{" "}
+          <span className="font-mono">{state.totalCount ?? "(null)"}</span>
+        </div>
+        <div className="text-sm">
           <span className="font-medium">Count is_active=true:</span>{" "}
           <span className="font-mono">{state.activeCount ?? "(null)"}</span>
         </div>
@@ -117,13 +139,32 @@ export function SupabaseDebugPanel() {
           <span className="font-mono">{state.activeSample.length}</span>
         </div>
         {state.activeSample.length > 0 && (
-          <ul className="text-xs font-mono list-disc pl-4">
-            {state.activeSample.map((v) => (
-              <li key={v.id}>
-                {v.id} — {v.title ?? "(sem título)"} — active={String(v.is_active)}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-2 overflow-x-auto">
+            <table className="text-xs font-mono w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-1">ID</th>
+                  <th className="text-left p-1">Title</th>
+                  <th className="text-left p-1">Trans.</th>
+                  <th className="text-left p-1">Body</th>
+                  <th className="text-left p-1">Segment</th>
+                  <th className="text-left p-1">Popular</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.activeSample.map((v) => (
+                  <tr key={v.id} className="border-b border-muted">
+                    <td className="p-1">{v.id.slice(0, 8)}...</td>
+                    <td className="p-1">{v.title ?? "-"}</td>
+                    <td className="p-1">{v.transmission ?? "-"}</td>
+                    <td className="p-1">{v.body_type ?? "-"}</td>
+                    <td className="p-1">{v.segment ?? "-"}</td>
+                    <td className="p-1">{v.is_popular ? "✓" : "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         {state.error && (
           <div className="text-xs text-destructive">

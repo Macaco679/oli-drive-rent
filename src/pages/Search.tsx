@@ -11,19 +11,30 @@ interface VehicleWithCover extends OliVehicle {
   coverImage?: string;
 }
 
+type FilterId = "automatic" | "economy" | "suv" | "popular";
+
 export default function Search() {
   const location = useLocation();
   const [vehicles, setVehicles] = useState<VehicleWithCover[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<VehicleWithCover[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Set<FilterId>>(new Set());
 
   useEffect(() => {
     loadVehicles();
     
     if (location.state?.selectedType) {
-      setSelectedFilter(location.state.selectedType);
+      const typeMap: Record<string, FilterId> = {
+        automatic: "automatic",
+        economico: "economy",
+        suv: "suv",
+        popular: "popular",
+      };
+      const mappedFilter = typeMap[location.state.selectedType];
+      if (mappedFilter) {
+        setActiveFilters(new Set([mappedFilter]));
+      }
     }
     if (location.state?.searchCar) {
       setSearchText(location.state.searchCar);
@@ -32,7 +43,7 @@ export default function Search() {
 
   useEffect(() => {
     applyFilters();
-  }, [vehicles, searchText, selectedFilter]);
+  }, [vehicles, searchText, activeFilters]);
 
   const loadVehicles = async () => {
     const allVehicles = await getAvailableVehicles();
@@ -51,22 +62,50 @@ export default function Search() {
   const applyFilters = () => {
     let filtered = [...vehicles];
 
+    // Filtro de texto (busca em title, brand, model, year)
     if (searchText) {
       const search = searchText.toLowerCase();
       filtered = filtered.filter(
         (v) =>
+          v.title?.toLowerCase().includes(search) ||
           v.brand?.toLowerCase().includes(search) ||
           v.model?.toLowerCase().includes(search) ||
           v.year?.toString().includes(search)
       );
     }
 
+    // Aplicar filtros de chip (AND entre múltiplos)
+    if (activeFilters.has("automatic")) {
+      filtered = filtered.filter((v) => v.transmission === "automatic");
+    }
+    if (activeFilters.has("economy")) {
+      filtered = filtered.filter((v) => v.segment === "economy");
+    }
+    if (activeFilters.has("suv")) {
+      filtered = filtered.filter((v) => v.body_type === "suv");
+    }
+    if (activeFilters.has("popular")) {
+      filtered = filtered.filter((v) => v.is_popular === true);
+    }
+
     setFilteredVehicles(filtered);
   };
 
-  const filters = [
+  const toggleFilter = (filterId: FilterId) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filterId)) {
+        next.delete(filterId);
+      } else {
+        next.add(filterId);
+      }
+      return next;
+    });
+  };
+
+  const filters: { id: FilterId; label: string }[] = [
     { id: "automatic", label: "Automático" },
-    { id: "economico", label: "Econômico" },
+    { id: "economy", label: "Econômico" },
     { id: "suv", label: "SUV" },
     { id: "popular", label: "Popular" },
   ];
@@ -97,9 +136,9 @@ export default function Search() {
               {filters.map((filter) => (
                 <Badge
                   key={filter.id}
-                  variant={selectedFilter === filter.id ? "default" : "outline"}
+                  variant={activeFilters.has(filter.id) ? "default" : "outline"}
                   className="cursor-pointer h-10 px-4"
-                  onClick={() => setSelectedFilter(selectedFilter === filter.id ? null : filter.id)}
+                  onClick={() => toggleFilter(filter.id)}
                 >
                   {filter.label}
                 </Badge>
