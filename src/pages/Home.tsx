@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { VehicleCard } from "@/components/vehicles/VehicleCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCurrentUser, getProfile, getAvailableVehicles, getVehicleCoverPhoto, OliVehicle } from "@/lib/supabase";
-import { MapPin, Calendar, Car, Shield, CheckCircle2, HelpCircle } from "lucide-react";
+import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVehicle } from "@/lib/supabase";
+import { MapPin, Calendar, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import useEmblaCarousel from "embla-carousel-react";
 
 interface VehicleWithCover extends OliVehicle {
   coverImage?: string;
@@ -40,11 +41,11 @@ export default function Home() {
       console.log("Usuário não autenticado, navegando como visitante");
     }
 
-    // Carrega veículos independente do login
-    const availableVehicles = await getAvailableVehicles(6);
+    // Carrega todos os veículos independente do login (para o carrossel)
+    const allVehicles = await getAllVehicles();
     
     const vehiclesWithCovers = await Promise.all(
-      availableVehicles.map(async (vehicle) => {
+      allVehicles.map(async (vehicle) => {
         const coverImage = await getVehicleCoverPhoto(vehicle.id);
         return { ...vehicle, coverImage: coverImage || undefined };
       })
@@ -53,6 +54,33 @@ export default function Home() {
     setVehicles(vehiclesWithCovers);
     setLoading(false);
   };
+
+  // Carrossel
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    loop: false,
+    slidesToScroll: 1,
+    containScroll: "trimSnaps",
+  });
+  
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+  }, [emblaApi, onSelect]);
 
   const handleSearch = () => {
     navigate("/search", {
@@ -187,24 +215,54 @@ export default function Home() {
               Nenhum veículo disponível no momento
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vehicles.map((vehicle) => (
-                <VehicleCard
-                  key={vehicle.id}
-                  id={vehicle.id}
-                  title={vehicle.title || undefined}
-                  brand={vehicle.brand || undefined}
-                  model={vehicle.model || undefined}
-                  year={vehicle.year || undefined}
-                  coverImage={vehicle.coverImage}
-                  dailyPrice={vehicle.daily_price || undefined}
-                  weeklyPrice={vehicle.weekly_price || undefined}
-                  locationCity={vehicle.location_city || undefined}
-                  locationState={vehicle.location_state || undefined}
-                  status={vehicle.status}
-                  isActive={vehicle.is_active}
-                />
-              ))}
+            <div className="relative">
+              {/* Botão Anterior */}
+              <button
+                onClick={scrollPrev}
+                disabled={!canScrollPrev}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center transition-opacity ${
+                  canScrollPrev ? "opacity-100 hover:bg-muted" : "opacity-0 pointer-events-none"
+                }`}
+                style={{ marginLeft: "-1.25rem" }}
+              >
+                <ChevronLeft className="w-6 h-6 text-foreground" />
+              </button>
+
+              {/* Carrossel */}
+              <div className="overflow-hidden" ref={emblaRef}>
+                <div className="flex gap-6">
+                  {vehicles.map((vehicle) => (
+                    <div key={vehicle.id} className="flex-shrink-0 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+                      <VehicleCard
+                        id={vehicle.id}
+                        title={vehicle.title || undefined}
+                        brand={vehicle.brand || undefined}
+                        model={vehicle.model || undefined}
+                        year={vehicle.year || undefined}
+                        coverImage={vehicle.coverImage}
+                        dailyPrice={vehicle.daily_price || undefined}
+                        weeklyPrice={vehicle.weekly_price || undefined}
+                        locationCity={vehicle.location_city || undefined}
+                        locationState={vehicle.location_state || undefined}
+                        status={vehicle.status}
+                        isActive={vehicle.is_active}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botão Próximo */}
+              <button
+                onClick={scrollNext}
+                disabled={!canScrollNext}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-lg flex items-center justify-center transition-opacity ${
+                  canScrollNext ? "opacity-100 hover:bg-muted" : "opacity-0 pointer-events-none"
+                }`}
+                style={{ marginRight: "-1.25rem" }}
+              >
+                <ChevronRight className="w-6 h-6 text-foreground" />
+              </button>
             </div>
           )}
         </div>
