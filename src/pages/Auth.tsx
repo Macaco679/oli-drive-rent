@@ -7,7 +7,6 @@ import { signIn, signUp } from "@/lib/supabase";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { MobileLayout } from "@/components/layout/MobileLayout";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -27,7 +26,7 @@ export default function Auth() {
         toast.error("Erro ao entrar: " + error.message);
       } else if (data.user) {
         toast.success("Login realizado com sucesso!");
-        navigate("/");
+        navigate("/home");
       }
     } else {
       if (!fullName.trim()) {
@@ -49,15 +48,29 @@ export default function Auth() {
   };
 
   return (
-    <MobileLayout showBottomNav={false}>
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-primary to-accent">
+    <div className="min-h-screen flex">
+      {/* Left side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-accent items-center justify-center p-12">
+        <div className="text-center text-white max-w-md">
+          <h1 className="text-6xl font-bold mb-6">OLI</h1>
+          <p className="text-2xl mb-4">Aluguel de carros entre particulares</p>
+          <p className="text-white/80 text-lg">
+            Conectando motoristas e proprietários de veículos. 
+            Planos semanais e diários para motoristas de app e uso comum.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-2">OLI</h1>
-            <p className="text-white/90">Aluguel de carros entre particulares</p>
+          {/* Mobile branding */}
+          <div className="lg:hidden text-center">
+            <h1 className="text-4xl font-bold text-primary mb-2">OLI</h1>
+            <p className="text-muted-foreground">Aluguel de carros entre particulares</p>
           </div>
 
-          {/* Aviso de modo demo */}
+          {/* Demo mode alert */}
           <Alert className="bg-secondary border-border">
             <AlertTriangle className="h-4 w-4 text-primary" />
             <AlertDescription className="text-foreground text-sm">
@@ -65,12 +78,12 @@ export default function Auth() {
             </AlertDescription>
           </Alert>
 
-          <div className="bg-card p-6 rounded-2xl shadow-xl">
+          <div className="bg-card p-8 rounded-2xl shadow-xl border border-border">
             <h2 className="text-2xl font-semibold mb-6 text-center">
               {isLogin ? "Entrar" : "Criar conta"}
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
                 <div>
                   <Label htmlFor="fullName">Nome completo</Label>
@@ -80,7 +93,8 @@ export default function Auth() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required={!isLogin}
-                    className="mt-1"
+                    className="mt-1 h-12"
+                    placeholder="Seu nome completo"
                   />
                 </div>
               )}
@@ -93,7 +107,8 @@ export default function Auth() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1"
+                  className="mt-1 h-12"
+                  placeholder="seu@email.com"
                 />
               </div>
 
@@ -106,14 +121,15 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="mt-1"
+                  className="mt-1 h-12"
+                  placeholder="Mínimo 6 caracteres"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-pill bg-primary hover:bg-primary/90"
+                className="w-full h-12 text-lg"
               >
                 {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
               </Button>
@@ -131,8 +147,12 @@ export default function Auth() {
               </button>
             </div>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Ao criar sua conta, você concorda com nossos termos de uso e política de privacidade.
+          </p>
         </div>
       </div>
-    </MobileLayout>
+    </div>
   );
 }
