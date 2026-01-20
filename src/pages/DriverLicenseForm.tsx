@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -13,8 +21,9 @@ import {
 } from "@/components/ui/select";
 import { FileUploadField } from "@/components/profile/FileUploadField";
 import { useDriverLicense, LicenseData, LicenseFiles } from "@/contexts/DriverLicenseContext";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const CNH_CATEGORIES = ["A", "B", "AB", "C", "D", "E", "AC", "AD", "AE"];
 
@@ -243,17 +252,43 @@ export default function DriverLicenseForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="expiresAt">
+                  <Label>
                     Validade <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="expiresAt"
-                    type="date"
-                    value={expiresAt}
-                    onChange={(e) => setExpiresAt(e.target.value)}
-                    className={`mt-1 h-12 ${errors.expiresAt ? "border-destructive" : ""}`}
-                    disabled={isViewMode}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild disabled={isViewMode}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full mt-1 h-12 justify-start text-left font-normal",
+                          !expiresAt && "text-muted-foreground",
+                          errors.expiresAt && "border-destructive"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {expiresAt ? (
+                          format(new Date(expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Selecione a data</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-card" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={expiresAt ? new Date(expiresAt) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setExpiresAt(format(date, "yyyy-MM-dd"));
+                          }
+                        }}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                        locale={ptBR}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   {errors.expiresAt && (
                     <p className="text-sm text-destructive mt-1">{errors.expiresAt}</p>
                   )}
