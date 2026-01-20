@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CNHVerificationModal } from "@/components/profile/CNHVerificationModal";
+import { useDriverLicense } from "@/contexts/DriverLicenseContext";
 import { getVehicleById, getCurrentUser, createRental, OliVehicle } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ArrowLeft, Car } from "lucide-react";
@@ -12,6 +14,7 @@ import { ArrowLeft, Car } from "lucide-react";
 export default function BookVehicle() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { licenseStatus } = useDriverLicense();
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -19,6 +22,7 @@ export default function BookVehicle() {
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCNHModal, setShowCNHModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -55,6 +59,12 @@ export default function BookVehicle() {
     e.preventDefault();
 
     if (!vehicle) return;
+
+    // Check CNH status before proceeding
+    if (licenseStatus !== "approved") {
+      setShowCNHModal(true);
+      return;
+    }
 
     if (!startDate || !endDate) {
       toast.error("Por favor, selecione as datas");
@@ -268,6 +278,8 @@ export default function BookVehicle() {
           </div>
         </div>
       </div>
+
+      <CNHVerificationModal open={showCNHModal} onOpenChange={setShowCNHModal} />
     </WebLayout>
   );
 }
