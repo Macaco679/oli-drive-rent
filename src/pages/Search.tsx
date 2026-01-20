@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { MobileLayout } from "@/components/layout/MobileLayout";
+import { WebLayout } from "@/components/layout/WebLayout";
 import { VehicleCard } from "@/components/vehicles/VehicleCard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,9 @@ export default function Search() {
     
     if (location.state?.selectedType) {
       setSelectedFilter(location.state.selectedType);
+    }
+    if (location.state?.searchCar) {
+      setSearchText(location.state.searchCar);
     }
   }, [location.state]);
 
@@ -69,45 +72,46 @@ export default function Search() {
   ];
 
   return (
-    <MobileLayout>
-      <div className="p-4 space-y-4">
+    <WebLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold mb-4">Buscar Veículos</h1>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-6">Buscar Veículos</h1>
           
-          {/* Search Bar */}
-          <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por modelo, marca ou ano"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por modelo, marca ou ano"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="pl-10 h-12"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <button className="p-3 border border-border rounded-lg hover:bg-secondary transition-colors">
+                <SlidersHorizontal className="w-5 h-5 text-muted-foreground" />
+              </button>
+              {filters.map((filter) => (
+                <Badge
+                  key={filter.id}
+                  variant={selectedFilter === filter.id ? "default" : "outline"}
+                  className="cursor-pointer h-10 px-4"
+                  onClick={() => setSelectedFilter(selectedFilter === filter.id ? null : filter.id)}
+                >
+                  {filter.label}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button className="p-2 border border-border rounded-lg hover:bg-secondary transition-colors">
-            <SlidersHorizontal className="w-5 h-5 text-muted-foreground" />
-          </button>
-          {filters.map((filter) => (
-            <Badge
-              key={filter.id}
-              variant={selectedFilter === filter.id ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setSelectedFilter(selectedFilter === filter.id ? null : filter.id)}
-            >
-              {filter.label}
-            </Badge>
-          ))}
         </div>
 
         {/* Results */}
         <div>
-          <p className="text-sm text-muted-foreground mb-3">
-            {filteredVehicles.length} veículos encontrados
+          <p className="text-muted-foreground mb-6">
+            {filteredVehicles.length} veículo{filteredVehicles.length !== 1 ? 's' : ''} encontrado{filteredVehicles.length !== 1 ? 's' : ''}
           </p>
 
           {loading ? (
@@ -120,7 +124,7 @@ export default function Search() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredVehicles.map((vehicle) => (
                 <VehicleCard
                   key={vehicle.id}
@@ -142,6 +146,6 @@ export default function Search() {
           )}
         </div>
       </div>
-    </MobileLayout>
+    </WebLayout>
   );
 }

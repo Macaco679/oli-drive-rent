@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MobileLayout } from "@/components/layout/MobileLayout";
+import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, getProfile, signOut, OliProfile } from "@/lib/supabase";
-import { User, Car, HelpCircle, LogOut, ChevronRight } from "lucide-react";
+import { User, Car, HelpCircle, LogOut, ChevronRight, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Profile() {
@@ -58,21 +58,21 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <MobileLayout>
+      <WebLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </MobileLayout>
+      </WebLayout>
     );
   }
 
   if (!profile) {
     return (
-      <MobileLayout>
-        <div className="p-4">
+      <WebLayout>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-muted-foreground">Perfil não encontrado</p>
         </div>
-      </MobileLayout>
+      </WebLayout>
     );
   }
 
@@ -80,6 +80,7 @@ export default function Profile() {
     {
       icon: User,
       label: "Meus dados pessoais",
+      subtitle: "Editar nome, telefone e informações",
       onClick: () => navigate("/profile/edit"),
     },
     {
@@ -94,6 +95,7 @@ export default function Profile() {
     menuItems.push({
       icon: Car,
       label: "Meus veículos",
+      subtitle: "Gerenciar carros cadastrados",
       onClick: () => navigate("/my-vehicles"),
     });
   }
@@ -101,53 +103,73 @@ export default function Profile() {
   menuItems.push({
     icon: HelpCircle,
     label: "Ajuda e suporte",
+    subtitle: "FAQ, contato e dúvidas",
     onClick: () => toast.info("Em breve!"),
   });
 
   return (
-    <MobileLayout>
-      <div className="p-4 space-y-6">
-        <h1 className="text-2xl font-bold">Perfil</h1>
+    <WebLayout>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold mb-8">Meu Perfil</h1>
 
-        {/* Profile Card */}
-        <div className="card-elevated p-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground text-2xl font-bold flex items-center justify-center mx-auto mb-4">
-            {getInitials(profile.full_name)}
-          </div>
-          <h2 className="text-xl font-semibold mb-1">{profile.full_name || "Usuário"}</h2>
-          <p className="text-sm text-muted-foreground">{getRoleLabel(profile.role)}</p>
-        </div>
-
-        {/* Menu Items */}
-        <div className="space-y-2">
-          {menuItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={item.onClick}
-              className="w-full card-elevated p-4 flex items-center gap-3 hover:shadow-[var(--shadow-elevated)] transition-shadow"
-            >
-              <item.icon className="w-5 h-5 text-primary" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">{item.label}</p>
-                {item.subtitle && (
-                  <p className="text-sm text-muted-foreground">{item.subtitle}</p>
-                )}
+        <div className="grid gap-8">
+          {/* Profile Card */}
+          <div className="bg-card border border-border rounded-2xl p-8">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-primary text-primary-foreground text-3xl font-bold flex items-center justify-center">
+                {getInitials(profile.full_name)}
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-          ))}
-        </div>
+              <div className="text-center sm:text-left flex-1">
+                <h2 className="text-2xl font-bold mb-1">{profile.full_name || "Usuário"}</h2>
+                <p className="text-muted-foreground mb-3">{getRoleLabel(profile.role)}</p>
+                <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-4 h-4" />
+                    demo@oliapp.com
+                  </span>
+                  {profile.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-4 h-4" />
+                      {profile.phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
-        {/* Sign Out */}
-        <Button
-          onClick={handleSignOut}
-          variant="destructive"
-          className="w-full btn-pill"
-        >
-          <LogOut className="w-5 h-5 mr-2" />
-          Sair
-        </Button>
+          {/* Menu Items */}
+          <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+            {menuItems.map((item, index) => (
+              <button
+                key={index}
+                onClick={item.onClick}
+                className="w-full p-6 flex items-center gap-4 hover:bg-secondary/50 transition-colors text-left"
+              >
+                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center flex-shrink-0">
+                  <item.icon className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-lg">{item.label}</p>
+                  <p className="text-muted-foreground">{item.subtitle}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+
+          {/* Sign Out */}
+          <Button
+            onClick={handleSignOut}
+            variant="destructive"
+            size="lg"
+            className="w-full h-14 text-lg"
+          >
+            <LogOut className="w-5 h-5 mr-2" />
+            Sair da conta
+          </Button>
+        </div>
       </div>
-    </MobileLayout>
+    </WebLayout>
   );
 }
