@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, getProfile, signOut, OliProfile } from "@/lib/supabase";
+import { DriverLicenseCard } from "@/components/profile/DriverLicenseCard";
+import { DriverLicenseDebug } from "@/components/profile/DriverLicenseDebug";
+import { useDriverLicense } from "@/contexts/DriverLicenseContext";
 import { User, Car, HelpCircle, LogOut, ChevronRight, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +13,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<OliProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { licenseStatus } = useDriverLicense();
 
   useEffect(() => {
     loadProfile();
@@ -138,6 +142,9 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* CNH Verification Card */}
+          <DriverLicenseCard status={licenseStatus} />
+
           {/* Menu Items */}
           <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
             {menuItems.map((item, index) => (
@@ -169,6 +176,9 @@ export default function Profile() {
             Sair da conta
           </Button>
         </div>
+
+        {/* Debug Panel */}
+        <DriverLicenseDebug />
       </div>
     </WebLayout>
   );
