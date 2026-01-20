@@ -34,6 +34,7 @@ export interface OliVehicle {
   deposit_amount: number | null;
   location_city: string | null;
   location_state: string | null;
+  description: string | null;
   is_active: boolean;
   status: "available" | "unavailable" | "maintenance";
   created_at: string;
@@ -113,6 +114,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2000,
     location_city: "São Paulo",
     location_state: "SP",
+    description: "Carro em excelente estado, perfeito para motoristas de app. Baixo consumo de combustível, ar condicionado gelando, direção elétrica. Revisões em dia na concessionária.",
     is_active: true,
     status: "unavailable",
     created_at: new Date().toISOString(),
@@ -137,6 +139,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2000,
     location_city: "São Paulo",
     location_state: "SP",
+    description: "Onix econômico e confiável. Ideal para uso diário ou trabalho com aplicativos. Documentação em dia, IPVA pago.",
     is_active: true,
     status: "unavailable",
     created_at: new Date().toISOString(),
@@ -161,6 +164,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2000,
     location_city: "Campinas",
     location_state: "SP",
+    description: "Argo novo, câmbio CVT, muito econômico. Perfeito para viagens longas ou uso no dia a dia. Central multimídia com Android Auto e Apple CarPlay.",
     is_active: true,
     status: "unavailable",
     created_at: new Date().toISOString(),
@@ -185,6 +189,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2000,
     location_city: "São Paulo",
     location_state: "SP",
+    description: "Sedan espaçoso com porta-malas generoso. Ótimo para famílias ou motoristas de app que precisam de mais espaço. Ar condicionado digital, câmera de ré.",
     is_active: true,
     status: "available",
     created_at: new Date().toISOString(),
@@ -209,6 +214,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 3000,
     location_city: "São Paulo",
     location_state: "SP",
+    description: "SUV Coupé moderno e estiloso. Design diferenciado, conforto premium. Ideal para quem busca um carro com visual impactante e tecnologia de ponta.",
     is_active: true,
     status: "unavailable",
     created_at: new Date().toISOString(),
@@ -233,6 +239,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2000,
     location_city: "Guarulhos",
     location_state: "SP",
+    description: "Sedan compacto, econômico e confiável. Manutenção barata e peças fáceis de encontrar. Ótimo custo-benefício para trabalhar com aplicativos.",
     is_active: true,
     status: "available",
     created_at: new Date().toISOString(),
@@ -257,6 +264,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2500,
     location_city: "São Paulo",
     location_state: "SP",
+    description: "SUV compacto top de linha. Câmbio CVT, ar digital, central multimídia, sensor de estacionamento e câmera 360°. Conforto e tecnologia para suas viagens.",
     is_active: true,
     status: "available",
     created_at: new Date().toISOString(),
@@ -281,6 +289,7 @@ const mockVehicles: OliVehicle[] = [
     deposit_amount: 2500,
     location_city: "Osasco",
     location_state: "SP",
+    description: "Kicks completo, perfeito para viagens em família ou trabalho com apps premium. Bancos em couro, teto solar panorâmico, piloto automático.",
     is_active: true,
     status: "available",
     created_at: new Date().toISOString(),
@@ -421,7 +430,17 @@ export const getVehicleById = async (vehicleId: string): Promise<OliVehicle | nu
 
 export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePhoto[]> => {
   await new Promise(resolve => setTimeout(resolve, 200));
-  // Retorna array vazio - sem fotos no mock
+  // Retorna a foto do veículo como única foto
+  const imageUrl = vehicleImages[vehicleId];
+  if (imageUrl) {
+    return [{
+      id: `photo-${vehicleId}`,
+      vehicle_id: vehicleId,
+      image_url: imageUrl,
+      is_cover: true,
+      created_at: new Date().toISOString(),
+    }];
+  }
   return [];
 };
 
