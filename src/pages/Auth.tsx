@@ -70,13 +70,6 @@ export default function Auth() {
             <p className="text-muted-foreground">Aluguel de carros entre particulares</p>
           </div>
 
-          {/* Demo mode alert */}
-          <Alert className="bg-secondary border-border">
-            <AlertTriangle className="h-4 w-4 text-primary" />
-            <AlertDescription className="text-foreground text-sm">
-              <strong>Modo Demo:</strong> Supabase desconectado. Use qualquer e-mail/senha para testar.
-            </AlertDescription>
-          </Alert>
 
           <div className="bg-card p-8 rounded-2xl shadow-xl border border-border">
             <h2 className="text-2xl font-semibold mb-6 text-center">
