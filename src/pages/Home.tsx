@@ -8,6 +8,7 @@ import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVe
 import { MapPin, Calendar, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
+import { SupabaseDebugPanel } from "@/components/debug/SupabaseDebugPanel";
 
 interface VehicleWithCover extends OliVehicle {
   coverImage?: string;
@@ -23,6 +24,8 @@ export default function Home() {
   const [endDate, setEndDate] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const showSupabaseDebug = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugSupabase") === "1";
 
   useEffect(() => {
     loadData();
@@ -192,6 +195,12 @@ export default function Home() {
       {/* Available Vehicles */}
       <section className="py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {showSupabaseDebug && (
+            <div className="mb-6">
+              <SupabaseDebugPanel />
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
             <div>
               <h2 className="text-2xl lg:text-3xl font-bold mb-2">Carros disponíveis</h2>
