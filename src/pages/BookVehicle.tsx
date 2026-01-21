@@ -5,16 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CNHVerificationModal } from "@/components/profile/CNHVerificationModal";
 import { useDriverLicense } from "@/contexts/DriverLicenseContext";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getVehicleById, getCurrentUser, createRental, OliVehicle } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ArrowLeft, Car } from "lucide-react";
+import { ArrowLeft, Car, AlertCircle } from "lucide-react";
 
 export default function BookVehicle() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { licenseStatus } = useDriverLicense();
+  const { isComplete: isProfileComplete, missingFields, loading: profileLoading } = useProfileCompletion();
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -59,6 +62,13 @@ export default function BookVehicle() {
     e.preventDefault();
 
     if (!vehicle) return;
+
+    // Check profile completion first
+    if (!isProfileComplete) {
+      toast.error("Complete seu perfil antes de fazer uma reserva");
+      navigate("/profile/edit");
+      return;
+    }
 
     // Check CNH status before proceeding
     if (licenseStatus !== "approved") {
@@ -136,6 +146,25 @@ export default function BookVehicle() {
         </button>
 
         <h1 className="text-3xl font-bold mb-8">Fazer Reserva</h1>
+
+        {/* Profile incomplete alert */}
+        {!profileLoading && !isProfileComplete && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Perfil incompleto!</strong> Complete seus dados pessoais antes de fazer uma reserva.
+              <br />
+              <span className="text-sm">Campos faltando: {missingFields.join(", ")}</span>
+              <Button
+                variant="link"
+                className="p-0 h-auto text-destructive-foreground underline ml-2"
+                onClick={() => navigate("/profile/edit")}
+              >
+                Completar perfil
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Form */}
@@ -228,7 +257,7 @@ export default function BookVehicle() {
 
               <Button
                 type="submit"
-                disabled={loading || days === 0}
+                disabled={loading || days === 0 || !isProfileComplete}
                 className="w-full h-14 text-lg"
                 size="lg"
               >

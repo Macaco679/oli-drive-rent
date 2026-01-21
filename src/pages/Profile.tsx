@@ -131,10 +131,12 @@ export default function Profile() {
                 <h2 className="text-2xl font-bold mb-1">{profile.full_name || "Usuário"}</h2>
                 <p className="text-muted-foreground mb-3">{getRoleLabel(profile.role)}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-4 h-4" />
-                    demo@oliapp.com
-                  </span>
+                  {profile.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-4 h-4" />
+                      {profile.email}
+                    </span>
+                  )}
                   {profile.phone && (
                     <span className="flex items-center gap-1">
                       <Phone className="w-4 h-4" />

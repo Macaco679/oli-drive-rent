@@ -15,6 +15,7 @@ import BookVehicle from "./pages/BookVehicle";
 import Reservations from "./pages/Reservations";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
+import ProfileEdit from "./pages/ProfileEdit";
 import DriverLicenseForm from "./pages/DriverLicenseForm";
 import RegisterVehicle from "./pages/RegisterVehicle";
 import MyVehicles from "./pages/MyVehicles";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/reservations" element={<Reservations />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/edit" element={<ProfileEdit />} />
             <Route path="/profile/driver-license" element={<DriverLicenseForm />} />
             <Route path="/profile/register-vehicle" element={<RegisterVehicle />} />
             <Route path="/my-vehicles" element={<MyVehicles />} />

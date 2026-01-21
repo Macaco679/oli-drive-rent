@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface OliProfile {
   id: string;
   full_name: string | null;
+  email: string | null;
   cpf: string | null;
   birth_date: string | null;
   phone: string | null;
