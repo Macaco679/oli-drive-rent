@@ -16,6 +16,7 @@ import Reservations from "./pages/Reservations";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 import DriverLicenseForm from "./pages/DriverLicenseForm";
+import RegisterVehicle from "./pages/RegisterVehicle";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/messages" element={<Messages />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/driver-license" element={<DriverLicenseForm />} />
+            <Route path="/profile/register-vehicle" element={<RegisterVehicle />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

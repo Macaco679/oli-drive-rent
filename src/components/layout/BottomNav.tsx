@@ -1,12 +1,12 @@
-import { Home, Search, Calendar, MessageCircle, User } from "lucide-react";
+import { Home, Search, Calendar, MessageCircle, User, Car } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Home, label: "Início", path: "/home" },
   { icon: Search, label: "Buscar", path: "/search" },
+  { icon: Car, label: "Meu Carro", path: "/profile/register-vehicle" },
   { icon: Calendar, label: "Reservas", path: "/reservations" },
-  { icon: MessageCircle, label: "Mensagens", path: "/messages" },
   { icon: User, label: "Perfil", path: "/profile" },
 ];
 
