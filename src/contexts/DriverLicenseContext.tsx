@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getDriverLicense, DriverLicenseRecord } from "@/lib/driverLicenseService";
 
 export type LicenseStatus = "not_sent" | "pending" | "approved" | "rejected";
 
@@ -7,6 +9,9 @@ export interface LicenseData {
   licenseNumber: string;
   category: string;
   expiresAt: string;
+  frontPath?: string | null;
+  backPath?: string | null;
+  selfiePath?: string | null;
 }
 
 export interface LicenseFiles {
@@ -27,6 +32,8 @@ interface DriverLicenseContextType {
   setLicenseFiles: (files: LicenseFiles) => void;
   submitLicense: (data: LicenseData, files: LicenseFiles) => void;
   resetLicense: () => void;
+  loadFromSupabase: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const defaultLicenseData: LicenseData = {
@@ -34,6 +41,9 @@ const defaultLicenseData: LicenseData = {
   licenseNumber: "",
   category: "",
   expiresAt: "",
+  frontPath: null,
+  backPath: null,
+  selfiePath: null,
 };
 
 const defaultLicenseFiles: LicenseFiles = {
@@ -47,10 +57,69 @@ const defaultLicenseFiles: LicenseFiles = {
 
 const DriverLicenseContext = createContext<DriverLicenseContextType | undefined>(undefined);
 
+function mapStatusFromDb(status: string | null): LicenseStatus {
+  if (status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
+  if (status === "pending") return "pending";
+  return "not_sent";
+}
+
+function mapRecordToData(record: DriverLicenseRecord): LicenseData {
+  return {
+    fullName: record.full_name || "",
+    licenseNumber: record.license_number || "",
+    category: record.category || "",
+    expiresAt: record.expires_at || "",
+    frontPath: record.front_path,
+    backPath: record.back_path,
+    selfiePath: record.selfie_path,
+  };
+}
+
 export function DriverLicenseProvider({ children }: { children: ReactNode }) {
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>("not_sent");
   const [licenseData, setLicenseData] = useState<LicenseData>(defaultLicenseData);
   const [licenseFiles, setLicenseFiles] = useState<LicenseFiles>(defaultLicenseFiles);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadFromSupabase = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const license = await getDriverLicense(user.id);
+      if (license) {
+        setLicenseStatus(mapStatusFromDb(license.status));
+        setLicenseData(mapRecordToData(license));
+      } else {
+        setLicenseStatus("not_sent");
+        setLicenseData(defaultLicenseData);
+      }
+    } catch (err) {
+      console.error("[DriverLicenseContext] Erro ao carregar CNH:", err);
+    }
+    setIsLoading(false);
+  };
+
+  // Carregar dados ao montar o contexto
+  useEffect(() => {
+    loadFromSupabase();
+
+    // Escutar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        loadFromSupabase();
+      } else if (event === "SIGNED_OUT") {
+        resetLicense();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const submitLicense = (data: LicenseData, files: LicenseFiles) => {
     setLicenseData(data);
@@ -75,6 +144,8 @@ export function DriverLicenseProvider({ children }: { children: ReactNode }) {
         setLicenseFiles,
         submitLicense,
         resetLicense,
+        loadFromSupabase,
+        isLoading,
       }}
     >
       {children}
