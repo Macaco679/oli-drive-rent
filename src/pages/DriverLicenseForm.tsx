@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/select";
 import { FileUploadField } from "@/components/profile/FileUploadField";
 import { useDriverLicense, LicenseData, LicenseFiles } from "@/contexts/DriverLicenseContext";
-import { ArrowLeft, ShieldCheck, CalendarIcon } from "lucide-react";
+import { submitDriverLicense, getSignedImageUrl } from "@/lib/driverLicenseService";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, ShieldCheck, CalendarIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -29,13 +31,13 @@ const CNH_CATEGORIES = ["A", "B", "AB", "C", "D", "E", "AC", "AD", "AE"];
 
 export default function DriverLicenseForm() {
   const navigate = useNavigate();
-  const { licenseStatus, licenseData, submitLicense } = useDriverLicense();
+  const { licenseStatus, licenseData, loadFromSupabase, isLoading: contextLoading } = useDriverLicense();
 
   // Form state
-  const [fullName, setFullName] = useState(licenseData.fullName);
-  const [licenseNumber, setLicenseNumber] = useState(licenseData.licenseNumber);
-  const [category, setCategory] = useState(licenseData.category);
-  const [expiresAt, setExpiresAt] = useState(licenseData.expiresAt);
+  const [fullName, setFullName] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [category, setCategory] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   // Files state
   const [frontFile, setFrontFile] = useState<File | null>(null);
@@ -48,6 +50,43 @@ export default function DriverLicenseForm() {
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Carregar dados existentes do Supabase
+  useEffect(() => {
+    const loadExistingData = async () => {
+      await loadFromSupabase();
+      setInitialLoading(false);
+    };
+    loadExistingData();
+  }, []);
+
+  // Preencher formulário com dados existentes
+  useEffect(() => {
+    if (licenseData) {
+      setFullName(licenseData.fullName || "");
+      setLicenseNumber(licenseData.licenseNumber || "");
+      setCategory(licenseData.category || "");
+      setExpiresAt(licenseData.expiresAt || "");
+
+      // Carregar previews das imagens existentes
+      const loadPreviews = async () => {
+        if (licenseData.frontPath) {
+          const url = await getSignedImageUrl(licenseData.frontPath);
+          if (url) setFrontPreview(url);
+        }
+        if (licenseData.backPath) {
+          const url = await getSignedImageUrl(licenseData.backPath);
+          if (url) setBackPreview(url);
+        }
+        if (licenseData.selfiePath) {
+          const url = await getSignedImageUrl(licenseData.selfiePath);
+          if (url) setSelfiePreview(url);
+        }
+      };
+      loadPreviews();
+    }
+  }, [licenseData]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -64,10 +103,15 @@ export default function DriverLicenseForm() {
     if (!expiresAt) {
       newErrors.expiresAt = "Validade é obrigatória";
     }
-    if (!frontFile) {
+
+    // Para novo envio, exigir fotos. Para reenvio, já pode ter paths salvos
+    const hasExistingFront = licenseData.frontPath;
+    const hasExistingBack = licenseData.backPath;
+
+    if (!frontFile && !hasExistingFront) {
       newErrors.front = "Foto da frente é obrigatória";
     }
-    if (!backFile) {
+    if (!backFile && !hasExistingBack) {
       newErrors.back = "Foto do verso é obrigatória";
     }
 
@@ -85,32 +129,61 @@ export default function DriverLicenseForm() {
 
     setLoading(true);
 
-    // Simulate upload delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Obter usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Você precisa estar logado");
+        navigate("/auth");
+        return;
+      }
 
-    const data: LicenseData = {
-      fullName,
-      licenseNumber,
-      category,
-      expiresAt,
-    };
+      // Submeter para o Supabase
+      const result = await submitDriverLicense(
+        user.id,
+        {
+          fullName,
+          licenseNumber,
+          category,
+          expiresAt,
+        },
+        {
+          front: frontFile,
+          back: backFile,
+          selfie: selfieFile,
+        }
+      );
 
-    const files: LicenseFiles = {
-      front: frontFile,
-      back: backFile,
-      selfie: selfieFile,
-      frontPreview,
-      backPreview,
-      selfiePreview,
-    };
+      if (!result.success) {
+        toast.error(result.error || "Erro ao enviar CNH");
+        setLoading(false);
+        return;
+      }
 
-    submitLicense(data, files);
+      // Recarregar dados do contexto
+      await loadFromSupabase();
+
+      toast.success("CNH enviada para verificação!");
+      navigate("/profile");
+    } catch (err) {
+      console.error("[DriverLicenseForm] Erro:", err);
+      toast.error("Erro inesperado ao enviar CNH");
+    }
+
     setLoading(false);
-    toast.success("CNH enviada para verificação!");
-    navigate("/profile");
   };
 
   const isViewMode = licenseStatus === "approved";
+
+  if (initialLoading || contextLoading) {
+    return (
+      <WebLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </WebLayout>
+    );
+  }
 
   return (
     <WebLayout>
@@ -340,6 +413,33 @@ export default function DriverLicenseForm() {
             </div>
           )}
 
+          {/* View mode - show existing photos */}
+          {isViewMode && (frontPreview || backPreview || selfiePreview) && (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <h2 className="font-semibold text-lg">Fotos do documento</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {frontPreview && (
+                  <div>
+                    <Label className="mb-2 block">Frente</Label>
+                    <img src={frontPreview} alt="Frente CNH" className="rounded-lg w-full h-40 object-cover" />
+                  </div>
+                )}
+                {backPreview && (
+                  <div>
+                    <Label className="mb-2 block">Verso</Label>
+                    <img src={backPreview} alt="Verso CNH" className="rounded-lg w-full h-40 object-cover" />
+                  </div>
+                )}
+              </div>
+              {selfiePreview && (
+                <div>
+                  <Label className="mb-2 block">Selfie</Label>
+                  <img src={selfiePreview} alt="Selfie CNH" className="rounded-lg w-full max-w-xs h-40 object-cover" />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Submit Button */}
           {!isViewMode && (
             <Button
@@ -348,11 +448,18 @@ export default function DriverLicenseForm() {
               className="w-full h-14 text-lg"
               size="lg"
             >
-              {loading
-                ? "Enviando..."
-                : licenseStatus === "rejected"
-                ? "Reenviar para verificação"
-                : "Enviar para verificação"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : licenseStatus === "rejected" ? (
+                "Reenviar para verificação"
+              ) : licenseStatus === "pending" ? (
+                "Atualizar e reenviar"
+              ) : (
+                "Enviar para verificação"
+              )}
             </Button>
           )}
         </form>
