@@ -78,6 +78,36 @@ const stateOptions = [
   "SP", "SE", "TO"
 ];
 
+// Mask functions
+const formatPlate = (value: string): string => {
+  // Remove tudo que não é letra ou número
+  const cleaned = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  
+  // Formato Mercosul: ABC1D23
+  if (cleaned.length <= 3) {
+    return cleaned.replace(/[^A-Z]/g, "");
+  }
+  
+  const letters = cleaned.slice(0, 3).replace(/[^A-Z]/g, "");
+  const rest = cleaned.slice(3, 7);
+  
+  if (rest.length === 0) return letters;
+  
+  // Formato: ABC1D23 (3 letras + 1 número + 1 letra + 2 números)
+  let formatted = letters;
+  if (rest[0]) formatted += rest[0].replace(/[^0-9]/g, "");
+  if (rest[1]) formatted += rest[1].replace(/[^A-Z0-9]/g, "");
+  if (rest[2]) formatted += rest[2].replace(/[^0-9]/g, "");
+  if (rest[3]) formatted += rest[3].replace(/[^0-9]/g, "");
+  
+  return formatted;
+};
+
+const formatRenavam = (value: string): string => {
+  // Apenas números, máximo 11 dígitos
+  return value.replace(/\D/g, "").slice(0, 11);
+};
+
 export default function RegisterVehicle() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -307,11 +337,16 @@ export default function RegisterVehicle() {
                         <FormControl>
                           <Input 
                             placeholder="ABC1D23" 
-                            {...field} 
-                            className="uppercase"
-                            maxLength={8}
+                            value={field.value}
+                            onChange={(e) => {
+                              const formatted = formatPlate(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            className="uppercase tracking-wider font-mono"
+                            maxLength={7}
                           />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">Formato Mercosul: ABC1D23</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -326,10 +361,17 @@ export default function RegisterVehicle() {
                         <FormControl>
                           <Input 
                             placeholder="00000000000" 
-                            {...field}
+                            value={field.value}
+                            onChange={(e) => {
+                              const formatted = formatRenavam(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            className="font-mono tracking-wide"
                             maxLength={11}
+                            inputMode="numeric"
                           />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">11 dígitos numéricos</p>
                         <FormMessage />
                       </FormItem>
                     )}
