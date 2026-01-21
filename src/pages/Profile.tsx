@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, getProfile, signOut, OliProfile } from "@/lib/supabase";
+import { ensureProfile } from "@/lib/ensureProfile";
 import { DriverLicenseCard } from "@/components/profile/DriverLicenseCard";
 import { DriverLicenseDebug } from "@/components/profile/DriverLicenseDebug";
 import { useDriverLicense } from "@/contexts/DriverLicenseContext";
@@ -25,6 +26,9 @@ export default function Profile() {
       navigate("/auth");
       return;
     }
+
+    // Garantir que o email esteja sincronizado (fallback)
+    await ensureProfile();
 
     const userProfile = await getProfile(user.id);
     setProfile(userProfile);

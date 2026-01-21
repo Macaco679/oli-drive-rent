@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureProfile } from "@/lib/ensureProfile";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 
@@ -23,21 +24,8 @@ export default function AuthCallback() {
         }
 
         if (session) {
-          // Sessão válida - verificar/criar perfil
-          const { data: profile } = await supabase
-            .from("oli_profiles")
-            .select("id")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!profile) {
-            // Criar perfil para usuário OAuth
-            await supabase.from("oli_profiles").insert({
-              id: session.user.id,
-              full_name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Usuário",
-              role: "renter",
-            });
-          }
+          // Sincronizar perfil com email usando ensureProfile
+          await ensureProfile();
 
           // Redirecionar para home
           navigate("/home", { replace: true });
@@ -47,20 +35,8 @@ export default function AuthCallback() {
             if (event === "SIGNED_IN" && session) {
               subscription.unsubscribe();
               
-              // Verificar/criar perfil
-              const { data: profile } = await supabase
-                .from("oli_profiles")
-                .select("id")
-                .eq("id", session.user.id)
-                .single();
-
-              if (!profile) {
-                await supabase.from("oli_profiles").insert({
-                  id: session.user.id,
-                  full_name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Usuário",
-                  role: "renter",
-                });
-              }
+              // Sincronizar perfil com email usando ensureProfile
+              await ensureProfile();
 
               navigate("/home", { replace: true });
             }
