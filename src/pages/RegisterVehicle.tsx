@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Car, Upload, X, Loader2, CheckCircle } from "lucide-react";
-import { MobileLayout } from "@/components/layout/MobileLayout";
+import { Car, Upload, X, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,18 +26,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { createVehicle, uploadVehiclePhoto, VehicleFormData } from "@/lib/vehicleService";
+import carBgPattern from "@/assets/car-bg-pattern.png";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
   brand: z.string().min(1, "Marca é obrigatória"),
   model: z.string().min(1, "Modelo é obrigatório"),
-  year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
+  year: z.coerce.number().min(1990, "Ano inválido").max(new Date().getFullYear() + 1, "Ano inválido"),
   color: z.string().min(1, "Cor é obrigatória"),
-  plate: z.string().optional(),
-  renavam: z.string().optional(),
+  plate: z.string().min(7, "Placa deve ter pelo menos 7 caracteres").max(8, "Placa inválida"),
+  renavam: z.string().min(9, "Renavam deve ter pelo menos 9 dígitos").max(11, "Renavam inválido"),
   fuel_type: z.string().min(1, "Combustível é obrigatório"),
   transmission: z.enum(["manual", "automatic"]),
-  seats: z.coerce.number().min(2).max(9),
+  seats: z.coerce.number().min(2, "Mínimo 2 lugares").max(9, "Máximo 9 lugares"),
   location_city: z.string().min(1, "Cidade é obrigatória"),
   location_state: z.string().min(2, "Estado é obrigatório"),
   daily_price: z.coerce.number().min(1, "Preço diário é obrigatório"),
@@ -51,7 +51,7 @@ const formSchema = z.object({
 });
 
 const brandOptions = [
-  "Chevrolet", "Fiat", "Ford", "Honda", "Hyundai", "Jeep", "Nissan", 
+  "Chevrolet", "Fiat", "Ford", "Honda", "Hyundai", "Jeep", "Nissan",
   "Peugeot", "Renault", "Toyota", "Volkswagen", "Outro"
 ];
 
@@ -118,8 +118,8 @@ export default function RegisterVehicle() {
       preview: URL.createObjectURL(file),
     }));
 
-    setPhotos((prev) => [...prev, ...newPhotos].slice(0, 10)); // Max 10 photos
-    e.target.value = ""; // Reset input
+    setPhotos((prev) => [...prev, ...newPhotos].slice(0, 10));
+    e.target.value = "";
   };
 
   const removePhoto = (index: number) => {
@@ -133,31 +133,29 @@ export default function RegisterVehicle() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    
+
     try {
-      // Create vehicle
       const vehicle = await createVehicle(values as VehicleFormData);
-      
+
       if (!vehicle) {
         toast.error("Erro ao cadastrar veículo");
         setIsSubmitting(false);
         return;
       }
 
-      // Upload photos
       if (photos.length > 0) {
         setUploadingPhotos(true);
-        
+
         for (let i = 0; i < photos.length; i++) {
-          const isCover = i === 0; // First photo is cover
+          const isCover = i === 0;
           await uploadVehiclePhoto(vehicle.id, photos[i].file, isCover);
         }
-        
+
         setUploadingPhotos(false);
       }
 
       toast.success("Veículo cadastrado com sucesso!");
-      navigate("/profile");
+      navigate("/my-vehicles");
     } catch (error) {
       console.error("Error:", error);
       toast.error("Erro ao cadastrar veículo");
@@ -167,27 +165,59 @@ export default function RegisterVehicle() {
   };
 
   return (
-    <MobileLayout>
-      <div className="p-4 pb-24 space-y-6">
-        <div className="flex items-center gap-3">
-          <Car className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold">Cadastrar Meu Carro</h1>
-        </div>
+    <div className="min-h-screen bg-primary/5 relative">
+      {/* Background pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `url(${carBgPattern})`,
+          backgroundSize: "600px auto",
+          backgroundPosition: "center",
+          backgroundRepeat: "repeat",
+        }}
+      />
 
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground sticky top-0 z-50 shadow-lg">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center gap-3">
+              <Car className="w-7 h-7" />
+              <h1 className="text-xl font-bold">Cadastrar Meu Carro</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 max-w-3xl mx-auto px-4 py-6 pb-24">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Basic Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Informações Básicas</CardTitle>
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">1</span>
+                  </div>
+                  Informações Básicas
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Título do anúncio</FormLabel>
+                      <FormLabel>Título do anúncio *</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Chevrolet Onix LT 2022" {...field} />
                       </FormControl>
@@ -202,7 +232,7 @@ export default function RegisterVehicle() {
                     name="brand"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Marca</FormLabel>
+                        <FormLabel>Marca *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -227,7 +257,7 @@ export default function RegisterVehicle() {
                     name="model"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Modelo</FormLabel>
+                        <FormLabel>Modelo *</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Onix LT" {...field} />
                         </FormControl>
@@ -243,7 +273,7 @@ export default function RegisterVehicle() {
                     name="year"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ano</FormLabel>
+                        <FormLabel>Ano *</FormLabel>
                         <FormControl>
                           <Input type="number" {...field} />
                         </FormControl>
@@ -257,7 +287,7 @@ export default function RegisterVehicle() {
                     name="color"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cor</FormLabel>
+                        <FormLabel>Cor *</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Prata" {...field} />
                         </FormControl>
@@ -273,9 +303,14 @@ export default function RegisterVehicle() {
                     name="plate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Placa (opcional)</FormLabel>
+                        <FormLabel>Placa *</FormLabel>
                         <FormControl>
-                          <Input placeholder="ABC1D23" {...field} />
+                          <Input 
+                            placeholder="ABC1D23" 
+                            {...field} 
+                            className="uppercase"
+                            maxLength={8}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -287,9 +322,13 @@ export default function RegisterVehicle() {
                     name="renavam"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Renavam (opcional)</FormLabel>
+                        <FormLabel>Renavam *</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input 
+                            placeholder="00000000000" 
+                            {...field}
+                            maxLength={11}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -300,18 +339,23 @@ export default function RegisterVehicle() {
             </Card>
 
             {/* Technical Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Especificações</CardTitle>
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">2</span>
+                  </div>
+                  Especificações
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="fuel_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Combustível</FormLabel>
+                        <FormLabel>Combustível *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -336,7 +380,7 @@ export default function RegisterVehicle() {
                     name="transmission"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Câmbio</FormLabel>
+                        <FormLabel>Câmbio *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -360,7 +404,7 @@ export default function RegisterVehicle() {
                     name="seats"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lugares</FormLabel>
+                        <FormLabel>Lugares *</FormLabel>
                         <FormControl>
                           <Input type="number" min={2} max={9} {...field} />
                         </FormControl>
@@ -423,18 +467,23 @@ export default function RegisterVehicle() {
             </Card>
 
             {/* Location */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Localização</CardTitle>
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">3</span>
+                  </div>
+                  Localização
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="location_state"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Estado</FormLabel>
+                        <FormLabel>Estado *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -459,7 +508,7 @@ export default function RegisterVehicle() {
                     name="location_city"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Cidade</FormLabel>
+                        <FormLabel>Cidade *</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: São Paulo" {...field} />
                         </FormControl>
@@ -472,11 +521,16 @@ export default function RegisterVehicle() {
             </Card>
 
             {/* Pricing */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Preços</CardTitle>
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">4</span>
+                  </div>
+                  Preços
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-4">
                 <FormField
                   control={form.control}
                   name="daily_price"
@@ -539,7 +593,7 @@ export default function RegisterVehicle() {
                   control={form.control}
                   name="is_popular"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex items-center justify-between rounded-lg border bg-card p-4">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">Destacar como popular</FormLabel>
                         <p className="text-sm text-muted-foreground">
@@ -559,11 +613,16 @@ export default function RegisterVehicle() {
             </Card>
 
             {/* Photos */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Fotos do Veículo</CardTitle>
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">5</span>
+                  </div>
+                  Fotos do Veículo
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Adicione até 10 fotos. A primeira será a foto de capa.
                 </p>
@@ -592,9 +651,9 @@ export default function RegisterVehicle() {
                   ))}
 
                   {photos.length < 10 && (
-                    <label className="aspect-square border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground mt-1">Adicionar</span>
+                    <label className="aspect-square border-2 border-dashed border-primary/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                      <Upload className="w-6 h-6 text-primary/60" />
+                      <span className="text-xs text-primary/60 mt-1">Adicionar</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -611,18 +670,18 @@ export default function RegisterVehicle() {
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-14 text-lg shadow-lg"
               size="lg"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   {uploadingPhotos ? "Enviando fotos..." : "Cadastrando..."}
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <CheckCircle className="w-5 h-5 mr-2" />
                   Cadastrar Veículo
                 </>
               )}
@@ -630,6 +689,6 @@ export default function RegisterVehicle() {
           </form>
         </Form>
       </div>
-    </MobileLayout>
+    </div>
   );
 }
