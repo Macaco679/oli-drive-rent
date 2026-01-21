@@ -17,7 +17,7 @@ const publicNavItems = [
 const authNavItems = [
   { path: "/home", label: "Início", icon: Home },
   { path: "/search", label: "Buscar", icon: Search },
-  { path: "/profile/register-vehicle", label: "Meu Carro", icon: Car },
+  { path: "/my-vehicles", label: "Meus Veículos", icon: Car },
   { path: "/reservations", label: "Reservas", icon: Calendar },
   { path: "/profile", label: "Perfil", icon: User },
 ];
