@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp, signInWithGoogle } from "@/lib/supabase";
+import { ensureProfile } from "@/lib/ensureProfile";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export default function Auth() {
       if (error) {
         toast.error("Erro ao entrar: " + error.message);
       } else if (data.user) {
+        await ensureProfile(); // Sincroniza email no perfil
         toast.success("Login realizado com sucesso!");
         navigate("/home");
       }
@@ -49,6 +51,7 @@ export default function Auth() {
       if (error) {
         toast.error("Erro ao criar conta: " + error.message);
       } else {
+        await ensureProfile(); // Sincroniza email no perfil
         toast.success("Conta criada! Verifique seu e-mail para confirmar.");
         navigate("/onboarding");
       }
