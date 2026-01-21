@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Car, Upload, X, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import { Car, Upload, X, Loader2, CheckCircle, ArrowLeft, Bike, Truck } from "lucide-react";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +25,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { createVehicle, uploadVehiclePhoto, VehicleFormData } from "@/lib/vehicleService";
+import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType } from "@/lib/vehicleService";
 import carBgPattern from "@/assets/car-bg-pattern.png";
 
+const vehicleTypeOptions = [
+  { value: "car", label: "Carro", icon: Car },
+  { value: "motorcycle", label: "Moto", icon: Bike },
+  { value: "truck", label: "Caminhão", icon: Truck },
+  { value: "van", label: "Van", icon: Car },
+] as const;
+
 const formSchema = z.object({
+  vehicle_type: z.enum(["car", "motorcycle", "truck", "van"]),
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
   brand: z.string().min(1, "Marca é obrigatória"),
   model: z.string().min(1, "Modelo é obrigatório"),
@@ -38,7 +46,7 @@ const formSchema = z.object({
   renavam: z.string().min(9, "Renavam deve ter pelo menos 9 dígitos").max(11, "Renavam inválido"),
   fuel_type: z.string().min(1, "Combustível é obrigatório"),
   transmission: z.enum(["manual", "automatic"]),
-  seats: z.coerce.number().min(2, "Mínimo 2 lugares").max(9, "Máximo 9 lugares"),
+  seats: z.coerce.number().min(1, "Mínimo 1 lugar").max(50, "Máximo 50 lugares"),
   location_city: z.string().min(1, "Cidade é obrigatória"),
   location_state: z.string().min(2, "Estado é obrigatório"),
   daily_price: z.coerce.number().min(1, "Preço diário é obrigatório"),
@@ -56,14 +64,6 @@ const brandOptions = [
 ];
 
 const fuelOptions = ["Flex", "Gasolina", "Etanol", "Diesel", "Elétrico", "Híbrido"];
-
-const bodyTypeOptions = [
-  { value: "hatch", label: "Hatch" },
-  { value: "sedan", label: "Sedan" },
-  { value: "suv", label: "SUV" },
-  { value: "pickup", label: "Pickup" },
-  { value: "minivan", label: "Minivan" },
-];
 
 const segmentOptions = [
   { value: "economy", label: "Econômico" },
@@ -117,6 +117,7 @@ export default function RegisterVehicle() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      vehicle_type: undefined,
       title: "",
       brand: "",
       model: "",
@@ -138,6 +139,80 @@ export default function RegisterVehicle() {
       is_popular: false,
     },
   });
+
+  const selectedVehicleType = form.watch("vehicle_type");
+
+  // Get appropriate labels based on vehicle type
+  const getVehicleLabels = () => {
+    switch (selectedVehicleType) {
+      case "motorcycle":
+        return {
+          title: "Cadastrar Minha Moto",
+          seatsLabel: "Passageiros",
+          seatsMin: 1,
+          seatsMax: 2,
+          seatsDefault: 2,
+          bodyTypeLabel: "Tipo de moto",
+          bodyTypeOptions: [
+            { value: "scooter", label: "Scooter" },
+            { value: "sport", label: "Esportiva" },
+            { value: "cruiser", label: "Custom/Cruiser" },
+            { value: "trail", label: "Trail" },
+            { value: "naked", label: "Naked" },
+            { value: "touring", label: "Touring" },
+          ],
+        };
+      case "truck":
+        return {
+          title: "Cadastrar Meu Caminhão",
+          seatsLabel: "Lugares na cabine",
+          seatsMin: 2,
+          seatsMax: 4,
+          seatsDefault: 3,
+          bodyTypeLabel: "Tipo de caminhão",
+          bodyTypeOptions: [
+            { value: "toco", label: "Toco" },
+            { value: "truck", label: "Truck" },
+            { value: "bitruck", label: "Bitruck" },
+            { value: "carreta", label: "Carreta" },
+            { value: "vuc", label: "VUC" },
+          ],
+        };
+      case "van":
+        return {
+          title: "Cadastrar Minha Van",
+          seatsLabel: "Lugares",
+          seatsMin: 7,
+          seatsMax: 20,
+          seatsDefault: 15,
+          bodyTypeLabel: "Tipo de van",
+          bodyTypeOptions: [
+            { value: "passageiro", label: "Passageiros" },
+            { value: "executiva", label: "Executiva" },
+            { value: "furgao", label: "Furgão" },
+            { value: "microonibus", label: "Micro-ônibus" },
+          ],
+        };
+      default: // car
+        return {
+          title: "Cadastrar Meu Carro",
+          seatsLabel: "Lugares",
+          seatsMin: 2,
+          seatsMax: 9,
+          seatsDefault: 5,
+          bodyTypeLabel: "Tipo de carroceria",
+          bodyTypeOptions: [
+            { value: "hatch", label: "Hatch" },
+            { value: "sedan", label: "Sedan" },
+            { value: "suv", label: "SUV" },
+            { value: "pickup", label: "Pickup" },
+            { value: "minivan", label: "Minivan" },
+          ],
+        };
+    }
+  };
+
+  const vehicleLabels = getVehicleLabels();
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -220,8 +295,10 @@ export default function RegisterVehicle() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <Car className="w-7 h-7" />
-              <h1 className="text-xl font-bold">Cadastrar Meu Carro</h1>
+              {selectedVehicleType === "motorcycle" ? <Bike className="w-7 h-7" /> : 
+               selectedVehicleType === "truck" ? <Truck className="w-7 h-7" /> : 
+               <Car className="w-7 h-7" />}
+              <h1 className="text-xl font-bold">{vehicleLabels.title}</h1>
             </div>
           </div>
         </div>
@@ -231,6 +308,56 @@ export default function RegisterVehicle() {
       <div className="relative z-10 max-w-3xl mx-auto px-4 py-6 pb-24">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Vehicle Type Selection */}
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">0</span>
+                  </div>
+                  Tipo de Veículo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <FormField
+                  control={form.control}
+                  name="vehicle_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Selecione o tipo de veículo *</FormLabel>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                        {vehicleTypeOptions.map((type) => {
+                          const Icon = type.icon;
+                          const isSelected = field.value === type.value;
+                          return (
+                            <button
+                              key={type.value}
+                              type="button"
+                              onClick={() => field.onChange(type.value)}
+                              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                                isSelected 
+                                  ? "border-primary bg-primary/10 text-primary" 
+                                  : "border-muted hover:border-primary/50 hover:bg-primary/5"
+                              }`}
+                            >
+                              <Icon className={`w-8 h-8 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className={`font-medium text-sm ${isSelected ? "text-primary" : ""}`}>
+                                {type.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Only show the rest of the form if vehicle type is selected */}
+            {selectedVehicleType && (
+              <>
             {/* Basic Info */}
             <Card className="shadow-md border-0">
               <CardHeader className="bg-primary/5 rounded-t-lg">
@@ -446,9 +573,14 @@ export default function RegisterVehicle() {
                     name="seats"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lugares *</FormLabel>
+                        <FormLabel>{vehicleLabels.seatsLabel} *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={2} max={9} {...field} />
+                          <Input 
+                            type="number" 
+                            min={vehicleLabels.seatsMin} 
+                            max={vehicleLabels.seatsMax} 
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -460,7 +592,7 @@ export default function RegisterVehicle() {
                     name="body_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo de carroceria</FormLabel>
+                        <FormLabel>{vehicleLabels.bodyTypeLabel}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -468,7 +600,7 @@ export default function RegisterVehicle() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {bodyTypeOptions.map((type) => (
+                            {vehicleLabels.bodyTypeOptions.map((type) => (
                               <SelectItem key={type.value} value={type.value}>
                                 {type.label}
                               </SelectItem>
@@ -728,6 +860,8 @@ export default function RegisterVehicle() {
                 </>
               )}
             </Button>
+              </>
+            )}
           </form>
         </Form>
       </div>
