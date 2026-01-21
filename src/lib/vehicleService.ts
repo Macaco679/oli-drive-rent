@@ -144,3 +144,132 @@ export async function getMyVehicles(): Promise<any[]> {
 
   return data || [];
 }
+
+export async function getVehicleById(vehicleId: string): Promise<any | null> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("oli_vehicles")
+    .select(`
+      *,
+      oli_vehicle_photos (
+        id,
+        image_url,
+        is_cover
+      )
+    `)
+    .eq("id", vehicleId)
+    .eq("owner_id", userData.user.id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching vehicle:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateVehicle(
+  vehicleId: string,
+  data: Partial<VehicleFormData>
+): Promise<boolean> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("oli_vehicles")
+    .update({
+      ...data,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", vehicleId)
+    .eq("owner_id", userData.user.id);
+
+  if (error) {
+    console.error("Error updating vehicle:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function deleteVehicle(vehicleId: string): Promise<boolean> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    return false;
+  }
+
+  // First delete photos from storage
+  const { data: photos } = await supabase
+    .from("oli_vehicle_photos")
+    .select("image_url")
+    .eq("vehicle_id", vehicleId);
+
+  if (photos && photos.length > 0) {
+    const filePaths = photos.map((p) => {
+      const url = new URL(p.image_url);
+      const path = url.pathname.split("/vehicle-photos/")[1];
+      return path;
+    }).filter(Boolean);
+
+    if (filePaths.length > 0) {
+      await supabase.storage.from("vehicle-photos").remove(filePaths);
+    }
+  }
+
+  // Delete photo records
+  await supabase
+    .from("oli_vehicle_photos")
+    .delete()
+    .eq("vehicle_id", vehicleId);
+
+  // Delete vehicle
+  const { error } = await supabase
+    .from("oli_vehicles")
+    .delete()
+    .eq("id", vehicleId)
+    .eq("owner_id", userData.user.id);
+
+  if (error) {
+    console.error("Error deleting vehicle:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function deleteVehiclePhoto(photoId: string, imageUrl: string): Promise<boolean> {
+  try {
+    // Delete from storage
+    const url = new URL(imageUrl);
+    const path = url.pathname.split("/vehicle-photos/")[1];
+    if (path) {
+      await supabase.storage.from("vehicle-photos").remove([path]);
+    }
+
+    // Delete from database
+    const { error } = await supabase
+      .from("oli_vehicle_photos")
+      .delete()
+      .eq("id", photoId);
+
+    if (error) {
+      console.error("Error deleting photo record:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting photo:", error);
+    return false;
+  }
+}
