@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export type VehicleType = "car" | "motorcycle" | "truck" | "van";
+
 export interface VehicleFormData {
+  vehicle_type: VehicleType;
   title: string;
   brand: string;
   model: string;
@@ -34,6 +37,7 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
     .from("oli_vehicles")
     .insert({
       owner_id: userData.user.id,
+      vehicle_type: data.vehicle_type,
       title: data.title,
       brand: data.brand,
       model: data.model,
