@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Camera, 
-  Upload, 
   Check, 
   AlertCircle, 
   Loader2, 
   ChevronLeft,
   Car,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Download,
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getCurrentUser, getVehicleById, OliRental, OliVehicle } from "@/lib/supabase";
+import { getCurrentUser, getVehicleById, getProfileById, OliRental, OliVehicle, OliProfile } from "@/lib/supabase";
 import {
   INSPECTION_PHOTO_TYPES,
   InspectionPhotoType,
@@ -27,7 +28,10 @@ import {
   uploadInspectionPhoto,
   createInspection,
   getInspectionByRental,
+  Inspection,
+  InspectionPhoto,
 } from "@/lib/inspectionService";
+import { generateInspectionPDF, generateComparisonPDF, InspectionReportData } from "@/lib/inspectionPdfService";
 
 interface PhotoState {
   file: File | null;
@@ -40,15 +44,27 @@ interface PhotoState {
 
 export default function VehicleInspection() {
   const { rentalId } = useParams<{ rentalId: string }>();
+  const [searchParams] = useSearchParams();
+  const inspectionKind = (searchParams.get("kind") as "pickup" | "dropoff") || "pickup";
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [rental, setRental] = useState<OliRental | null>(null);
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
+  const [owner, setOwner] = useState<OliProfile | null>(null);
+  const [renter, setRenter] = useState<OliProfile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const [existingInspection, setExistingInspection] = useState(false);
+  const [existingInspection, setExistingInspection] = useState<{
+    inspection: Inspection;
+    photos: InspectionPhoto[];
+  } | null>(null);
+  const [pickupInspection, setPickupInspection] = useState<{
+    inspection: Inspection;
+    photos: InspectionPhoto[];
+  } | null>(null);
 
   // Photo states for each required photo
   const [photos, setPhotos] = useState<Record<string, PhotoState>>(() => {
@@ -68,7 +84,7 @@ export default function VehicleInspection() {
 
   useEffect(() => {
     loadData();
-  }, [rentalId]);
+  }, [rentalId, inspectionKind]);
 
   const loadData = async () => {
     if (!rentalId) {
@@ -96,30 +112,50 @@ export default function VehicleInspection() {
       return;
     }
 
-    // Check if user is the owner
-    if (rentalData.owner_id !== user.id) {
-      toast.error("Apenas o proprietário pode realizar a vistoria");
+    // For pickup: only owner can do it
+    // For dropoff: renter does it (or owner)
+    if (inspectionKind === "pickup" && rentalData.owner_id !== user.id) {
+      toast.error("Apenas o proprietário pode realizar a vistoria de retirada");
+      navigate("/reservations");
+      return;
+    }
+
+    if (inspectionKind === "dropoff" && rentalData.renter_id !== user.id && rentalData.owner_id !== user.id) {
+      toast.error("Apenas o locatário ou proprietário pode realizar a vistoria de devolução");
       navigate("/reservations");
       return;
     }
 
     // Check rental status - must be active (after payment)
     if (rentalData.status !== "active") {
-      toast.error("A vistoria só pode ser realizada após o pagamento");
+      toast.error("A vistoria só pode ser realizada durante o período de locação");
       navigate("/reservations");
       return;
     }
 
     setRental(rentalData as OliRental);
 
-    // Fetch vehicle
-    const vehicleData = await getVehicleById(rentalData.vehicle_id);
-    setVehicle(vehicleData);
+    // Fetch vehicle and profiles
+    const [vehicleData, ownerData, renterData] = await Promise.all([
+      getVehicleById(rentalData.vehicle_id),
+      getProfileById(rentalData.owner_id),
+      getProfileById(rentalData.renter_id),
+    ]);
 
-    // Check for existing inspection
-    const existing = await getInspectionByRental(rentalId, "pickup");
+    setVehicle(vehicleData);
+    setOwner(ownerData);
+    setRenter(renterData);
+
+    // Check for existing inspection of this kind
+    const existing = await getInspectionByRental(rentalId, inspectionKind);
     if (existing && existing.photos.length >= INSPECTION_PHOTO_TYPES.length) {
-      setExistingInspection(true);
+      setExistingInspection(existing);
+    }
+
+    // For dropoff, also load pickup inspection for comparison
+    if (inspectionKind === "dropoff") {
+      const pickup = await getInspectionByRental(rentalId, "pickup");
+      setPickupInspection(pickup);
     }
 
     setLoading(false);
@@ -224,13 +260,14 @@ export default function VehicleInspection() {
         rentalId: rental.id,
         vehicleId: rental.vehicle_id,
         performedBy: userId,
-        kind: "pickup",
+        kind: inspectionKind,
         photos: uploadedPhotos,
         notes,
       });
 
       if (inspection) {
-        toast.success("Vistoria realizada com sucesso!");
+        const kindLabel = inspectionKind === "pickup" ? "retirada" : "devolução";
+        toast.success(`Vistoria de ${kindLabel} realizada com sucesso!`);
         navigate("/reservations");
       } else {
         toast.error("Erro ao salvar vistoria. Tente novamente.");
@@ -243,9 +280,72 @@ export default function VehicleInspection() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!existingInspection || !vehicle || !rental) return;
+
+    setDownloadingPdf(true);
+    try {
+      const reportData: InspectionReportData = {
+        inspection: existingInspection.inspection,
+        photos: existingInspection.photos,
+        vehicle,
+        rental,
+        owner,
+        renter,
+      };
+
+      await generateInspectionPDF(reportData);
+      toast.success("PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadComparisonPdf = async () => {
+    if (!existingInspection || !pickupInspection || !vehicle || !rental) return;
+
+    setDownloadingPdf(true);
+    try {
+      const pickupData: InspectionReportData = {
+        inspection: pickupInspection.inspection,
+        photos: pickupInspection.photos,
+        vehicle,
+        rental,
+        owner,
+        renter,
+      };
+
+      const dropoffData: InspectionReportData = {
+        inspection: existingInspection.inspection,
+        photos: existingInspection.photos,
+        vehicle,
+        rental,
+        owner,
+        renter,
+      };
+
+      await generateComparisonPDF(pickupData, dropoffData);
+      toast.success("Comparativo PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF comparativo:", error);
+      toast.error("Erro ao gerar PDF comparativo");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const completedCount = Object.values(photos).filter((p) => p.file).length;
   const totalRequired = INSPECTION_PHOTO_TYPES.length;
   const isComplete = completedCount === totalRequired;
+
+  const kindLabel = inspectionKind === "pickup" ? "Retirada" : "Devolução";
+  const kindDescription =
+    inspectionKind === "pickup"
+      ? "Tire fotos do estado atual do veículo antes da entrega"
+      : "Tire fotos do estado do veículo na devolução";
 
   if (loading) {
     return (
@@ -257,21 +357,80 @@ export default function VehicleInspection() {
     );
   }
 
+  // Show existing inspection with download options
   if (existingInspection) {
     return (
       <WebLayout>
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="text-center py-16">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/reservations")}
+            className="mb-4 gap-2"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+
+          <div className="text-center py-8">
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Vistoria já realizada</h1>
+            <h1 className="text-2xl font-bold mb-2">Vistoria de {kindLabel} Concluída</h1>
             <p className="text-muted-foreground mb-6">
-              A vistoria de retirada deste veículo já foi concluída.
+              A vistoria de {kindLabel.toLowerCase()} foi realizada em{" "}
+              {new Date(existingInspection.inspection.created_at).toLocaleDateString("pt-BR")}
             </p>
-            <Button onClick={() => navigate("/reservations")}>
-              Voltar para Reservas
-            </Button>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
+                {downloadingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Baixar Relatório PDF
+              </Button>
+
+              {inspectionKind === "dropoff" && pickupInspection && (
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadComparisonPdf}
+                  disabled={downloadingPdf}
+                  className="gap-2"
+                >
+                  {downloadingPdf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                  Baixar Comparativo
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Show photos grid */}
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold mb-4">Fotos da Vistoria</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {existingInspection.photos.map((photo) => (
+                <div key={photo.id} className="relative">
+                  <img
+                    src={photo.image_url}
+                    alt={photo.description || "Foto"}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 rounded-b-lg">
+                    {photo.description}
+                    {photo.has_damage && (
+                      <Badge variant="destructive" className="ml-2 text-xs">
+                        Avaria
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </WebLayout>
@@ -296,11 +455,9 @@ export default function VehicleInspection() {
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Car className="w-8 h-8" />
-                Vistoria Veicular
+                Vistoria de {kindLabel}
               </h1>
-              <p className="text-muted-foreground mt-2">
-                Tire fotos do estado atual do veículo antes da entrega
-              </p>
+              <p className="text-muted-foreground mt-2">{kindDescription}</p>
             </div>
             <Badge variant={isComplete ? "default" : "secondary"} className="text-lg px-4 py-2">
               {completedCount}/{totalRequired}

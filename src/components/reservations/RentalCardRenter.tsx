@@ -1,12 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, FileText, CreditCard, Clock } from "lucide-react";
+import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
 import { getContractByRentalId, RentalContract } from "@/lib/contractService";
+import { hasCompleteInspection } from "@/lib/inspectionService";
 
 interface RentalCardRenterProps {
   rental: OliRental & { vehicle?: OliVehicle };
@@ -27,12 +29,16 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [contract, setContract] = useState<RentalContract | null>(null);
   const [loadingContract, setLoadingContract] = useState(false);
+  const [hasDropoffInspection, setHasDropoffInspection] = useState(false);
+  const [hasPickupInspection, setHasPickupInspection] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
     loadContract();
+    checkInspections();
   }, [rental.vehicle_id, rental.id]);
 
   const loadContract = async () => {
@@ -42,6 +48,15 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     setLoadingContract(false);
   };
 
+  const checkInspections = async () => {
+    const [pickup, dropoff] = await Promise.all([
+      hasCompleteInspection(rental.id, "pickup"),
+      hasCompleteInspection(rental.id, "dropoff"),
+    ]);
+    setHasPickupInspection(pickup);
+    setHasDropoffInspection(dropoff);
+  };
+
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
     "Veículo";
@@ -49,10 +64,15 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isApproved = rental.status === "approved";
   const isPending = rental.status === "pending_approval";
+  const isActive = rental.status === "active";
   
   // Contract states
   const hasContract = contract !== null;
   const isSigned = contract?.renter_signed_at !== null;
+
+  const handleDropoffInspection = () => {
+    navigate(`/reservations/${rental.id}/inspection?kind=dropoff`);
+  };
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
@@ -83,7 +103,14 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 </p>
               )}
             </div>
-            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+              {isActive && hasPickupInspection && (
+                <Badge variant="outline" className="text-xs">
+                  Vistoria OK
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -152,6 +179,23 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                       Pagar
                     </Button>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Status: Active - show dropoff inspection option */}
+            {isActive && hasPickupInspection && (
+              <div className="flex gap-2">
+                {!hasDropoffInspection ? (
+                  <Button size="sm" variant="outline" onClick={handleDropoffInspection} className="gap-2">
+                    <ClipboardCheck className="w-4 h-4" />
+                    Vistoria de Devolução
+                  </Button>
+                ) : (
+                  <span className="text-primary text-sm flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Devolução registrada
+                  </span>
                 )}
               </div>
             )}
