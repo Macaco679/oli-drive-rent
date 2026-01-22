@@ -203,6 +203,18 @@ export function generateContractText(data: ContractData): string {
   // Calcular valor diário médio
   const dailyRate = vehicle.daily_price || (rental.total_price ? rental.total_price / days : 0);
 
+  // Helper to format marital status
+  const formatMaritalStatus = (status: string | null): string => {
+    const statusMap: Record<string, string> = {
+      solteiro: "Solteiro(a)",
+      casado: "Casado(a)",
+      divorciado: "Divorciado(a)",
+      viuvo: "Viúvo(a)",
+      uniao_estavel: "União Estável",
+    };
+    return status ? statusMap[status] || status : "[A informar]";
+  };
+
   return `CONTRATO DE LOCAÇÃO DE VEÍCULO PARA USO EM APLICATIVOS DE MOBILIDADE
 
 Contrato Nº: ${contractNumber}
@@ -213,10 +225,10 @@ Data: ${today}
 LOCADOR:
 
 Nome: ${owner.full_name || "[Nome do Locador]"}
-Nacionalidade: Brasileiro(a)
-Estado Civil: [A informar]
-Profissão: [A informar]
-RG nº: [A informar]
+Nacionalidade: ${owner.nationality || "Brasileiro(a)"}
+Estado Civil: ${formatMaritalStatus(owner.marital_status)}
+Profissão: ${owner.profession || "[A informar]"}
+RG nº: ${owner.rg || "[A informar]"}
 CPF nº: ${formatCPF(owner.cpf)}
 Telefone: ${formatPhone(owner.phone || owner.whatsapp_phone)}
 Email: ${owner.email || "[Email não informado]"}
@@ -227,10 +239,10 @@ Endereço: ${city}, ${state}
 LOCATÁRIO:
 
 Nome: ${renter.full_name || "[Nome do Locatário]"}
-Nacionalidade: Brasileiro(a)
-Estado Civil: [A informar]
-Profissão: [A informar]
-RG nº: [A informar]
+Nacionalidade: ${renter.nationality || "Brasileiro(a)"}
+Estado Civil: ${formatMaritalStatus(renter.marital_status)}
+Profissão: ${renter.profession || "[A informar]"}
+RG nº: ${renter.rg || "[A informar]"}
 CPF nº: ${formatCPF(renter.cpf)}
 Data de Nascimento: ${formatDate(renter.birth_date)}
 Telefone: ${formatPhone(renter.phone || renter.whatsapp_phone)}

@@ -326,7 +326,11 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          marital_status: string | null
+          nationality: string | null
           phone: string | null
+          profession: string | null
+          rg: string | null
           role: Database["public"]["Enums"]["oli_user_role"]
           signature_url: string | null
           updated_at: string
@@ -344,7 +348,11 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          marital_status?: string | null
+          nationality?: string | null
           phone?: string | null
+          profession?: string | null
+          rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
           signature_url?: string | null
           updated_at?: string
@@ -362,7 +370,11 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          marital_status?: string | null
+          nationality?: string | null
           phone?: string | null
+          profession?: string | null
+          rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
           signature_url?: string | null
           updated_at?: string

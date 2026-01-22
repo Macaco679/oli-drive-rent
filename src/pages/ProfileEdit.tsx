@@ -16,6 +16,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { getCurrentUser, getProfile, updateProfile, OliProfile } from "@/lib/supabase";
@@ -26,12 +33,25 @@ import { SignatureField } from "@/components/profile/SignatureField";
 const formSchema = z.object({
   full_name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido"),
+  rg: z.string().optional(),
+  nationality: z.string().optional(),
+  marital_status: z.string().optional(),
+  profession: z.string().optional(),
   birth_date: z.string().min(1, "Data de nascimento é obrigatória"),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").max(15, "Telefone inválido"),
   whatsapp_phone: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+// Marital status options
+const maritalStatusOptions = [
+  { value: "solteiro", label: "Solteiro(a)" },
+  { value: "casado", label: "Casado(a)" },
+  { value: "divorciado", label: "Divorciado(a)" },
+  { value: "viuvo", label: "Viúvo(a)" },
+  { value: "uniao_estavel", label: "União Estável" },
+];
 
 // CPF formatting
 const formatCPF = (value: string): string => {
@@ -50,6 +70,11 @@ const formatPhone = (value: string): string => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+// RG formatting (simple, varies by state)
+const formatRG = (value: string): string => {
+  return value.replace(/[^a-zA-Z0-9.-]/g, "").slice(0, 20);
+};
+
 export default function ProfileEdit() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -62,6 +87,10 @@ export default function ProfileEdit() {
     defaultValues: {
       full_name: "",
       cpf: "",
+      rg: "",
+      nationality: "Brasileiro(a)",
+      marital_status: "",
+      profession: "",
       birth_date: "",
       phone: "",
       whatsapp_phone: "",
@@ -88,6 +117,10 @@ export default function ProfileEdit() {
         form.reset({
           full_name: userProfile.full_name || "",
           cpf: userProfile.cpf ? formatCPF(userProfile.cpf) : "",
+          rg: userProfile.rg || "",
+          nationality: userProfile.nationality || "Brasileiro(a)",
+          marital_status: userProfile.marital_status || "",
+          profession: userProfile.profession || "",
           birth_date: userProfile.birth_date || "",
           phone: userProfile.phone ? formatPhone(userProfile.phone) : "",
           whatsapp_phone: userProfile.whatsapp_phone ? formatPhone(userProfile.whatsapp_phone) : "",
@@ -110,6 +143,10 @@ export default function ProfileEdit() {
       const cleanedData = {
         full_name: data.full_name.trim(),
         cpf: data.cpf.replace(/\D/g, ""),
+        rg: data.rg?.trim() || null,
+        nationality: data.nationality?.trim() || "Brasileiro(a)",
+        marital_status: data.marital_status || null,
+        profession: data.profession?.trim() || null,
         birth_date: data.birth_date,
         phone: data.phone.replace(/\D/g, ""),
         whatsapp_phone: data.whatsapp_phone?.replace(/\D/g, "") || null,
@@ -260,12 +297,87 @@ export default function ProfileEdit() {
 
                 <FormField
                   control={form.control}
+                  name="rg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>RG (opcional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="00.000.000-0"
+                          value={field.value}
+                          onChange={(e) => {
+                            const formatted = formatRG(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          className="font-mono"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="birth_date"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data de nascimento *</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="nationality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nacionalidade</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Brasileiro(a)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="marital_status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado Civil</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {maritalStatusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="profession"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profissão</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Motorista de aplicativo" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
