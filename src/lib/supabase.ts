@@ -409,3 +409,35 @@ export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]>
 
   return (data || []) as OliRental[];
 };
+
+export const updateRentalStatus = async (
+  rentalId: string,
+  status: "pending_approval" | "approved" | "active" | "completed" | "cancelled"
+): Promise<boolean> => {
+  const { error } = await supabase
+    .from("oli_rentals")
+    .update({ status })
+    .eq("id", rentalId);
+
+  if (error) {
+    console.error("Erro ao atualizar status da reserva:", error);
+    return false;
+  }
+
+  return true;
+};
+
+export const getProfileById = async (userId: string): Promise<OliProfile | null> => {
+  const { data, error } = await supabase
+    .from("oli_profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    console.error("Erro ao buscar perfil por ID:", error);
+    return null;
+  }
+
+  return data as OliProfile;
+};
