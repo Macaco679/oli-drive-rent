@@ -4,10 +4,13 @@ import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser, getMyRentalsAsRenter, getMyRentalsAsOwner, getVehicleById, OliRental, OliVehicle } from "@/lib/supabase";
+import { RentalContract } from "@/lib/contractService";
 import { Car } from "lucide-react";
 import { RentalCardRenter } from "@/components/reservations/RentalCardRenter";
 import { RentalCardOwner } from "@/components/reservations/RentalCardOwner";
 import { RentalDetailsModal } from "@/components/reservations/RentalDetailsModal";
+import { ContractViewModal } from "@/components/contracts/ContractViewModal";
+import { SignatureModal } from "@/components/contracts/SignatureModal";
 import { toast } from "sonner";
 
 interface RentalWithVehicle extends OliRental {
@@ -18,8 +21,15 @@ export default function Reservations() {
   const [asRenter, setAsRenter] = useState<RentalWithVehicle[]>([]);
   const [asOwner, setAsOwner] = useState<RentalWithVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal states
   const [selectedRental, setSelectedRental] = useState<RentalWithVehicle | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [contractMode, setContractMode] = useState<"owner" | "renter">("owner");
+  const [selectedContract, setSelectedContract] = useState<RentalContract | null>(null);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,17 +67,51 @@ export default function Reservations() {
     setLoading(false);
   };
 
+  // Owner actions
   const handleOwnerCardClick = (rental: RentalWithVehicle) => {
     setSelectedRental(rental);
     setShowDetailsModal(true);
   };
 
-  const handleViewContract = () => {
-    toast.info("Funcionalidade de contrato em desenvolvimento");
+  const handleSendContract = (rental: RentalWithVehicle) => {
+    setSelectedRental(rental);
+    setContractMode("owner");
+    setShowContractModal(true);
+  };
+
+  // Renter actions
+  const handleViewContract = (rental: RentalWithVehicle, contract: RentalContract | null) => {
+    setSelectedRental(rental);
+    setContractMode("renter");
+    setShowContractModal(true);
+  };
+
+  const handleSignContract = (rental: RentalWithVehicle, contract: RentalContract) => {
+    setSelectedRental(rental);
+    setSelectedContract(contract);
+    // First show contract, then signature
+    setContractMode("renter");
+    setShowContractModal(true);
+  };
+
+  const handleOpenSignature = (contract: RentalContract) => {
+    setSelectedContract(contract);
+    setShowContractModal(false);
+    setShowSignatureModal(true);
   };
 
   const handlePay = () => {
     toast.info("Funcionalidade de pagamento em desenvolvimento");
+  };
+
+  const handleContractSent = () => {
+    toast.success("Contrato enviado! O locatário pode visualizar e assinar.");
+    loadRentals();
+  };
+
+  const handleContractSigned = () => {
+    toast.success("Contrato assinado com sucesso!");
+    loadRentals();
   };
 
   const EmptyState = ({ message, action, onAction }: { message: string; action: string; onAction: () => void }) => (
@@ -109,7 +153,8 @@ export default function Reservations() {
                     <RentalCardRenter 
                       key={rental.id} 
                       rental={rental}
-                      onViewContract={handleViewContract}
+                      onViewContract={(contract) => handleViewContract(rental, contract)}
+                      onSignContract={(contract) => handleSignContract(rental, contract)}
                       onPay={handlePay}
                     />
                   ))}
@@ -131,6 +176,7 @@ export default function Reservations() {
                       key={rental.id} 
                       rental={rental}
                       onClick={() => handleOwnerCardClick(rental)}
+                      onSendContract={() => handleSendContract(rental)}
                     />
                   ))}
                 </div>
@@ -140,11 +186,35 @@ export default function Reservations() {
         )}
       </div>
 
+      {/* Modal: Detalhes da reserva (Owner) */}
       <RentalDetailsModal
         open={showDetailsModal}
         onOpenChange={setShowDetailsModal}
         rental={selectedRental}
         onStatusChange={loadRentals}
+        onSendContract={() => {
+          setShowDetailsModal(false);
+          setContractMode("owner");
+          setShowContractModal(true);
+        }}
+      />
+
+      {/* Modal: Visualizar/Enviar Contrato */}
+      <ContractViewModal
+        open={showContractModal}
+        onOpenChange={setShowContractModal}
+        rental={selectedRental}
+        mode={contractMode}
+        onContractSent={handleContractSent}
+        onContractSign={handleOpenSignature}
+      />
+
+      {/* Modal: Assinatura Digital */}
+      <SignatureModal
+        open={showSignatureModal}
+        onOpenChange={setShowSignatureModal}
+        contract={selectedContract}
+        onSigned={handleContractSigned}
       />
     </WebLayout>
   );

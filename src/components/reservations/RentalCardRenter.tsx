@@ -1,34 +1,46 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, FileText, CreditCard } from "lucide-react";
+import { Calendar, MapPin, FileText, CreditCard, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
+import { getContractByRentalId, RentalContract } from "@/lib/contractService";
 
 interface RentalCardRenterProps {
   rental: OliRental & { vehicle?: OliVehicle };
-  onViewContract?: () => void;
+  onViewContract?: (contract: RentalContract | null) => void;
+  onSignContract?: (contract: RentalContract) => void;
   onPay?: () => void;
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending_approval: { label: "Pendente", variant: "secondary" },
+  pending_approval: { label: "Aguardando aprovação", variant: "secondary" },
   approved: { label: "Aprovada", variant: "default" },
   active: { label: "Em uso", variant: "default" },
   completed: { label: "Concluída", variant: "outline" },
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
-export function RentalCardRenter({ rental, onViewContract, onPay }: RentalCardRenterProps) {
+export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay }: RentalCardRenterProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [contract, setContract] = useState<RentalContract | null>(null);
+  const [loadingContract, setLoadingContract] = useState(false);
 
   useEffect(() => {
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
-  }, [rental.vehicle_id]);
+    loadContract();
+  }, [rental.vehicle_id, rental.id]);
+
+  const loadContract = async () => {
+    setLoadingContract(true);
+    const contractData = await getContractByRentalId(rental.id);
+    setContract(contractData);
+    setLoadingContract(false);
+  };
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
@@ -36,6 +48,11 @@ export function RentalCardRenter({ rental, onViewContract, onPay }: RentalCardRe
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isApproved = rental.status === "approved";
+  const isPending = rental.status === "pending_approval";
+  
+  // Contract states
+  const hasContract = contract !== null;
+  const isSigned = contract?.renter_signed_at !== null;
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
@@ -94,17 +111,48 @@ export function RentalCardRenter({ rental, onViewContract, onPay }: RentalCardRe
               </p>
             </div>
 
-            {/* Actions for approved rentals */}
+            {/* Status: Pending - waiting for owner approval */}
+            {isPending && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">Aguardando aprovação do proprietário</span>
+              </div>
+            )}
+
+            {/* Status: Approved - show contract/payment actions */}
             {isApproved && (
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={onViewContract}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Contrato
-                </Button>
-                <Button size="sm" onClick={onPay}>
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Pagar
-                </Button>
+                {!hasContract ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">Aguardando contrato</span>
+                  </div>
+                ) : !isSigned ? (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={() => onSignContract?.(contract)}
+                    disabled={loadingContract}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Assinar Contrato
+                  </Button>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => onViewContract?.(contract)}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Contrato
+                    </Button>
+                    <Button size="sm" onClick={onPay}>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Pagar
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>

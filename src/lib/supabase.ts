@@ -13,6 +13,7 @@ export interface OliProfile {
   phone: string | null;
   whatsapp_phone: string | null;
   role: "renter" | "owner" | "both";
+  signature_url: string | null;
   created_at: string;
   updated_at: string;
 }
