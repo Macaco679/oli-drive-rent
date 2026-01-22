@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { getMyConversations, ConversationWithDetails } from "@/lib/chatService";
 import { MessageCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-export function ChatConversationList() {
-  const { openConversation } = useChatWidget();
+interface ChatConversationListProps {
+  onOpenConversation: (conversationId: string) => void;
+}
+
+export function ChatConversationList({ onOpenConversation }: ChatConversationListProps) {
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,7 +84,7 @@ export function ChatConversationList() {
             {filteredConversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => openConversation(conv.id)}
+                onClick={() => onOpenConversation(conv.id)}
                 className="w-full px-4 py-3 flex items-start gap-3 hover:bg-secondary/50 transition-colors text-left"
               >
                 {/* Avatar */}
