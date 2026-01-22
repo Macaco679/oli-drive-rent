@@ -4,11 +4,12 @@ import { WebLayout } from "@/components/layout/WebLayout";
 import { VehicleCard } from "@/components/vehicles/VehicleCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVehicle } from "@/lib/supabase";
+import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
 import { MapPin, Calendar, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
 import { SupabaseDebugPanel } from "@/components/debug/SupabaseDebugPanel";
+import { useVehiclePhotosRealtime } from "@/hooks/useVehiclePhotosRealtime";
 
 // Import static vehicle images
 import onixAzul from "@/assets/vehicles/onix-azul-2022.jpeg";
@@ -208,6 +209,59 @@ export default function Home() {
 
     setLoading(false);
   };
+
+  // Realtime: update cover photos when photos are inserted/updated/deleted
+  const handlePhotoInsert = useCallback(async (photo: OliVehiclePhoto) => {
+    // If this is a cover photo, update the vehicle's cover image
+    if (photo.is_cover) {
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === photo.vehicle_id ? { ...v, coverImage: photo.image_url } : v
+        )
+      );
+    } else {
+      // If no cover exists for this vehicle, use this new photo
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === photo.vehicle_id && !v.coverImage
+            ? { ...v, coverImage: photo.image_url }
+            : v
+        )
+      );
+    }
+  }, []);
+
+  const handlePhotoUpdate = useCallback(async (photo: OliVehiclePhoto) => {
+    // If this photo became the cover, update the vehicle
+    if (photo.is_cover) {
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === photo.vehicle_id ? { ...v, coverImage: photo.image_url } : v
+        )
+      );
+    }
+  }, []);
+
+  const handlePhotoDelete = useCallback(
+    async (oldPhoto: { id: string; vehicle_id: string }) => {
+      // Refetch cover for this vehicle
+      const newCover = await getVehicleCoverPhoto(oldPhoto.vehicle_id);
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === oldPhoto.vehicle_id
+            ? { ...v, coverImage: newCover || undefined }
+            : v
+        )
+      );
+    },
+    []
+  );
+
+  useVehiclePhotosRealtime({
+    onInsert: handlePhotoInsert,
+    onUpdate: handlePhotoUpdate,
+    onDelete: handlePhotoDelete,
+  });
 
   // Carrossel
   const [emblaRef, emblaApi] = useEmblaCarousel({
