@@ -328,6 +328,7 @@ export type Database = {
           id: string
           phone: string | null
           role: Database["public"]["Enums"]["oli_user_role"]
+          signature_url: string | null
           updated_at: string
           whatsapp_phone: string | null
         }
@@ -345,6 +346,7 @@ export type Database = {
           id: string
           phone?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
+          signature_url?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
         }
@@ -362,6 +364,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
+          signature_url?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
         }
