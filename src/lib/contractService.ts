@@ -200,45 +200,50 @@ export function generateContractText(data: ContractData): string {
   const city = vehicle.location_city || "[Cidade]";
   const state = vehicle.location_state || "[Estado]";
 
+  // Calcular valor diário médio
+  const dailyRate = vehicle.daily_price || (rental.total_price ? rental.total_price / days : 0);
+
   return `CONTRATO DE LOCAÇÃO DE VEÍCULO PARA USO EM APLICATIVOS DE MOBILIDADE
 
 Contrato Nº: ${contractNumber}
 Data: ${today}
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
 
 LOCADOR:
 
 Nome: ${owner.full_name || "[Nome do Locador]"}
+Nacionalidade: Brasileiro(a)
+Estado Civil: [A informar]
+Profissão: [A informar]
+RG nº: [A informar]
 CPF nº: ${formatCPF(owner.cpf)}
 Telefone: ${formatPhone(owner.phone || owner.whatsapp_phone)}
 Email: ${owner.email || "[Email não informado]"}
+Endereço: ${city}, ${state}
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
 
 LOCATÁRIO:
 
 Nome: ${renter.full_name || "[Nome do Locatário]"}
+Nacionalidade: Brasileiro(a)
+Estado Civil: [A informar]
+Profissão: [A informar]
+RG nº: [A informar]
 CPF nº: ${formatCPF(renter.cpf)}
 Data de Nascimento: ${formatDate(renter.birth_date)}
 Telefone: ${formatPhone(renter.phone || renter.whatsapp_phone)}
 Email: ${renter.email || "[Email não informado]"}
+Endereço: [Endereço a ser informado]
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
 
 As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de Locação de Veículo por Prazo Determinado, que se regerá pelas cláusulas seguintes e pelas condições descritas no presente.
 
 CLÁUSULA PRIMEIRA - DO OBJETO DO CONTRATO
 
-O presente contrato tem como OBJETO a locação do veículo:
-• Marca: ${vehicle.brand || "[Marca]"}
-• Modelo: ${vehicle.model || "[Modelo]"}
-• Ano: ${vehicle.year || "[Ano]"}
-• Cor: ${vehicle.color || "[Cor]"}
-• Placa: ${vehicle.plate || "[Placa]"}
-• RENAVAM: ${vehicle.renavam || "[RENAVAM]"}
-
-De propriedade do LOCADOR.
+O presente contrato tem como OBJETO a locação do veículo marca ${vehicle.brand || "[Marca]"}, modelo ${vehicle.model || "[Modelo]"}, ano ${vehicle.year || "[Ano]"}, cor ${vehicle.color || "[Cor]"}, placa ${vehicle.plate || "[Placa]"}, RENAVAM ${vehicle.renavam || "[Número do RENAVAM]"}, de propriedade do LOCADOR.
 
 CLÁUSULA SEGUNDA - DO USO
 
@@ -252,14 +257,14 @@ O LOCATÁRIO deverá devolver o veículo ao LOCADOR nas mesmas condições em qu
 
 CLÁUSULA QUARTA - DO PRAZO
 
-O prazo da locação será de ${days} dias, iniciando-se no dia ${formatDate(rental.start_date)} e terminando no dia ${formatDate(rental.end_date)}, podendo ser renovado mediante acordo das partes. O veículo deverá ser devolvido na data de término no estado em que foi locado.
+O prazo da locação será de ${days} (${numberToWords(days)}) dias, iniciando-se no dia ${formatDate(rental.start_date)} e terminando no dia ${formatDate(rental.end_date)}, podendo ser renovado mediante acordo das partes. O veículo deverá ser devolvido na data de término no estado em que foi locado.
 
 Local de Retirada: ${rental.pickup_location || "A combinar com o proprietário"}
 Local de Devolução: ${rental.dropoff_location || "A combinar com o proprietário"}
 
 CLÁUSULA QUINTA - DA MULTA POR ATRASO NA DEVOLUÇÃO
 
-Caso o LOCATÁRIO não devolva o veículo na data estipulada, deverá pagar o valor de R$ ${(vehicle.daily_price || 0).toLocaleString("pt-BR")} por dia de atraso, além de responder por qualquer dano ao veículo, mesmo que decorrente de caso fortuito.
+Caso o LOCATÁRIO não devolva o veículo na data estipulada, deverá pagar o valor de R$ ${dailyRate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${formatCurrency(dailyRate)}) por dia de atraso, além de responder por qualquer dano ao veículo, mesmo que decorrente de caso fortuito.
 
 CLÁUSULA SEXTA - DA RESCISÃO
 
@@ -267,13 +272,13 @@ O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio
 
 CLÁUSULA SÉTIMA - DA MULTA POR INADIMPLEMENTO
 
-O descumprimento de qualquer cláusula contratual resultará em multa no valor de R$ ${((rental.total_price || 0) * 0.1).toLocaleString("pt-BR")}, a ser paga pela parte inadimplente.
+O descumprimento de qualquer cláusula contratual resultará em multa no valor de R$ ${((rental.total_price || 0) * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${formatCurrency((rental.total_price || 0) * 0.1)}), a ser paga pela parte inadimplente.
 
 CLÁUSULA OITAVA - DO PAGAMENTO
 
-O valor da locação é de R$ ${(rental.total_price || 0).toLocaleString("pt-BR")} pelo período total de ${days} dias.
+O valor da locação é de R$ ${(rental.total_price || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${formatCurrency(rental.total_price || 0)}) pelo período total de ${days} dias, equivalente a R$ ${dailyRate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} por dia, a ser pago via PIX através da plataforma Oli Drive.
 
-${rental.deposit_amount ? `Caução: R$ ${rental.deposit_amount.toLocaleString("pt-BR")}` : ""}
+${rental.deposit_amount ? `Caução/Depósito: R$ ${rental.deposit_amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${formatCurrency(rental.deposit_amount)})` : ""}
 
 Parágrafo único: Em caso de inadimplemento, incidirão multa de mora de 2% e juros de 1% ao mês sobre o valor devido, calculados pro rata die.
 
@@ -293,21 +298,74 @@ CLÁUSULA DÉCIMA SEGUNDA - DISPOSIÇÕES GERAIS
 
 Este contrato é firmado em 2 (duas) vias de igual teor e forma, ficando uma via para cada parte.
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
 
 LOCADOR:
 
 _________________________________
 ${owner.full_name || "[Nome do Locador]"}
+CPF: ${formatCPF(owner.cpf)}
 
 
 LOCATÁRIO:
 
 _________________________________
 ${renter.full_name || "[Nome do Locatário]"}
+CPF: ${formatCPF(renter.cpf)}
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
+
+TESTEMUNHAS:
+
+Nome: _________________________________
+RG nº: _________________________________
+Assinatura: _________________________________
+
+Nome: _________________________________
+RG nº: _________________________________
+Assinatura: _________________________________
+
+════════════════════════════════════════════════════════════════════════════════
 
 Contrato gerado eletronicamente pela plataforma Oli Drive
 ${today}`;
+}
+
+// Converter número para extenso (simplificado)
+function numberToWords(num: number): string {
+  const units = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", 
+                 "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+  const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+  const hundreds = ["", "cem", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+  if (num < 20) return units[num];
+  if (num < 100) {
+    const ten = Math.floor(num / 10);
+    const unit = num % 10;
+    return unit === 0 ? tens[ten] : `${tens[ten]} e ${units[unit]}`;
+  }
+  if (num < 1000) {
+    const hundred = Math.floor(num / 100);
+    const remainder = num % 100;
+    if (remainder === 0) return hundreds[hundred];
+    if (num === 100) return "cem";
+    return `${hundred === 1 ? "cento" : hundreds[hundred]} e ${numberToWords(remainder)}`;
+  }
+  return String(num);
+}
+
+// Formatar valor em extenso
+function formatCurrency(value: number): string {
+  const intPart = Math.floor(value);
+  const centsPart = Math.round((value - intPart) * 100);
+  
+  let result = "";
+  if (intPart > 0) {
+    result = `${numberToWords(intPart)} ${intPart === 1 ? "real" : "reais"}`;
+  }
+  if (centsPart > 0) {
+    if (result) result += " e ";
+    result += `${numberToWords(centsPart)} ${centsPart === 1 ? "centavo" : "centavos"}`;
+  }
+  return result || "zero reais";
 }
