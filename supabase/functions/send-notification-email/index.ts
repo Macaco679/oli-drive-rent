@@ -16,6 +16,7 @@ type NotificationType =
   | "rental_rejected"
   | "contract_sent"
   | "contract_signed"
+  | "pickup_inspection_completed"
   | "dropoff_inspection_completed";
 
 interface NotificationPayload {
@@ -149,6 +150,31 @@ const emailTemplates: Record<NotificationType, { subject: string; html: (data: R
            style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; 
                   border-radius: 8px; text-decoration: none; margin-top: 16px;">
           Ver detalhes
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
+          Oli Drive - Aluguel de veículos entre pessoas
+        </p>
+      </div>
+    `,
+  },
+  pickup_inspection_completed: {
+    subject: "✅ Veículo liberado para uso! - Oli Drive",
+    html: (data) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Veículo liberado! 🚗✅</h2>
+        <p>O proprietário <strong>${data.owner_name || "Proprietário"}</strong> concluiu a vistoria de entrada do veículo.</p>
+        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #bbf7d0;">
+          <p style="margin: 0 0 8px 0;"><strong>Veículo:</strong> ${data.vehicle_title || "Veículo"}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Status:</strong> ✅ Pronto para uso</p>
+          <p style="margin: 0;"><strong>Próximo passo:</strong> Retire o veículo no local combinado</p>
+        </div>
+        <p style="color: #6b7280; font-size: 14px;">
+          A vistoria de entrada foi registrada com fotos. Você pode visualizar os detalhes no app.
+        </p>
+        <a href="https://oli-drive-rent.lovable.app/reservations" 
+           style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; 
+                  border-radius: 8px; text-decoration: none; margin-top: 16px;">
+          Ver Reserva
         </a>
         <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
           Oli Drive - Aluguel de veículos entre pessoas
