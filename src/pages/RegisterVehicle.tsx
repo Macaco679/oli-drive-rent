@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Car, Upload, X, Loader2, CheckCircle, ArrowLeft, Bike, Truck } from "lucide-react";
+import { Car, Loader2, CheckCircle, ArrowLeft, Bike, Truck, Upload, X, Star } from "lucide-react";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType } from "@/lib/vehicleService";
+import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType, validatePhoto } from "@/lib/vehicleService";
 import carBgPattern from "@/assets/car-bg-pattern.png";
 
 const vehicleTypeOptions = [
@@ -218,12 +218,22 @@ export default function RegisterVehicle() {
     const files = e.target.files;
     if (!files) return;
 
-    const newPhotos = Array.from(files).map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
+    const filesToAdd: { file: File; preview: string }[] = [];
+    
+    for (const file of Array.from(files)) {
+      // Validate each file
+      const validation = validatePhoto(file);
+      if (!validation.valid) {
+        toast.error(`${file.name}: ${validation.error}`);
+        continue;
+      }
+      filesToAdd.push({
+        file,
+        preview: URL.createObjectURL(file),
+      });
+    }
 
-    setPhotos((prev) => [...prev, ...newPhotos].slice(0, 10));
+    setPhotos((prev) => [...prev, ...filesToAdd].slice(0, 10));
     e.target.value = "";
   };
 
@@ -830,7 +840,7 @@ export default function RegisterVehicle() {
                       <span className="text-xs text-primary/60 mt-1">Adicionar</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         multiple
                         onChange={handlePhotoSelect}
                         className="hidden"

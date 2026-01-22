@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Car, Upload, X, Loader2, Save, ArrowLeft, Trash2 } from "lucide-react";
+import { Car, Loader2, Save, ArrowLeft } from "lucide-react";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,11 @@ import { toast } from "sonner";
 import {
   getVehicleById,
   updateVehicle,
-  uploadVehiclePhoto,
-  deleteVehiclePhoto,
+  getVehiclePhotos,
   VehicleFormData,
+  VehiclePhoto,
 } from "@/lib/vehicleService";
+import { VehiclePhotoGallery } from "@/components/vehicles/VehiclePhotoGallery";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
@@ -83,20 +84,12 @@ const stateOptions = [
   "SP", "SE", "TO",
 ];
 
-interface ExistingPhoto {
-  id: string;
-  image_url: string;
-  is_cover: boolean;
-}
-
 export default function EditVehicle() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
-  const [newPhotos, setNewPhotos] = useState<{ file: File; preview: string }[]>([]);
-  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<VehiclePhoto[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -162,44 +155,10 @@ export default function EditVehicle() {
       is_popular: vehicle.is_popular || false,
     });
 
-    setExistingPhotos(vehicle.oli_vehicle_photos || []);
+    // Load photos using the new service
+    const vehiclePhotos = await getVehiclePhotos(id);
+    setPhotos(vehiclePhotos);
     setLoading(false);
-  };
-
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const photos = Array.from(files).map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-
-    const totalPhotos = existingPhotos.length + newPhotos.length + photos.length;
-    setNewPhotos((prev) => [...prev, ...photos].slice(0, Math.max(0, 10 - existingPhotos.length)));
-    e.target.value = "";
-  };
-
-  const removeNewPhoto = (index: number) => {
-    setNewPhotos((prev) => {
-      const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
-      updated.splice(index, 1);
-      return updated;
-    });
-  };
-
-  const handleDeleteExistingPhoto = async (photo: ExistingPhoto) => {
-    setDeletingPhotoId(photo.id);
-    const success = await deleteVehiclePhoto(photo.id, photo.image_url);
-    setDeletingPhotoId(null);
-
-    if (success) {
-      setExistingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      toast.success("Foto removida");
-    } else {
-      toast.error("Erro ao remover foto");
-    }
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -214,12 +173,6 @@ export default function EditVehicle() {
         toast.error("Erro ao atualizar veículo");
         setIsSubmitting(false);
         return;
-      }
-
-      // Upload new photos
-      for (let i = 0; i < newPhotos.length; i++) {
-        const isCover = existingPhotos.length === 0 && i === 0;
-        await uploadVehiclePhoto(id, newPhotos[i].file, isCover);
       }
 
       toast.success("Veículo atualizado com sucesso!");
@@ -639,76 +592,14 @@ export default function EditVehicle() {
               <CardHeader>
                 <CardTitle className="text-lg">Fotos do Veículo</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Você pode ter até 10 fotos. A primeira é a foto de capa.
-                </p>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {/* Existing photos */}
-                  {existingPhotos.map((photo, index) => (
-                    <div key={photo.id} className="relative aspect-square">
-                      <img
-                        src={photo.image_url}
-                        alt={`Foto ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                      {photo.is_cover && (
-                        <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded">
-                          Capa
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteExistingPhoto(photo)}
-                        disabled={deletingPhotoId === photo.id}
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full disabled:opacity-50"
-                      >
-                        {deletingPhotoId === photo.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* New photos */}
-                  {newPhotos.map((photo, index) => (
-                    <div key={`new-${index}`} className="relative aspect-square">
-                      <img
-                        src={photo.preview}
-                        alt={`Nova foto ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg border-2 border-dashed border-primary"
-                      />
-                      <span className="absolute top-1 left-1 bg-secondary text-secondary-foreground text-xs px-2 py-0.5 rounded">
-                        Nova
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeNewPhoto(index)}
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Add photo button */}
-                  {existingPhotos.length + newPhotos.length < 10 && (
-                    <label className="aspect-square border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground mt-1">Adicionar</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handlePhotoSelect}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
+              <CardContent>
+                <VehiclePhotoGallery
+                  vehicleId={id!}
+                  photos={photos}
+                  onPhotosChange={setPhotos}
+                  maxPhotos={10}
+                  editable={true}
+                />
               </CardContent>
             </Card>
 
