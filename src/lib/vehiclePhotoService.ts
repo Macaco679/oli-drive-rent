@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const SUPABASE_URL = "https://dpjqfhsxojajgsttucph.supabase.co";
+const SUPABASE_URL = "https://sgpktbljjlixmyjmhppa.supabase.co";
 const BUCKET_NAME = "vehicle-photos";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
