@@ -4,7 +4,7 @@ import { WebLayout } from "@/components/layout/WebLayout";
 import { VehicleCard } from "@/components/vehicles/VehicleCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVehicle } from "@/lib/supabase";
+import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { MapPin, Calendar, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
@@ -19,10 +19,6 @@ import kicksPreto from "@/assets/vehicles/kicks-preto-2024.png";
 import kicksPrata from "@/assets/vehicles/kicks-prata-2024.png";
 import onixPrata from "@/assets/vehicles/onix-prata-2019.jpeg";
 import prismaPreto from "@/assets/vehicles/prisma-preto-2019.jpeg";
-
-interface VehicleWithCover extends OliVehicle {
-  coverImage?: string;
-}
 
 interface StaticVehicle {
   id: string;
@@ -157,7 +153,7 @@ const staticVehicles: StaticVehicle[] = [
 
 export default function Home() {
   const [profile, setProfile] = useState<any>(null);
-  const [vehicles, setVehicles] = useState<(VehicleWithCover | StaticVehicle)[]>([]);
+  const [vehicles, setVehicles] = useState<StaticVehicle[]>(staticVehicles);
   const [loading, setLoading] = useState(true);
   const [searchCity, setSearchCity] = useState("");
   const [searchCar, setSearchCar] = useState("");
@@ -185,27 +181,8 @@ export default function Home() {
       console.log("Usuário não autenticado, navegando como visitante");
     }
 
-    // Carrega todos os veículos independente do login (para o carrossel)
-    try {
-      const allVehicles = await getAllVehicles();
-      
-      if (allVehicles.length > 0) {
-        const vehiclesWithCovers = await Promise.all(
-          allVehicles.map(async (vehicle) => {
-            const coverImage = await getVehicleCoverPhoto(vehicle.id);
-            return { ...vehicle, coverImage: coverImage || undefined };
-          })
-        );
-        setVehicles(vehiclesWithCovers);
-      } else {
-        // Use static vehicles when no data from Supabase
-        setVehicles(staticVehicles);
-      }
-    } catch (error) {
-      console.log("Erro ao carregar veículos do Supabase, usando veículos estáticos");
-      setVehicles(staticVehicles);
-    }
-
+    // Sempre usa veículos estáticos para a vitrine da Home
+    setVehicles(staticVehicles);
     setLoading(false);
   };
 
