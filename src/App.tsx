@@ -19,6 +19,7 @@ import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import ProfileEdit from "./pages/ProfileEdit";
+import PaymentHistory from "./pages/PaymentHistory";
 import DriverLicenseForm from "./pages/DriverLicenseForm";
 import RegisterVehicle from "./pages/RegisterVehicle";
 import MyVehicles from "./pages/MyVehicles";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/chat/:conversationId" element={<Chat />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/edit" element={<ProfileEdit />} />
+              <Route path="/profile/payments" element={<PaymentHistory />} />
               <Route path="/profile/driver-license" element={<DriverLicenseForm />} />
               <Route path="/profile/register-vehicle" element={<RegisterVehicle />} />
               <Route path="/my-vehicles" element={<MyVehicles />} />

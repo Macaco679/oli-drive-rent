@@ -7,7 +7,7 @@ import { ensureProfile } from "@/lib/ensureProfile";
 import { DriverLicenseCard } from "@/components/profile/DriverLicenseCard";
 import { DriverLicenseDebug } from "@/components/profile/DriverLicenseDebug";
 import { useDriverLicense } from "@/contexts/DriverLicenseContext";
-import { User, Car, HelpCircle, LogOut, ChevronRight, Mail, Phone } from "lucide-react";
+import { User, Car, HelpCircle, LogOut, ChevronRight, Mail, Phone, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Profile() {
@@ -90,6 +90,12 @@ export default function Profile() {
       label: "Meus dados pessoais",
       subtitle: "Editar nome, telefone e informações",
       onClick: () => navigate("/profile/edit"),
+    },
+    {
+      icon: Receipt,
+      label: "Histórico de pagamentos",
+      subtitle: "Ver recibos e comprovantes PIX",
+      onClick: () => navigate("/profile/payments"),
     },
     {
       icon: Car,
