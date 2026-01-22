@@ -1,12 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, ChevronRight, FileText, Check } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
 import { getContractByRentalId, RentalContract } from "@/lib/contractService";
+import { hasCompleteInspection } from "@/lib/inspectionService";
 
 interface RentalCardOwnerProps {
   rental: OliRental & { vehicle?: OliVehicle };
@@ -25,17 +27,25 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardOwnerProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [contract, setContract] = useState<RentalContract | null>(null);
+  const [hasInspection, setHasInspection] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
     loadContract();
+    checkInspection();
   }, [rental.vehicle_id, rental.id]);
 
   const loadContract = async () => {
     const contractData = await getContractByRentalId(rental.id);
     setContract(contractData);
+  };
+
+  const checkInspection = async () => {
+    const complete = await hasCompleteInspection(rental.id, "pickup");
+    setHasInspection(complete);
   };
 
   const vehicleTitle = rental.vehicle?.title || 
@@ -45,14 +55,20 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
   const isApproved = rental.status === "approved";
+  const isActive = rental.status === "active";
   
   // Contract states
-  const hasContract = contract !== null;
+  const contractExists = contract !== null;
   const isSigned = contract?.renter_signed_at !== null;
 
   const handleContractClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSendContract?.();
+  };
+
+  const handleInspectionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/reservations/${rental.id}/inspection`);
   };
 
   return (
@@ -91,9 +107,14 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-              {hasContract && (
+              {contractExists && (
                 <Badge variant={isSigned ? "default" : "outline"} className="text-xs">
                   {isSigned ? "Assinado" : "Contrato enviado"}
+                </Badge>
+              )}
+              {isActive && hasInspection && (
+                <Badge variant="default" className="text-xs">
+                  Vistoria OK
                 </Badge>
               )}
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -131,7 +152,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               </span>
             )}
 
-            {isApproved && !hasContract && (
+            {isApproved && !contractExists && (
               <Button 
                 size="sm" 
                 onClick={handleContractClick}
@@ -142,7 +163,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               </Button>
             )}
 
-            {isApproved && hasContract && !isSigned && (
+            {isApproved && contractExists && !isSigned && (
               <span className="text-muted-foreground text-sm flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Aguardando assinatura
@@ -153,6 +174,24 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               <span className="text-primary text-sm flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 Contrato assinado
+              </span>
+            )}
+
+            {isActive && !hasInspection && (
+              <Button 
+                size="sm" 
+                onClick={handleInspectionClick}
+                className="gap-2"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                Fazer Vistoria
+              </Button>
+            )}
+
+            {isActive && hasInspection && (
+              <span className="text-primary text-sm flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                Vistoria concluída
               </span>
             )}
           </div>
