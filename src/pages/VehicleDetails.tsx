@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getVehicleById, getVehiclePhotos, getCurrentUser, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
-import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, FileText, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-
+import { getOrCreateDirectConversation } from "@/lib/chatService";
+import { toast } from "sonner";
 export default function VehicleDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -13,7 +14,8 @@ export default function VehicleDetails() {
   const [photos, setPhotos] = useState<OliVehiclePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [contactingOwner, setContactingOwner] = useState(false);
   useEffect(() => {
     if (id) {
       loadVehicleData(id);
@@ -25,8 +27,10 @@ export default function VehicleDetails() {
     try {
       const { user } = await getCurrentUser();
       setIsAuthenticated(!!user);
+      setCurrentUserId(user?.id || null);
     } catch {
       setIsAuthenticated(false);
+      setCurrentUserId(null);
     }
   };
 
@@ -44,6 +48,36 @@ export default function VehicleDetails() {
       navigate("/auth", { state: { returnTo: `/book/${vehicle?.id}` } });
     } else {
       navigate(`/book/${vehicle?.id}`);
+    }
+  };
+
+  const handleContactOwner = async () => {
+    if (!vehicle) return;
+
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { returnTo: `/vehicle/${vehicle.id}` } });
+      return;
+    }
+
+    // Verificar se é o próprio proprietário
+    if (currentUserId === vehicle.owner_id) {
+      toast.error("Você não pode enviar mensagem para si mesmo");
+      return;
+    }
+
+    setContactingOwner(true);
+    try {
+      const conversationId = await getOrCreateDirectConversation(vehicle.owner_id);
+      if (conversationId) {
+        navigate(`/chat/${conversationId}`);
+      } else {
+        toast.error("Erro ao iniciar conversa. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro ao contactar proprietário:", error);
+      toast.error("Erro ao iniciar conversa. Tente novamente.");
+    } finally {
+      setContactingOwner(false);
     }
   };
 
@@ -232,14 +266,27 @@ export default function VehicleDetails() {
               </div>
             </div>
 
-            {/* Action Button */}
-            <Button
-              onClick={handleReservation}
-              className="w-full h-14 text-lg"
-              size="lg"
-            >
-              Iniciar reserva
-            </Button>
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={handleReservation}
+                className="w-full h-14 text-lg"
+                size="lg"
+              >
+                Iniciar reserva
+              </Button>
+
+              <Button
+                onClick={handleContactOwner}
+                variant="outline"
+                className="w-full h-12"
+                size="lg"
+                disabled={contactingOwner}
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                {contactingOwner ? "Abrindo conversa..." : "Falar com proprietário"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

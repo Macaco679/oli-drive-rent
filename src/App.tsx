@@ -14,6 +14,7 @@ import VehicleDetails from "./pages/VehicleDetails";
 import BookVehicle from "./pages/BookVehicle";
 import Reservations from "./pages/Reservations";
 import Messages from "./pages/Messages";
+import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import ProfileEdit from "./pages/ProfileEdit";
 import DriverLicenseForm from "./pages/DriverLicenseForm";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/book/:id" element={<BookVehicle />} />
             <Route path="/reservations" element={<Reservations />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/chat/:conversationId" element={<Chat />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/edit" element={<ProfileEdit />} />
             <Route path="/profile/driver-license" element={<DriverLicenseForm />} />
