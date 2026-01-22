@@ -68,7 +68,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   
   // Contract states
   const hasContract = contract !== null;
-  const isSigned = contract?.renter_signed_at !== null;
+  const isSigned = hasContract && contract.renter_signed_at !== null;
 
   const handleDropoffInspection = () => {
     navigate(`/reservations/${rental.id}/inspection?kind=dropoff`);

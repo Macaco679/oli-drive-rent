@@ -114,8 +114,8 @@ export function ContractViewModal({
 
   if (!rental) return null;
 
-  const isSigned = contract?.renter_signed_at !== null;
   const hasContract = contract !== null;
+  const isSigned = hasContract && contract.renter_signed_at !== null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
