@@ -32,6 +32,7 @@ import {
   InspectionPhoto,
 } from "@/lib/inspectionService";
 import { generateInspectionPDF, generateComparisonPDF, InspectionReportData } from "@/lib/inspectionPdfService";
+import { notifyDropoffInspectionCompleted } from "@/lib/notificationService";
 
 interface PhotoState {
   file: File | null;
@@ -268,6 +269,22 @@ export default function VehicleInspection() {
       if (inspection) {
         const kindLabel = inspectionKind === "pickup" ? "retirada" : "devolução";
         toast.success(`Vistoria de ${kindLabel} realizada com sucesso!`);
+
+        // Send email notification to owner when dropoff inspection is completed
+        if (inspectionKind === "dropoff" && owner) {
+          const hasDamages = uploadedPhotos.some((p) => p.hasDamage);
+          const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
+          const renterName = renter?.full_name || "Locatário";
+
+          notifyDropoffInspectionCompleted(
+            rental.owner_id,
+            renterName,
+            vehicleTitle,
+            rental.id,
+            hasDamages
+          ).catch((err) => console.error("Erro ao enviar notificação:", err));
+        }
+
         navigate("/reservations");
       } else {
         toast.error("Erro ao salvar vistoria. Tente novamente.");
