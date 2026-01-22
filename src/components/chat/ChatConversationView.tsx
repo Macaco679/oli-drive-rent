@@ -1,14 +1,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
-import { getMessages, sendMessage, markConversationAsRead, Message } from "@/lib/chatService";
+import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Paperclip, Mic, Image } from "lucide-react";
+import { ArrowLeft, Send, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ChatMessageBubble } from "./ChatMessageBubble";
+import { ChatImageUpload } from "./ChatImageUpload";
+import { TypingIndicator } from "./TypingIndicator";
+import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 
 // Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
@@ -28,6 +30,12 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
   const [otherUserName, setOtherUserName] = useState("Usuário");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator hook
+  const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
+    conversationId,
+    currentUserId
+  );
 
   useEffect(() => {
     loadChat();
@@ -107,6 +115,7 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     if (!newMessage.trim() || sending) return;
 
     setSending(true);
+    stopTyping();
     try {
       const sent = await sendMessage(conversationId, newMessage.trim());
       if (sent) {
@@ -121,11 +130,27 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     }
   };
 
+  const handleImageUploaded = async (imageUrl: string) => {
+    setSending(true);
+    try {
+      await sendImageMessage(conversationId, imageUrl);
+    } catch (error) {
+      console.error("Error sending image:", error);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleInputChangeLocal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    handleInputChange();
   };
 
   if (loading) {
@@ -153,6 +178,9 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{otherUserName}</p>
+          {isOtherUserTyping && (
+            <p className="text-xs text-muted-foreground">Digitando...</p>
+          )}
         </div>
       </div>
 
@@ -163,34 +191,18 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             Nenhuma mensagem ainda. Comece a conversa!
           </div>
         ) : (
-          messages.map((msg) => {
-            const isOwn = msg.sender_id === currentUserId;
-            return (
-              <div
-                key={msg.id}
-                className={cn("flex", isOwn ? "justify-end" : "justify-start")}
-              >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                    isOwn
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-secondary text-secondary-foreground rounded-bl-sm"
-                  )}
-                >
-                  <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                  <p
-                    className={cn(
-                      "text-[10px] mt-1",
-                      isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}
-                  >
-                    {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
-                  </p>
-                </div>
-              </div>
-            );
-          })
+          messages.map((msg) => (
+            <ChatMessageBubble
+              key={msg.id}
+              message={msg}
+              isOwn={msg.sender_id === currentUserId}
+            />
+          ))
+        )}
+        {isOtherUserTyping && (
+          <div className="flex justify-start">
+            <TypingIndicator />
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -200,18 +212,11 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         <div className="flex items-center gap-2">
           {/* Attachment buttons */}
           <div className="flex items-center gap-1">
-            <button
-              className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
-              title="Anexar arquivo"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-            <button
-              className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
-              title="Enviar imagem"
-            >
-              <Image className="w-5 h-5" />
-            </button>
+            <ChatImageUpload
+              conversationId={conversationId}
+              onImageUploaded={handleImageUploaded}
+              disabled={sending}
+            />
             <button
               className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
               title="Gravar áudio"
@@ -224,7 +229,7 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
           <Input
             ref={inputRef}
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChangeLocal}
             onKeyPress={handleKeyPress}
             placeholder="Aa"
             className="flex-1 h-9 text-sm rounded-full"

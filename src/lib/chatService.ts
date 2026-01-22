@@ -166,7 +166,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
   return data || [];
 }
 
-// Enviar mensagem
+// Enviar mensagem de texto
 export async function sendMessage(conversationId: string, body: string): Promise<Message | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -184,6 +184,37 @@ export async function sendMessage(conversationId: string, body: string): Promise
 
   if (error) {
     console.error("Erro ao enviar mensagem:", error);
+    return null;
+  }
+
+  // Atualizar last_message_at da conversa
+  await db
+    .from("oli_conversations")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
+  return data;
+}
+
+// Enviar mensagem de imagem
+export async function sendImageMessage(conversationId: string, imageUrl: string): Promise<Message | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await db
+    .from("oli_messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      type: "image",
+      body: imageUrl,
+      metadata: { imageUrl },
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao enviar imagem:", error);
     return null;
   }
 
