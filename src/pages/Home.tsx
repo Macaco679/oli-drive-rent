@@ -10,13 +10,154 @@ import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
 import { SupabaseDebugPanel } from "@/components/debug/SupabaseDebugPanel";
 
+// Import static vehicle images
+import onixAzul from "@/assets/vehicles/onix-azul-2022.jpeg";
+import hb20Prata from "@/assets/vehicles/hb20-prata-2024.png";
+import argo2026 from "@/assets/vehicles/argo-2026.jpeg";
+import basaltBranco from "@/assets/vehicles/basalt-branco-2024.jpeg";
+import kicksPreto from "@/assets/vehicles/kicks-preto-2024.png";
+import kicksPrata from "@/assets/vehicles/kicks-prata-2024.png";
+import onixPrata from "@/assets/vehicles/onix-prata-2019.jpeg";
+import prismaPreto from "@/assets/vehicles/prisma-preto-2019.jpeg";
+
 interface VehicleWithCover extends OliVehicle {
   coverImage?: string;
 }
 
+interface StaticVehicle {
+  id: string;
+  title: string;
+  brand: string;
+  model: string;
+  year: number;
+  daily_price: number;
+  weekly_price: number;
+  location_city: string;
+  location_state: string;
+  status: string;
+  is_active: boolean;
+  coverImage: string;
+}
+
+// Static vehicles for display when Supabase data is not available
+const staticVehicles: StaticVehicle[] = [
+  {
+    id: "static-1",
+    title: "Chevrolet Onix LT 2022",
+    brand: "Chevrolet",
+    model: "Onix LT",
+    year: 2022,
+    daily_price: 150,
+    weekly_price: 900,
+    location_city: "São Paulo",
+    location_state: "SP",
+    status: "available",
+    is_active: true,
+    coverImage: onixAzul,
+  },
+  {
+    id: "static-2",
+    title: "Hyundai HB20 Vision 2024",
+    brand: "Hyundai",
+    model: "HB20 Vision",
+    year: 2024,
+    daily_price: 140,
+    weekly_price: 850,
+    location_city: "São Paulo",
+    location_state: "SP",
+    status: "available",
+    is_active: true,
+    coverImage: hb20Prata,
+  },
+  {
+    id: "static-3",
+    title: "Fiat Argo Drive 2026",
+    brand: "Fiat",
+    model: "Argo Drive",
+    year: 2026,
+    daily_price: 160,
+    weekly_price: 950,
+    location_city: "São Paulo",
+    location_state: "SP",
+    status: "available",
+    is_active: true,
+    coverImage: argo2026,
+  },
+  {
+    id: "static-4",
+    title: "Citroën Basalt 2024",
+    brand: "Citroën",
+    model: "Basalt",
+    year: 2024,
+    daily_price: 180,
+    weekly_price: 1100,
+    location_city: "São Paulo",
+    location_state: "SP",
+    status: "available",
+    is_active: true,
+    coverImage: basaltBranco,
+  },
+  {
+    id: "static-5",
+    title: "Nissan Kicks 2024",
+    brand: "Nissan",
+    model: "Kicks",
+    year: 2024,
+    daily_price: 200,
+    weekly_price: 1200,
+    location_city: "São Paulo",
+    location_state: "SP",
+    status: "available",
+    is_active: true,
+    coverImage: kicksPreto,
+  },
+  {
+    id: "static-6",
+    title: "Nissan Kicks Prata 2024",
+    brand: "Nissan",
+    model: "Kicks",
+    year: 2024,
+    daily_price: 195,
+    weekly_price: 1150,
+    location_city: "Rio de Janeiro",
+    location_state: "RJ",
+    status: "available",
+    is_active: true,
+    coverImage: kicksPrata,
+  },
+  {
+    id: "static-7",
+    title: "Chevrolet Onix 2019",
+    brand: "Chevrolet",
+    model: "Onix",
+    year: 2019,
+    daily_price: 120,
+    weekly_price: 700,
+    location_city: "Belo Horizonte",
+    location_state: "MG",
+    status: "available",
+    is_active: true,
+    coverImage: onixPrata,
+  },
+  {
+    id: "static-8",
+    title: "Chevrolet Prisma 2019",
+    brand: "Chevrolet",
+    model: "Prisma",
+    year: 2019,
+    daily_price: 130,
+    weekly_price: 780,
+    location_city: "Curitiba",
+    location_state: "PR",
+    status: "available",
+    is_active: true,
+    coverImage: prismaPreto,
+  },
+];
+
 export default function Home() {
   const [profile, setProfile] = useState<any>(null);
-  const [vehicles, setVehicles] = useState<VehicleWithCover[]>([]);
+  const [vehicles, setVehicles] = useState<(VehicleWithCover | StaticVehicle)[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchCity, setSearchCity] = useState("");
   const [searchCar, setSearchCar] = useState("");
@@ -45,16 +186,26 @@ export default function Home() {
     }
 
     // Carrega todos os veículos independente do login (para o carrossel)
-    const allVehicles = await getAllVehicles();
-    
-    const vehiclesWithCovers = await Promise.all(
-      allVehicles.map(async (vehicle) => {
-        const coverImage = await getVehicleCoverPhoto(vehicle.id);
-        return { ...vehicle, coverImage: coverImage || undefined };
-      })
-    );
+    try {
+      const allVehicles = await getAllVehicles();
+      
+      if (allVehicles.length > 0) {
+        const vehiclesWithCovers = await Promise.all(
+          allVehicles.map(async (vehicle) => {
+            const coverImage = await getVehicleCoverPhoto(vehicle.id);
+            return { ...vehicle, coverImage: coverImage || undefined };
+          })
+        );
+        setVehicles(vehiclesWithCovers);
+      } else {
+        // Use static vehicles when no data from Supabase
+        setVehicles(staticVehicles);
+      }
+    } catch (error) {
+      console.log("Erro ao carregar veículos do Supabase, usando veículos estáticos");
+      setVehicles(staticVehicles);
+    }
 
-    setVehicles(vehiclesWithCovers);
     setLoading(false);
   };
 
