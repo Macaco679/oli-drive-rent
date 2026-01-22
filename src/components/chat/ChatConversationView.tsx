@@ -15,9 +15,10 @@ const db = supabase as any;
 
 interface ChatConversationViewProps {
   conversationId: string;
+  onRead?: () => void;
 }
 
-export function ChatConversationView({ conversationId }: ChatConversationViewProps) {
+export function ChatConversationView({ conversationId, onRead }: ChatConversationViewProps) {
   const { backToList } = useChatWidget();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -78,6 +79,7 @@ export function ChatConversationView({ conversationId }: ChatConversationViewPro
 
       // Mark as read
       await markConversationAsRead(conversationId);
+      onRead?.();
 
       // Get other participant name
       const { data: participant } = await db
