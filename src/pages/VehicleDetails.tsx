@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, MessageC
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { getOrCreateDirectConversation } from "@/lib/chatService";
 import { toast } from "sonner";
+import { useVehiclePhotosRealtime } from "@/hooks/useVehiclePhotosRealtime";
 
 // Static fallback images
 import onixAzul from "@/assets/vehicles/onix-azul-2022.jpeg";
@@ -107,6 +108,48 @@ export default function VehicleDetails() {
       // ignore
     }
   };
+
+  // Realtime: listen for photo changes on this vehicle
+  const handlePhotoInsert = useCallback((photo: OliVehiclePhoto) => {
+    setPhotos((prev) => {
+      // Avoid duplicates
+      if (prev.some((p) => p.id === photo.id)) return prev;
+      // If this is the cover, put it first
+      if (photo.is_cover) {
+        return [photo, ...prev.map((p) => ({ ...p, is_cover: false }))];
+      }
+      return [...prev, photo];
+    });
+  }, []);
+
+  const handlePhotoUpdate = useCallback((photo: OliVehiclePhoto) => {
+    setPhotos((prev) => {
+      const updated = prev.map((p) =>
+        p.id === photo.id ? photo : photo.is_cover ? { ...p, is_cover: false } : p
+      );
+      // If this is the new cover, move it to front
+      if (photo.is_cover) {
+        const cover = updated.find((p) => p.id === photo.id);
+        const rest = updated.filter((p) => p.id !== photo.id);
+        return cover ? [cover, ...rest] : updated;
+      }
+      return updated;
+    });
+  }, []);
+
+  const handlePhotoDelete = useCallback(
+    (oldPhoto: { id: string; vehicle_id: string }) => {
+      setPhotos((prev) => prev.filter((p) => p.id !== oldPhoto.id));
+    },
+    []
+  );
+
+  useVehiclePhotosRealtime({
+    vehicleId: id,
+    onInsert: handlePhotoInsert,
+    onUpdate: handlePhotoUpdate,
+    onDelete: handlePhotoDelete,
+  });
 
   useEffect(() => {
     if (id) {
