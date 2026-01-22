@@ -24,6 +24,7 @@ import DriverLicenseForm from "./pages/DriverLicenseForm";
 import RegisterVehicle from "./pages/RegisterVehicle";
 import MyVehicles from "./pages/MyVehicles";
 import EditVehicle from "./pages/EditVehicle";
+import VehicleInspection from "./pages/VehicleInspection";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/profile/register-vehicle" element={<RegisterVehicle />} />
               <Route path="/my-vehicles" element={<MyVehicles />} />
               <Route path="/my-vehicles/:id/edit" element={<EditVehicle />} />
+              <Route path="/reservations/:rentalId/inspection" element={<VehicleInspection />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
