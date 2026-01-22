@@ -260,26 +260,63 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
 };
 
 export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | null> => {
-  const { data, error } = await supabase
+  const expectedHost = (supabase as any)?.supabaseUrl as string | undefined;
+  const expectedRef = (() => {
+    try {
+      return expectedHost ? new URL(expectedHost).hostname.split(".")[0] : "";
+    } catch {
+      return "";
+    }
+  })();
+
+  const isFromExpectedProject = (url: string) => {
+    try {
+      const host = new URL(url).hostname;
+      return expectedRef ? host.startsWith(expectedRef + ".") : true;
+    } catch {
+      return false;
+    }
+  };
+
+  // 1) Tenta pegar a capa na tabela
+  const coverRes = await supabase
     .from("oli_vehicle_photos")
     .select("image_url")
     .eq("vehicle_id", vehicleId)
     .eq("is_cover", true)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
-  if (error) {
-    // Se não houver foto de capa, tenta pegar qualquer foto
-    const { data: anyPhoto } = await supabase
-      .from("oli_vehicle_photos")
-      .select("image_url")
-      .eq("vehicle_id", vehicleId)
-      .limit(1)
-      .single();
-    
-    return anyPhoto?.image_url || null;
-  }
+  const coverUrl = coverRes.data?.image_url ?? null;
+  if (coverUrl && isFromExpectedProject(coverUrl)) return coverUrl;
 
-  return data?.image_url || null;
+  // 2) Se não houver capa (ou URL antiga de outro project), tenta qualquer foto na tabela
+  const anyRes = await supabase
+    .from("oli_vehicle_photos")
+    .select("image_url")
+    .eq("vehicle_id", vehicleId)
+    .limit(1)
+    .maybeSingle();
+
+  const anyUrl = anyRes.data?.image_url ?? null;
+  if (anyUrl && isFromExpectedProject(anyUrl)) return anyUrl;
+
+  // 3) Fallback definitivo: buscar direto no Storage (bucket vehicle-photos/{vehicleId}/...)
+  const { data: files, error: listErr } = await supabase.storage
+    .from("vehicle-photos")
+    .list(vehicleId, { limit: 100 });
+
+  if (listErr || !files || files.length === 0) return null;
+
+  // Pega o primeiro arquivo “real” (não pasta)
+  const first = files.find((f) => !!f.name && !f.name.endsWith("/"));
+  if (!first?.name) return null;
+
+  const { data } = supabase.storage
+    .from("vehicle-photos")
+    .getPublicUrl(`${vehicleId}/${first.name}`);
+
+  return data.publicUrl || null;
 };
 
 export const getMyVehicles = async (ownerId: string): Promise<OliVehicle[]> => {
