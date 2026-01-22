@@ -1,5 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Re-export from vehiclePhotoService for convenience
+export {
+  uploadVehiclePhoto,
+  deleteVehiclePhoto,
+  setPhotoCover,
+  getVehiclePhotos,
+  deleteAllVehiclePhotos,
+  validatePhoto,
+  type VehiclePhoto,
+} from "./vehiclePhotoService";
+
 export type VehicleType = "car" | "motorcycle" | "truck" | "van";
 
 export interface VehicleFormData {
@@ -71,55 +82,7 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
   return vehicle;
 }
 
-export async function uploadVehiclePhoto(
-  vehicleId: string,
-  file: File,
-  isCover: boolean = false
-): Promise<string | null> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    console.error("User not authenticated:", userError);
-    return null;
-  }
-
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${vehicleId}/${Date.now()}.${fileExt}`;
-
-  // Upload to vehicle-photos bucket
-  const { error: uploadError } = await supabase.storage
-    .from("vehicle-photos")
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error("Error uploading photo:", uploadError);
-    return null;
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("vehicle-photos")
-    .getPublicUrl(fileName);
-
-  // Save to oli_vehicle_photos table
-  const { error: dbError } = await supabase
-    .from("oli_vehicle_photos")
-    .insert({
-      vehicle_id: vehicleId,
-      image_url: urlData.publicUrl,
-      is_cover: isCover,
-    });
-
-  if (dbError) {
-    console.error("Error saving photo reference:", dbError);
-    return null;
-  }
-
-  return urlData.publicUrl;
-}
+// Legacy function removed - use uploadVehiclePhoto from vehiclePhotoService
 
 export async function getMyVehicles(): Promise<any[]> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -212,29 +175,9 @@ export async function deleteVehicle(vehicleId: string): Promise<boolean> {
     return false;
   }
 
-  // First delete photos from storage
-  const { data: photos } = await supabase
-    .from("oli_vehicle_photos")
-    .select("image_url")
-    .eq("vehicle_id", vehicleId);
-
-  if (photos && photos.length > 0) {
-    const filePaths = photos.map((p) => {
-      const url = new URL(p.image_url);
-      const path = url.pathname.split("/vehicle-photos/")[1];
-      return path;
-    }).filter(Boolean);
-
-    if (filePaths.length > 0) {
-      await supabase.storage.from("vehicle-photos").remove(filePaths);
-    }
-  }
-
-  // Delete photo records
-  await supabase
-    .from("oli_vehicle_photos")
-    .delete()
-    .eq("vehicle_id", vehicleId);
+  // Import and use the new photo service
+  const { deleteAllVehiclePhotos } = await import("./vehiclePhotoService");
+  await deleteAllVehiclePhotos(vehicleId);
 
   // Delete vehicle
   const { error } = await supabase
@@ -249,31 +192,4 @@ export async function deleteVehicle(vehicleId: string): Promise<boolean> {
   }
 
   return true;
-}
-
-export async function deleteVehiclePhoto(photoId: string, imageUrl: string): Promise<boolean> {
-  try {
-    // Delete from storage
-    const url = new URL(imageUrl);
-    const path = url.pathname.split("/vehicle-photos/")[1];
-    if (path) {
-      await supabase.storage.from("vehicle-photos").remove([path]);
-    }
-
-    // Delete from database
-    const { error } = await supabase
-      .from("oli_vehicle_photos")
-      .delete()
-      .eq("id", photoId);
-
-    if (error) {
-      console.error("Error deleting photo record:", error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error deleting photo:", error);
-    return false;
-  }
 }
