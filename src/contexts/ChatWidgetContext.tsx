@@ -1,5 +1,5 @@
+// Chat Widget Context - Provides global state for the floating chat widget
 import { createContext, useContext, useState, ReactNode, useCallback } from "react";
-
 interface ChatWidgetContextType {
   isOpen: boolean;
   activeConversationId: string | null;
