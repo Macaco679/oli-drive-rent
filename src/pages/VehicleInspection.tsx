@@ -32,7 +32,7 @@ import {
   InspectionPhoto,
 } from "@/lib/inspectionService";
 import { generateInspectionPDF, generateComparisonPDF, InspectionReportData } from "@/lib/inspectionPdfService";
-import { notifyDropoffInspectionCompleted } from "@/lib/notificationService";
+import { notifyDropoffInspectionCompleted, notifyPickupInspectionCompleted } from "@/lib/notificationService";
 
 interface PhotoState {
   file: File | null;
@@ -270,10 +270,23 @@ export default function VehicleInspection() {
         const kindLabel = inspectionKind === "pickup" ? "retirada" : "devolução";
         toast.success(`Vistoria de ${kindLabel} realizada com sucesso!`);
 
+        const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
+
+        // Send email notification when pickup inspection is completed by owner
+        if (inspectionKind === "pickup" && renter) {
+          const ownerName = owner?.full_name || "Proprietário";
+          
+          notifyPickupInspectionCompleted(
+            rental.renter_id,
+            ownerName,
+            vehicleTitle,
+            rental.id
+          ).catch((err) => console.error("Erro ao enviar notificação:", err));
+        }
+
         // Send email notification to owner when dropoff inspection is completed
         if (inspectionKind === "dropoff" && owner) {
           const hasDamages = uploadedPhotos.some((p) => p.hasDamage);
-          const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
           const renterName = renter?.full_name || "Locatário";
 
           notifyDropoffInspectionCompleted(
