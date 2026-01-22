@@ -36,10 +36,9 @@ export interface OliVehicle {
   deposit_amount: number | null;
   location_city: string | null;
   location_state: string | null;
-  description: string | null;
   is_active: boolean;
-  status: "available" | "unavailable" | "maintenance";
-  // Novos campos para filtros
+  status: "available" | "rented" | "maintenance" | "inactive";
+  vehicle_type: string;
   body_type: string | null;
   segment: string | null;
   is_popular: boolean;

@@ -44,11 +44,19 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
     return null;
   }
 
+  // Map vehicle_type to the database enum values
+  const vehicleTypeMap: Record<VehicleType, string> = {
+    car: "carro",
+    motorcycle: "moto",
+    truck: "caminhonete",
+    van: "van",
+  };
+
   const { data: vehicle, error } = await supabase
     .from("oli_vehicles")
     .insert({
       owner_id: userData.user.id,
-      vehicle_type: data.vehicle_type,
+      vehicle_type: vehicleTypeMap[data.vehicle_type] as any,
       title: data.title,
       brand: data.brand,
       model: data.model,
@@ -65,10 +73,10 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
       weekly_price: data.weekly_price || null,
       monthly_price: data.monthly_price || null,
       deposit_amount: data.deposit_amount || null,
-      body_type: data.body_type || null,
-      segment: data.segment || null,
+      body_type: (data.body_type as any) || null,
+      segment: (data.segment as any) || null,
       is_popular: data.is_popular || false,
-      status: "available",
+      status: "available" as const,
       is_active: true,
     })
     .select("id")
@@ -151,12 +159,21 @@ export async function updateVehicle(
     return false;
   }
 
+  // Create update object with proper type casting for enums
+  const updateData: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+  
+  // Copy fields with proper handling
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      updateData[key] = value;
+    }
+  }
+
   const { error } = await supabase
     .from("oli_vehicles")
-    .update({
-      ...data,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", vehicleId)
     .eq("owner_id", userData.user.id);
 

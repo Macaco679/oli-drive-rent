@@ -4,12 +4,12 @@ import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getVehicleById, getVehiclePhotos, getCurrentUser, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, FileText, MessageCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { getOrCreateDirectConversation } from "@/lib/chatService";
 import { toast } from "sonner";
 
-// Static fallback images (used only when navigating to /vehicle/static-*)
+// Static fallback images
 import onixAzul from "@/assets/vehicles/onix-azul-2022.jpeg";
 import hb20Prata from "@/assets/vehicles/hb20-prata-2024.png";
 import argo2026 from "@/assets/vehicles/argo-2026.jpeg";
@@ -19,259 +19,61 @@ import kicksPrata from "@/assets/vehicles/kicks-prata-2024.png";
 import onixPrata from "@/assets/vehicles/onix-prata-2019.jpeg";
 import prismaPreto from "@/assets/vehicles/prisma-preto-2019.jpeg";
 
-const staticVehicleFallback: Record<
-  string,
-  { vehicle: OliVehicle; coverImage: string }
-> = {
-  "static-1": {
-    vehicle: {
-      id: "static-1",
-      owner_id: "",
-      title: "Chevrolet Onix LT 2022",
-      brand: "Chevrolet",
-      model: "Onix LT",
-      year: 2022,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 150,
-      weekly_price: 900,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "São Paulo",
-      location_state: "SP",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: onixAzul,
+// Helper to create static vehicle objects
+const createStaticVehicle = (
+  id: string,
+  title: string,
+  brand: string,
+  model: string,
+  year: number,
+  dailyPrice: number,
+  weeklyPrice: number,
+  city: string,
+  state: string,
+  coverImage: string
+): { vehicle: OliVehicle; coverImage: string } => ({
+  vehicle: {
+    id,
+    owner_id: "",
+    title,
+    brand,
+    model,
+    year,
+    color: null,
+    plate: null,
+    renavam: null,
+    transmission: null,
+    fuel_type: null,
+    seats: null,
+    daily_price: dailyPrice,
+    weekly_price: weeklyPrice,
+    monthly_price: null,
+    deposit_amount: null,
+    location_city: city,
+    location_state: state,
+    is_active: true,
+    status: "available",
+    vehicle_type: "carro",
+    body_type: null,
+    segment: null,
+    is_popular: false,
+    created_at: new Date(0).toISOString(),
+    updated_at: new Date(0).toISOString(),
   },
-  "static-2": {
-    vehicle: {
-      id: "static-2",
-      owner_id: "",
-      title: "Hyundai HB20 Vision 2024",
-      brand: "Hyundai",
-      model: "HB20 Vision",
-      year: 2024,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 140,
-      weekly_price: 850,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "São Paulo",
-      location_state: "SP",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: hb20Prata,
-  },
-  "static-3": {
-    vehicle: {
-      id: "static-3",
-      owner_id: "",
-      title: "Fiat Argo Drive 2026",
-      brand: "Fiat",
-      model: "Argo Drive",
-      year: 2026,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 160,
-      weekly_price: 950,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "São Paulo",
-      location_state: "SP",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: argo2026,
-  },
-  "static-4": {
-    vehicle: {
-      id: "static-4",
-      owner_id: "",
-      title: "Citroën Basalt 2024",
-      brand: "Citroën",
-      model: "Basalt",
-      year: 2024,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 180,
-      weekly_price: 1100,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "São Paulo",
-      location_state: "SP",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: basaltBranco,
-  },
-  "static-5": {
-    vehicle: {
-      id: "static-5",
-      owner_id: "",
-      title: "Nissan Kicks 2024",
-      brand: "Nissan",
-      model: "Kicks",
-      year: 2024,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 200,
-      weekly_price: 1200,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "São Paulo",
-      location_state: "SP",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: kicksPreto,
-  },
-  "static-6": {
-    vehicle: {
-      id: "static-6",
-      owner_id: "",
-      title: "Nissan Kicks Prata 2024",
-      brand: "Nissan",
-      model: "Kicks",
-      year: 2024,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 195,
-      weekly_price: 1150,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "Rio de Janeiro",
-      location_state: "RJ",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: kicksPrata,
-  },
-  "static-7": {
-    vehicle: {
-      id: "static-7",
-      owner_id: "",
-      title: "Chevrolet Onix 2019",
-      brand: "Chevrolet",
-      model: "Onix",
-      year: 2019,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 120,
-      weekly_price: 700,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "Belo Horizonte",
-      location_state: "MG",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: onixPrata,
-  },
-  "static-8": {
-    vehicle: {
-      id: "static-8",
-      owner_id: "",
-      title: "Chevrolet Prisma 2019",
-      brand: "Chevrolet",
-      model: "Prisma",
-      year: 2019,
-      color: null,
-      plate: null,
-      renavam: null,
-      transmission: null,
-      fuel_type: null,
-      seats: null,
-      daily_price: 130,
-      weekly_price: 780,
-      monthly_price: null,
-      deposit_amount: null,
-      location_city: "Curitiba",
-      location_state: "PR",
-      description: null,
-      is_active: true,
-      status: "available",
-      body_type: null,
-      segment: null,
-      is_popular: false,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-    coverImage: prismaPreto,
-  },
+  coverImage,
+});
+
+const staticVehicleFallback: Record<string, { vehicle: OliVehicle; coverImage: string }> = {
+  "static-1": createStaticVehicle("static-1", "Chevrolet Onix LT 2022", "Chevrolet", "Onix LT", 2022, 150, 900, "São Paulo", "SP", onixAzul),
+  "static-2": createStaticVehicle("static-2", "Hyundai HB20 Vision 2024", "Hyundai", "HB20 Vision", 2024, 140, 850, "São Paulo", "SP", hb20Prata),
+  "static-3": createStaticVehicle("static-3", "Fiat Argo Drive 2026", "Fiat", "Argo Drive", 2026, 160, 950, "São Paulo", "SP", argo2026),
+  "static-4": createStaticVehicle("static-4", "Citroën Basalt 2024", "Citroën", "Basalt", 2024, 180, 1100, "São Paulo", "SP", basaltBranco),
+  "static-5": createStaticVehicle("static-5", "Nissan Kicks 2024", "Nissan", "Kicks", 2024, 200, 1200, "São Paulo", "SP", kicksPreto),
+  "static-6": createStaticVehicle("static-6", "Nissan Kicks Prata 2024", "Nissan", "Kicks", 2024, 195, 1150, "Rio de Janeiro", "RJ", kicksPrata),
+  "static-7": createStaticVehicle("static-7", "Chevrolet Onix 2019", "Chevrolet", "Onix", 2019, 120, 700, "Belo Horizonte", "MG", onixPrata),
+  "static-8": createStaticVehicle("static-8", "Chevrolet Prisma 2019", "Chevrolet", "Prisma", 2019, 130, 780, "Curitiba", "PR", prismaPreto),
 };
+
 export default function VehicleDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -281,6 +83,7 @@ export default function VehicleDetails() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [contactingOwner, setContactingOwner] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadVehicleData(id);
@@ -300,7 +103,7 @@ export default function VehicleDetails() {
   };
 
   const loadVehicleData = async (vehicleId: string) => {
-    // Fallback para modo estático (ex: quando a listagem está usando staticVehicles)
+    // Fallback for static vehicles
     if (vehicleId.startsWith("static-") && staticVehicleFallback[vehicleId]) {
       const fallback = staticVehicleFallback[vehicleId];
       setVehicle(fallback.vehicle);
@@ -321,18 +124,16 @@ export default function VehicleDetails() {
       setLoading(true);
       const vehicleData = await getVehicleById(vehicleId);
 
-      // Se não encontrar o veículo, já finaliza.
       if (!vehicleData) {
         setVehicle(null);
         setPhotos([]);
         return;
       }
 
-      // 1) Primeiro tenta a tabela (modo "normal")
+      // 1) First try the table
       let vehiclePhotos = await getVehiclePhotos(vehicleId);
 
-      // 2) Se não houver fotos na tabela, tenta buscar direto do Storage
-      // Isso ajuda quando os arquivos já existem no bucket mas ainda não foram vinculados na tabela.
+      // 2) If no photos in table, try Storage directly
       if (!vehiclePhotos || vehiclePhotos.length === 0) {
         const { data: files, error } = await supabase.storage
           .from("vehicle-photos")
@@ -361,7 +162,7 @@ export default function VehicleDetails() {
       setVehicle(vehicleData);
       setPhotos(vehiclePhotos || []);
     } catch (e: any) {
-      console.error("Erro ao carregar detalhes do veículo:", e);
+      console.error("Error loading vehicle details:", e);
       toast.error("Erro ao carregar o veículo. Tente novamente.");
       setVehicle(null);
       setPhotos([]);
@@ -386,7 +187,6 @@ export default function VehicleDetails() {
       return;
     }
 
-    // Verificar se é o próprio proprietário
     if (currentUserId === vehicle.owner_id) {
       toast.error("Você não pode enviar mensagem para si mesmo");
       return;
@@ -401,7 +201,7 @@ export default function VehicleDetails() {
         toast.error("Erro ao iniciar conversa. Tente novamente.");
       }
     } catch (error) {
-      console.error("Erro ao contactar proprietário:", error);
+      console.error("Error contacting owner:", error);
       toast.error("Erro ao iniciar conversa. Tente novamente.");
     } finally {
       setContactingOwner(false);
@@ -542,17 +342,6 @@ export default function VehicleDetails() {
                 </div>
               )}
             </div>
-
-            {/* Description */}
-            {vehicle.description && (
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Descrição do proprietário</h3>
-                </div>
-                <p className="text-muted-foreground leading-relaxed">{vehicle.description}</p>
-              </div>
-            )}
 
             {/* Prices */}
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
