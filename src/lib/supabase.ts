@@ -9,6 +9,10 @@ export interface OliProfile {
   full_name: string | null;
   email: string | null;
   cpf: string | null;
+  rg: string | null;
+  nationality: string | null;
+  marital_status: string | null;
+  profession: string | null;
   birth_date: string | null;
   phone: string | null;
   whatsapp_phone: string | null;
