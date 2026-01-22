@@ -9,7 +9,8 @@ type NotificationType =
   | "rental_approved"
   | "rental_rejected"
   | "contract_sent"
-  | "contract_signed";
+  | "contract_signed"
+  | "dropoff_inspection_completed";
 
 interface NotificationPayload {
   type: NotificationType;
@@ -148,6 +149,25 @@ export async function notifyContractSigned(
       renter_name: renterName,
       vehicle_title: vehicleTitle,
       contract_number: contractNumber,
+    },
+  });
+}
+
+export async function notifyDropoffInspectionCompleted(
+  ownerId: string,
+  renterName: string,
+  vehicleTitle: string,
+  rentalId: string,
+  hasDamages: boolean
+): Promise<boolean> {
+  return sendNotification({
+    type: "dropoff_inspection_completed",
+    recipient_id: ownerId,
+    data: {
+      renter_name: renterName,
+      vehicle_title: vehicleTitle,
+      rental_id: rentalId,
+      has_damages: hasDamages,
     },
   });
 }

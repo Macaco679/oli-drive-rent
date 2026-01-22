@@ -15,7 +15,8 @@ type NotificationType =
   | "rental_approved"
   | "rental_rejected"
   | "contract_sent"
-  | "contract_signed";
+  | "contract_signed"
+  | "dropoff_inspection_completed";
 
 interface NotificationPayload {
   type: NotificationType;
@@ -148,6 +149,31 @@ const emailTemplates: Record<NotificationType, { subject: string; html: (data: R
            style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; 
                   border-radius: 8px; text-decoration: none; margin-top: 16px;">
           Ver detalhes
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
+          Oli Drive - Aluguel de veículos entre pessoas
+        </p>
+      </div>
+    `,
+  },
+  dropoff_inspection_completed: {
+    subject: "🔍 Vistoria de devolução concluída - Oli Drive",
+    html: (data) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Vistoria de Devolução Concluída! 🔍</h2>
+        <p>O locatário <strong>${data.renter_name || "Motorista"}</strong> finalizou a vistoria de devolução do veículo.</p>
+        <div style="background: ${data.has_damages ? '#fef2f2' : '#f0fdf4'}; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid ${data.has_damages ? '#fecaca' : '#bbf7d0'};">
+          <p style="margin: 0 0 8px 0;"><strong>Veículo:</strong> ${data.vehicle_title || "Veículo"}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Status:</strong> ${data.has_damages ? '⚠️ Avarias identificadas' : '✅ Nenhuma avaria registrada'}</p>
+          <p style="margin: 0;"><strong>Ação:</strong> Acesse o app para baixar o relatório comparativo</p>
+        </div>
+        <p style="color: #6b7280; font-size: 14px;">
+          Compare as fotos da retirada com as da devolução para verificar o estado do veículo.
+        </p>
+        <a href="https://oli-drive-rent.lovable.app/reservations/${data.rental_id}/inspection?kind=dropoff" 
+           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; 
+                  border-radius: 8px; text-decoration: none; margin-top: 16px;">
+          Ver Vistoria e Baixar PDF
         </a>
         <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
           Oli Drive - Aluguel de veículos entre pessoas
