@@ -43,63 +43,24 @@ export interface ConversationWithDetails extends Conversation {
 // Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
 
-// Buscar ou criar conversa direta entre dois usuários
+// Buscar ou criar conversa direta entre dois usuários usando a RPC function
 export async function getOrCreateDirectConversation(otherUserId: string): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    // Use the RPC function that handles everything with proper permissions
+    const { data, error } = await supabase.rpc("oli_create_direct_conversation", {
+      other_user_id: otherUserId,
+    });
 
-  // Primeiro, buscar conversa existente entre os dois usuários
-  const { data: existingConversations } = await db
-    .from("oli_conversation_participants")
-    .select("conversation_id")
-    .eq("user_id", user.id);
-
-  if (existingConversations && existingConversations.length > 0) {
-    const conversationIds = existingConversations.map((c: any) => c.conversation_id);
-    
-    // Verificar se o outro usuário está em alguma dessas conversas
-    const { data: sharedConversation } = await db
-      .from("oli_conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", otherUserId)
-      .in("conversation_id", conversationIds)
-      .limit(1)
-      .single();
-
-    if (sharedConversation) {
-      return sharedConversation.conversation_id;
+    if (error) {
+      console.error("Erro ao criar/buscar conversa:", error);
+      return null;
     }
-  }
 
-  // Criar nova conversa
-  const { data: newConversation, error: convError } = await db
-    .from("oli_conversations")
-    .insert({
-      type: "direct",
-      created_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (convError || !newConversation) {
-    console.error("Erro ao criar conversa:", convError);
+    return data as string;
+  } catch (error) {
+    console.error("Erro ao criar/buscar conversa:", error);
     return null;
   }
-
-  // Adicionar participantes
-  const { error: partError } = await db
-    .from("oli_conversation_participants")
-    .insert([
-      { conversation_id: newConversation.id, user_id: user.id },
-      { conversation_id: newConversation.id, user_id: otherUserId },
-    ]);
-
-  if (partError) {
-    console.error("Erro ao adicionar participantes:", partError);
-    return null;
-  }
-
-  return newConversation.id;
 }
 
 // Buscar todas as conversas do usuário
