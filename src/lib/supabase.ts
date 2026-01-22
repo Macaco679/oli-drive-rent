@@ -256,28 +256,46 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
     return [];
   }
 
-  return (data || []) as OliVehiclePhoto[];
+  // Normaliza URLs para corrigir typos no host
+  const correctHost = "sgpktbljjlixmyjmhppa.supabase.co";
+  const normalized = (data || []).map((photo) => {
+    if (!photo.image_url) return photo;
+    try {
+      const parsed = new URL(photo.image_url);
+      if (parsed.hostname.includes("sgpktblj") && parsed.hostname !== correctHost) {
+        parsed.hostname = correctHost;
+        return { ...photo, image_url: parsed.toString() };
+      }
+    } catch {
+      // ignora URLs inválidas
+    }
+    return photo;
+  });
+
+  return normalized as OliVehiclePhoto[];
+};
+
+/**
+ * Normaliza uma URL de imagem para apontar para o host correto do Supabase.
+ * Corrige typos como "sgpktbljjlixmyjmhppah" -> "sgpktbljjlixmyjmhppa"
+ */
+const normalizeImageUrl = (url: string): string => {
+  if (!url) return url;
+  const correctHost = "sgpktbljjlixmyjmhppa.supabase.co";
+  try {
+    const parsed = new URL(url);
+    // Se o host contém o projeto ref mas tem typo (ex: "h" extra), corrige
+    if (parsed.hostname.includes("sgpktblj") && parsed.hostname !== correctHost) {
+      parsed.hostname = correctHost;
+      return parsed.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
 };
 
 export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | null> => {
-  const expectedHost = (supabase as any)?.supabaseUrl as string | undefined;
-  const expectedRef = (() => {
-    try {
-      return expectedHost ? new URL(expectedHost).hostname.split(".")[0] : "";
-    } catch {
-      return "";
-    }
-  })();
-
-  const isFromExpectedProject = (url: string) => {
-    try {
-      const host = new URL(url).hostname;
-      return expectedRef ? host.startsWith(expectedRef + ".") : true;
-    } catch {
-      return false;
-    }
-  };
-
   // 1) Tenta pegar a capa na tabela
   const coverRes = await supabase
     .from("oli_vehicle_photos")
@@ -288,9 +306,9 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
     .maybeSingle();
 
   const coverUrl = coverRes.data?.image_url ?? null;
-  if (coverUrl && isFromExpectedProject(coverUrl)) return coverUrl;
+  if (coverUrl) return normalizeImageUrl(coverUrl);
 
-  // 2) Se não houver capa (ou URL antiga de outro project), tenta qualquer foto na tabela
+  // 2) Se não houver capa, tenta qualquer foto na tabela
   const anyRes = await supabase
     .from("oli_vehicle_photos")
     .select("image_url")
@@ -299,16 +317,16 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
     .maybeSingle();
 
   const anyUrl = anyRes.data?.image_url ?? null;
-  if (anyUrl && isFromExpectedProject(anyUrl)) return anyUrl;
+  if (anyUrl) return normalizeImageUrl(anyUrl);
 
-  // 3) Fallback definitivo: buscar direto no Storage (bucket vehicle-photos/{vehicleId}/...)
+  // 3) Fallback: buscar direto no Storage (bucket vehicle-photos/{vehicleId}/...)
   const { data: files, error: listErr } = await supabase.storage
     .from("vehicle-photos")
     .list(vehicleId, { limit: 100 });
 
   if (listErr || !files || files.length === 0) return null;
 
-  // Pega o primeiro arquivo “real” (não pasta)
+  // Pega o primeiro arquivo "real" (não pasta)
   const first = files.find((f) => !!f.name && !f.name.endsWith("/"));
   if (!first?.name) return null;
 
