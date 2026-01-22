@@ -84,6 +84,30 @@ export default function VehicleDetails() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [contactingOwner, setContactingOwner] = useState(false);
 
+  const tryFallbackForPhoto = async (photoId: string) => {
+    if (!id) return;
+    try {
+      const { data: files, error } = await supabase.storage
+        .from("vehicle-photos")
+        .list(id, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+
+      if (error || !files || files.length === 0) return;
+      const file = files.find((f) => !!f.name && !f.name.endsWith("/"));
+      if (!file?.name) return;
+
+      const { data } = supabase.storage
+        .from("vehicle-photos")
+        .getPublicUrl(`${id}/${file.name}`);
+
+      if (!data.publicUrl) return;
+      setPhotos((prev) =>
+        prev.map((p) => (p.id === photoId ? { ...p, image_url: data.publicUrl } : p))
+      );
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     if (id) {
       loadVehicleData(id);
@@ -261,6 +285,8 @@ export default function VehicleDetails() {
                           src={photo.image_url}
                           alt={vehicleTitle}
                           className="w-full h-full object-contain bg-gradient-to-br from-muted to-muted/50"
+                          loading="lazy"
+                          onError={() => tryFallbackForPhoto(photo.id)}
                         />
                       </div>
                     </CarouselItem>

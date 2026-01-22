@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import { MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -33,10 +34,40 @@ export const VehicleCard = ({
   isActive,
 }: VehicleCardProps) => {
   const navigate = useNavigate();
-  const [imgOk, setImgOk] = useState(true);
+  const [resolvedCover, setResolvedCover] = useState<string | undefined>(coverImage);
+  const [attemptedFallback, setAttemptedFallback] = useState(false);
   
   const vehicleTitle = title || `${brand || ""} ${model || ""} ${year || ""}`.trim() || "Veículo sem nome";
   const location = locationCity && locationState ? `${locationCity} - ${locationState}` : "Localização não informada";
+
+  const tryFallbackFromStorage = async () => {
+    if (attemptedFallback) return;
+    setAttemptedFallback(true);
+    try {
+      const { data: files, error } = await supabase.storage
+        .from("vehicle-photos")
+        .list(id, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+
+      if (error || !files || files.length === 0) {
+        setResolvedCover(undefined);
+        return;
+      }
+
+      const file = files.find((f) => !!f.name && !f.name.endsWith("/"));
+      if (!file?.name) {
+        setResolvedCover(undefined);
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("vehicle-photos")
+        .getPublicUrl(`${id}/${file.name}`);
+
+      setResolvedCover(data.publicUrl || undefined);
+    } catch {
+      setResolvedCover(undefined);
+    }
+  };
 
   return (
     <div
@@ -44,13 +75,13 @@ export const VehicleCard = ({
       className="card-elevated overflow-hidden cursor-pointer hover:shadow-[var(--shadow-elevated)] transition-shadow"
     >
       <div className="relative h-48 bg-muted">
-        {coverImage && imgOk ? (
+        {resolvedCover ? (
           <img
-            src={coverImage}
+            src={resolvedCover}
             alt={vehicleTitle}
             className="w-full h-full object-cover"
             loading="lazy"
-            onError={() => setImgOk(false)}
+            onError={tryFallbackFromStorage}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
