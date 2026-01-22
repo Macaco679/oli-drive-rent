@@ -270,7 +270,7 @@ export default function VehicleDetails() {
             <div className="space-y-3">
               <Button
                 onClick={handleReservation}
-                className="w-full h-14 text-lg"
+                className="w-full h-14 text-lg rounded-full"
                 size="lg"
               >
                 Iniciar reserva
@@ -278,8 +278,7 @@ export default function VehicleDetails() {
 
               <Button
                 onClick={handleContactOwner}
-                variant="outline"
-                className="w-full h-12"
+                className="w-full h-14 text-lg rounded-full"
                 size="lg"
                 disabled={contactingOwner}
               >
