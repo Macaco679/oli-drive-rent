@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type VehicleSample = {
   id: string;
@@ -112,6 +113,84 @@ export function SupabaseDebugPanel() {
     }
   };
 
+  const syncVehiclePhotosFromStorage = async () => {
+    setState((s) => ({ ...s, running: true, error: null }));
+    try {
+      // 1) Lista veículos
+      const vehiclesRes = await supabase
+        .from("oli_vehicles")
+        .select("id")
+        .eq("is_active", true);
+
+      if (vehiclesRes.error) throw vehiclesRes.error;
+      const vehicleIds = (vehiclesRes.data ?? []).map((v: any) => v.id).filter(Boolean);
+
+      if (vehicleIds.length === 0) {
+        toast.message("Nenhum veículo encontrado para sincronizar.");
+        return;
+      }
+
+      let created = 0;
+
+      // 2) Para cada veículo: lista arquivos no bucket e cria registros faltantes
+      for (const vehicleId of vehicleIds) {
+        const existingRes = await supabase
+          .from("oli_vehicle_photos")
+          .select("image_url,is_cover")
+          .eq("vehicle_id", vehicleId);
+
+        if (existingRes.error) {
+          console.warn("[SYNC PHOTOS] erro lendo fotos existentes:", existingRes.error);
+          continue;
+        }
+
+        const existingUrls = new Set((existingRes.data ?? []).map((r: any) => r.image_url));
+        const hasCover = (existingRes.data ?? []).some((r: any) => r.is_cover);
+
+        const filesRes = await supabase.storage
+          .from("vehicle-photos")
+          .list(vehicleId, { limit: 100 });
+
+        if (filesRes.error) {
+          console.warn("[SYNC PHOTOS] erro listando storage:", filesRes.error);
+          continue;
+        }
+
+        const files = (filesRes.data ?? []).filter((f) => !!f.name && !f.name.endsWith("/"));
+        for (let idx = 0; idx < files.length; idx++) {
+          const f = files[idx];
+          const { data } = supabase.storage
+            .from("vehicle-photos")
+            .getPublicUrl(`${vehicleId}/${f.name}`);
+
+          const imageUrl = data.publicUrl;
+          if (!imageUrl || existingUrls.has(imageUrl)) continue;
+
+          const isCover = !hasCover && idx === 0;
+          const insertRes = await supabase
+            .from("oli_vehicle_photos")
+            .insert({ vehicle_id: vehicleId, image_url: imageUrl, is_cover: isCover });
+
+          if (insertRes.error) {
+            console.warn("[SYNC PHOTOS] erro inserindo:", insertRes.error);
+            continue;
+          }
+
+          created++;
+        }
+      }
+
+      toast.success(`Sincronização concluída: ${created} foto(s) vinculada(s).`);
+      await run();
+    } catch (e: any) {
+      console.error("[SYNC PHOTOS] erro:", e);
+      toast.error(e?.message ?? "Erro ao sincronizar fotos.");
+      setState((s) => ({ ...s, error: e?.message ?? String(e) }));
+    } finally {
+      setState((s) => ({ ...s, running: false }));
+    }
+  };
+
   useEffect(() => {
     void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +217,16 @@ export function SupabaseDebugPanel() {
 
         <Button variant="outline" onClick={run} disabled={state.running}>
           {state.running ? "Rodando..." : "Rodar testes"}
+        </Button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          onClick={syncVehiclePhotosFromStorage}
+          disabled={state.running}
+        >
+          {state.running ? "Sincronizando..." : "Sincronizar fotos (Storage → Tabela)"}
         </Button>
       </div>
 

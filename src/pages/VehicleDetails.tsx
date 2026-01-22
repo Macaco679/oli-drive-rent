@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { getVehicleById, getVehiclePhotos, getCurrentUser, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, FileText, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { getOrCreateDirectConversation } from "@/lib/chatService";
@@ -316,12 +317,57 @@ export default function VehicleDetails() {
       return;
     }
 
-    const vehicleData = await getVehicleById(vehicleId);
-    const vehiclePhotos = await getVehiclePhotos(vehicleId);
-    
-    setVehicle(vehicleData);
-    setPhotos(vehiclePhotos);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const vehicleData = await getVehicleById(vehicleId);
+
+      // Se não encontrar o veículo, já finaliza.
+      if (!vehicleData) {
+        setVehicle(null);
+        setPhotos([]);
+        return;
+      }
+
+      // 1) Primeiro tenta a tabela (modo "normal")
+      let vehiclePhotos = await getVehiclePhotos(vehicleId);
+
+      // 2) Se não houver fotos na tabela, tenta buscar direto do Storage
+      // Isso ajuda quando os arquivos já existem no bucket mas ainda não foram vinculados na tabela.
+      if (!vehiclePhotos || vehiclePhotos.length === 0) {
+        const { data: files, error } = await supabase.storage
+          .from("vehicle-photos")
+          .list(vehicleId, { limit: 100 });
+
+        if (!error && files && files.length > 0) {
+          const mapped = files
+            .filter((f) => !!f.name && !f.name.endsWith("/"))
+            .map((f, idx) => {
+              const { data } = supabase.storage
+                .from("vehicle-photos")
+                .getPublicUrl(`${vehicleId}/${f.name}`);
+              return {
+                id: `storage-${vehicleId}-${idx}`,
+                vehicle_id: vehicleId,
+                image_url: data.publicUrl,
+                is_cover: idx === 0,
+                created_at: new Date(0).toISOString(),
+              } satisfies OliVehiclePhoto;
+            });
+
+          vehiclePhotos = mapped;
+        }
+      }
+
+      setVehicle(vehicleData);
+      setPhotos(vehiclePhotos || []);
+    } catch (e: any) {
+      console.error("Erro ao carregar detalhes do veículo:", e);
+      toast.error("Erro ao carregar o veículo. Tente novamente.");
+      setVehicle(null);
+      setPhotos([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReservation = () => {
