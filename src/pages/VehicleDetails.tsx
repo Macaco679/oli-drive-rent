@@ -6,9 +6,9 @@ import { getVehicleById, getVehiclePhotos, getCurrentUser, OliVehicle, OliVehicl
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { getOrCreateDirectConversation } from "@/lib/chatService";
 import { toast } from "sonner";
 import { useVehiclePhotosRealtime } from "@/hooks/useVehiclePhotosRealtime";
+import { useChatWidget } from "@/contexts/ChatWidgetContext";
 
 // Static fallback images
 import onixAzul from "@/assets/vehicles/onix-azul-2022.jpeg";
@@ -78,12 +78,12 @@ const staticVehicleFallback: Record<string, { vehicle: OliVehicle; coverImage: s
 export default function VehicleDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { startConversationWith } = useChatWidget();
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
   const [photos, setPhotos] = useState<OliVehiclePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [contactingOwner, setContactingOwner] = useState(false);
 
   const tryFallbackForPhoto = async (photoId: string) => {
     if (!id) return;
@@ -246,7 +246,7 @@ export default function VehicleDetails() {
     }
   };
 
-  const handleContactOwner = async () => {
+  const handleContactOwner = () => {
     if (!vehicle) return;
 
     if (!isAuthenticated) {
@@ -259,20 +259,8 @@ export default function VehicleDetails() {
       return;
     }
 
-    setContactingOwner(true);
-    try {
-      const conversationId = await getOrCreateDirectConversation(vehicle.owner_id);
-      if (conversationId) {
-        navigate(`/chat/${conversationId}`);
-      } else {
-        toast.error("Erro ao iniciar conversa. Tente novamente.");
-      }
-    } catch (error) {
-      console.error("Error contacting owner:", error);
-      toast.error("Erro ao iniciar conversa. Tente novamente.");
-    } finally {
-      setContactingOwner(false);
-    }
+    // Open chat widget with this owner
+    startConversationWith(vehicle.owner_id);
   };
 
   if (loading) {
@@ -465,10 +453,9 @@ export default function VehicleDetails() {
                 onClick={handleContactOwner}
                 className="w-full h-14 text-lg rounded-full"
                 size="lg"
-                disabled={contactingOwner}
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
-                {contactingOwner ? "Abrindo conversa..." : "Falar com proprietário"}
+                Falar com proprietário
               </Button>
             </div>
           </div>
