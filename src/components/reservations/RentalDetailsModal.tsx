@@ -13,6 +13,7 @@ import { Calendar, MapPin, User, Mail, Phone, FileText, CreditCard, Check, X } f
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { notifyRentalApproved, notifyRentalRejected } from "@/lib/notificationService";
 
 interface RentalDetailsModalProps {
   open: boolean;
@@ -61,6 +62,15 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     
     if (success) {
       toast.success("Reserva aprovada! O cliente receberá o contrato e poderá efetuar o pagamento.");
+      
+      // Enviar notificação por email
+      notifyRentalApproved(
+        rental.renter_id,
+        vehicleTitle,
+        format(new Date(rental.start_date), "dd/MM/yyyy"),
+        format(new Date(rental.end_date), "dd/MM/yyyy")
+      );
+      
       onStatusChange();
       onOpenChange(false);
     } else {
@@ -75,6 +85,15 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     
     if (success) {
       toast.success("Reserva recusada");
+      
+      // Enviar notificação por email
+      notifyRentalRejected(
+        rental.renter_id,
+        vehicleTitle,
+        format(new Date(rental.start_date), "dd/MM/yyyy"),
+        format(new Date(rental.end_date), "dd/MM/yyyy")
+      );
+      
       onStatusChange();
       onOpenChange(false);
     } else {

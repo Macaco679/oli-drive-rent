@@ -9,7 +9,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CNHVerificationModal } from "@/components/profile/CNHVerificationModal";
 import { useDriverLicense } from "@/contexts/DriverLicenseContext";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
-import { getVehicleById, getCurrentUser, createRental, OliVehicle } from "@/lib/supabase";
+import { getVehicleById, getCurrentUser, createRental, OliVehicle, getProfile } from "@/lib/supabase";
+import { notifyRentalRequest } from "@/lib/notificationService";
 import { toast } from "sonner";
 import { ArrowLeft, Car, AlertCircle, MapPin } from "lucide-react";
 
@@ -113,6 +114,19 @@ export default function BookVehicle() {
 
     if (rental) {
       toast.success("Reserva criada com sucesso!");
+      
+      // Notificar o proprietário por email
+      const renterProfile = await getProfile(user.id);
+      const vehicleTitle = vehicle.title || `${vehicle.brand} ${vehicle.model}`;
+      notifyRentalRequest(
+        vehicle.owner_id,
+        renterProfile?.full_name || "Motorista",
+        vehicleTitle,
+        startDate,
+        endDate,
+        calculateTotal()
+      );
+      
       navigate("/reservations");
     } else {
       toast.error("Erro ao criar reserva");

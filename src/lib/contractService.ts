@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { OliProfile, OliVehicle, OliRental } from "./supabase";
+import { OliProfile, OliVehicle, OliRental, getVehicleById, getProfileById } from "./supabase";
+import { notifyContractSent, notifyContractSigned } from "./notificationService";
 
 export interface ContractData {
   rental: OliRental;
@@ -54,6 +55,13 @@ export async function createContract(rentalId: string): Promise<RentalContract |
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Buscar dados da reserva para notificação
+  const { data: rental } = await supabase
+    .from("oli_rentals")
+    .select("*")
+    .eq("id", rentalId)
+    .single();
+
   // Verificar se já existe contrato
   const existing = await getContractByRentalId(rentalId);
   if (existing) {
@@ -69,15 +77,24 @@ export async function createContract(rentalId: string): Promise<RentalContract |
       console.error("Erro ao atualizar contrato:", error);
       return null;
     }
+
+    // Notificar locatário sobre contrato reenviado
+    if (rental) {
+      const vehicle = await getVehicleById(rental.vehicle_id);
+      const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
+      notifyContractSent(rental.renter_id, vehicleTitle, existing.contract_number || "");
+    }
+
     return data as RentalContract;
   }
 
   // Criar novo contrato
+  const contractNumber = generateContractNumber();
   const { data, error } = await supabase
     .from("oli_rental_contracts")
     .insert({
       rental_id: rentalId,
-      contract_number: generateContractNumber(),
+      contract_number: contractNumber,
       status: "pending",
       version: "1.0",
     })
@@ -89,22 +106,54 @@ export async function createContract(rentalId: string): Promise<RentalContract |
     return null;
   }
 
+  // Notificar locatário sobre novo contrato
+  if (rental) {
+    const vehicle = await getVehicleById(rental.vehicle_id);
+    const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
+    notifyContractSent(rental.renter_id, vehicleTitle, contractNumber);
+  }
+
   return data as RentalContract;
 }
 
 // Assinar contrato (pelo locatário)
 export async function signContractAsRenter(contractId: string): Promise<boolean> {
-  const { error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  const { data: contract, error } = await supabase
     .from("oli_rental_contracts")
     .update({ 
       renter_signed_at: new Date().toISOString(),
       status: "signed"
     })
-    .eq("id", contractId);
+    .eq("id", contractId)
+    .select("*, rental_id")
+    .single();
 
   if (error) {
     console.error("Erro ao assinar contrato:", error);
     return false;
+  }
+
+  // Notificar proprietário que o contrato foi assinado
+  if (contract) {
+    const { data: rental } = await supabase
+      .from("oli_rentals")
+      .select("*")
+      .eq("id", contract.rental_id)
+      .single();
+
+    if (rental) {
+      const vehicle = await getVehicleById(rental.vehicle_id);
+      const renter = user ? await getProfileById(user.id) : null;
+      const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
+      notifyContractSigned(
+        rental.owner_id, 
+        renter?.full_name || "Locatário", 
+        vehicleTitle, 
+        contract.contract_number || ""
+      );
+    }
   }
 
   return true;

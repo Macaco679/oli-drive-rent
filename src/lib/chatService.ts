@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { notifyNewMessage } from "./notificationService";
 
 export interface Conversation {
   id: string;
@@ -193,7 +194,40 @@ export async function sendMessage(conversationId: string, body: string): Promise
     .update({ last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
 
+  // Enviar notificação por email para o destinatário
+  sendMessageNotification(conversationId, user.id, body);
+
   return data;
+}
+
+// Função auxiliar para enviar notificação de mensagem (fire and forget)
+async function sendMessageNotification(conversationId: string, senderId: string, body: string) {
+  try {
+    // Buscar o outro participante da conversa
+    const { data: participants } = await db
+      .from("oli_conversation_participants")
+      .select("user_id")
+      .eq("conversation_id", conversationId)
+      .neq("user_id", senderId);
+
+    if (!participants || participants.length === 0) return;
+
+    // Buscar nome do remetente
+    const { data: senderProfile } = await supabase
+      .from("oli_profiles")
+      .select("full_name")
+      .eq("id", senderId)
+      .single();
+
+    const senderName = senderProfile?.full_name || "Alguém";
+
+    // Notificar cada participante (exceto o remetente)
+    for (const participant of participants) {
+      notifyNewMessage(participant.user_id, senderName, body);
+    }
+  } catch (error) {
+    console.error("Erro ao enviar notificação de mensagem:", error);
+  }
 }
 
 // Enviar mensagem de imagem
