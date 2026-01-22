@@ -183,7 +183,15 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
               </div>
             )}
 
-            {/* Status: Active - show dropoff inspection option */}
+            {/* Status: Active - waiting for owner to do pickup inspection */}
+            {isActive && !hasPickupInspection && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">Aguardando vistoria do proprietário</span>
+              </div>
+            )}
+
+            {/* Status: Active with pickup inspection done - show dropoff option */}
             {isActive && hasPickupInspection && (
               <div className="flex gap-2">
                 {!hasDropoffInspection ? (

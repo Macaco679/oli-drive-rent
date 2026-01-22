@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck, Download } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck, Download, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -186,13 +186,15 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               </span>
             )}
 
+            {/* Contract signed - waiting for renter payment */}
             {isApproved && isSigned && (
-              <span className="text-primary text-sm flex items-center gap-2">
-                <Check className="w-4 h-4" />
-                Contrato assinado
+              <span className="text-muted-foreground text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Aguardando pagamento
               </span>
             )}
 
+            {/* After payment (active) - owner does pickup inspection */}
             {isActive && !hasPickupInspection && (
               <Button 
                 size="sm" 
@@ -200,7 +202,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
                 className="gap-2"
               >
                 <ClipboardCheck className="w-4 h-4" />
-                Fazer Vistoria
+                Fazer Vistoria de Entrada
               </Button>
             )}
 
