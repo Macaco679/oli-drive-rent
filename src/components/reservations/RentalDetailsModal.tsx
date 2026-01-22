@@ -19,6 +19,7 @@ interface RentalDetailsModalProps {
   onOpenChange: (open: boolean) => void;
   rental: (OliRental & { vehicle?: OliVehicle }) | null;
   onStatusChange: () => void;
+  onSendContract?: () => void;
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -29,7 +30,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
-export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange }: RentalDetailsModalProps) {
+export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange, onSendContract }: RentalDetailsModalProps) {
   const [renter, setRenter] = useState<OliProfile | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -243,9 +244,9 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange 
 
           {isApproved && (
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={onSendContract}>
                 <FileText className="w-4 h-4 mr-2" />
-                Enviar Contrato
+                Revisar e Enviar Contrato
               </Button>
               <Button className="flex-1">
                 <CreditCard className="w-4 h-4 mr-2" />

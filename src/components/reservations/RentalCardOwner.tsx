@@ -1,14 +1,17 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, ChevronRight } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, FileText, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
+import { getContractByRentalId, RentalContract } from "@/lib/contractService";
 
 interface RentalCardOwnerProps {
   rental: OliRental & { vehicle?: OliVehicle };
   onClick: () => void;
+  onSendContract?: () => void;
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -19,14 +22,21 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
-export function RentalCardOwner({ rental, onClick }: RentalCardOwnerProps) {
+export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardOwnerProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [contract, setContract] = useState<RentalContract | null>(null);
 
   useEffect(() => {
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
-  }, [rental.vehicle_id]);
+    loadContract();
+  }, [rental.vehicle_id, rental.id]);
+
+  const loadContract = async () => {
+    const contractData = await getContractByRentalId(rental.id);
+    setContract(contractData);
+  };
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
@@ -34,6 +44,16 @@ export function RentalCardOwner({ rental, onClick }: RentalCardOwnerProps) {
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
+  const isApproved = rental.status === "approved";
+  
+  // Contract states
+  const hasContract = contract !== null;
+  const isSigned = contract?.renter_signed_at !== null;
+
+  const handleContractClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSendContract?.();
+  };
 
   return (
     <div 
@@ -71,6 +91,11 @@ export function RentalCardOwner({ rental, onClick }: RentalCardOwnerProps) {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+              {hasContract && (
+                <Badge variant={isSigned ? "default" : "outline"} className="text-xs">
+                  {isSigned ? "Assinado" : "Contrato enviado"}
+                </Badge>
+              )}
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </div>
@@ -103,6 +128,31 @@ export function RentalCardOwner({ rental, onClick }: RentalCardOwnerProps) {
             {isPending && (
               <span className="text-primary font-medium text-sm">
                 Clique para analisar →
+              </span>
+            )}
+
+            {isApproved && !hasContract && (
+              <Button 
+                size="sm" 
+                onClick={handleContractClick}
+                className="gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Enviar Contrato
+              </Button>
+            )}
+
+            {isApproved && hasContract && !isSigned && (
+              <span className="text-muted-foreground text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Aguardando assinatura
+              </span>
+            )}
+
+            {isApproved && isSigned && (
+              <span className="text-primary text-sm flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                Contrato assinado
               </span>
             )}
           </div>
