@@ -178,3 +178,18 @@ export async function hasCompleteInspection(
   // Check if we have all 8 required photos
   return result.photos.length >= INSPECTION_PHOTO_TYPES.length;
 }
+
+// Get both inspections for comparison
+export async function getInspectionsForComparison(
+  rentalId: string
+): Promise<{
+  pickup: { inspection: Inspection; photos: InspectionPhoto[] } | null;
+  dropoff: { inspection: Inspection; photos: InspectionPhoto[] } | null;
+}> {
+  const [pickup, dropoff] = await Promise.all([
+    getInspectionByRental(rentalId, "pickup"),
+    getInspectionByRental(rentalId, "dropoff"),
+  ]);
+
+  return { pickup, dropoff };
+}

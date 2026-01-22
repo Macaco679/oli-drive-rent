@@ -1,14 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
 import { getContractByRentalId, RentalContract } from "@/lib/contractService";
-import { hasCompleteInspection } from "@/lib/inspectionService";
+import { hasCompleteInspection, getInspectionsForComparison } from "@/lib/inspectionService";
 
 interface RentalCardOwnerProps {
   rental: OliRental & { vehicle?: OliVehicle };
@@ -27,7 +27,8 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardOwnerProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [contract, setContract] = useState<RentalContract | null>(null);
-  const [hasInspection, setHasInspection] = useState(false);
+  const [hasPickupInspection, setHasPickupInspection] = useState(false);
+  const [hasDropoffInspection, setHasDropoffInspection] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
     loadContract();
-    checkInspection();
+    checkInspections();
   }, [rental.vehicle_id, rental.id]);
 
   const loadContract = async () => {
@@ -43,9 +44,13 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
     setContract(contractData);
   };
 
-  const checkInspection = async () => {
-    const complete = await hasCompleteInspection(rental.id, "pickup");
-    setHasInspection(complete);
+  const checkInspections = async () => {
+    const [pickup, dropoff] = await Promise.all([
+      hasCompleteInspection(rental.id, "pickup"),
+      hasCompleteInspection(rental.id, "dropoff"),
+    ]);
+    setHasPickupInspection(pickup);
+    setHasDropoffInspection(dropoff);
   };
 
   const vehicleTitle = rental.vehicle?.title || 
@@ -68,6 +73,12 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
 
   const handleInspectionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    navigate(`/reservations/${rental.id}/inspection`);
+  };
+
+  const handleViewInspection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Navigate to pickup inspection page (which shows download options when complete)
     navigate(`/reservations/${rental.id}/inspection`);
   };
 
@@ -112,9 +123,14 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
                   {isSigned ? "Assinado" : "Contrato enviado"}
                 </Badge>
               )}
-              {isActive && hasInspection && (
+              {isActive && hasPickupInspection && (
                 <Badge variant="default" className="text-xs">
                   Vistoria OK
+                </Badge>
+              )}
+              {isActive && hasDropoffInspection && (
+                <Badge variant="outline" className="text-xs">
+                  Devolvido
                 </Badge>
               )}
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -177,7 +193,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               </span>
             )}
 
-            {isActive && !hasInspection && (
+            {isActive && !hasPickupInspection && (
               <Button 
                 size="sm" 
                 onClick={handleInspectionClick}
@@ -188,11 +204,24 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
               </Button>
             )}
 
-            {isActive && hasInspection && (
-              <span className="text-primary text-sm flex items-center gap-2">
-                <Check className="w-4 h-4" />
-                Vistoria concluída
-              </span>
+            {isActive && hasPickupInspection && (
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleViewInspection}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Ver Vistoria
+                </Button>
+                {hasDropoffInspection && (
+                  <span className="text-primary text-sm flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Devolvido
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
