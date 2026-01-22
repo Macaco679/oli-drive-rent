@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 interface VehicleCardProps {
   id: string;
@@ -32,6 +33,7 @@ export const VehicleCard = ({
   isActive,
 }: VehicleCardProps) => {
   const navigate = useNavigate();
+  const [imgOk, setImgOk] = useState(true);
   
   const vehicleTitle = title || `${brand || ""} ${model || ""} ${year || ""}`.trim() || "Veículo sem nome";
   const location = locationCity && locationState ? `${locationCity} - ${locationState}` : "Localização não informada";
@@ -42,8 +44,14 @@ export const VehicleCard = ({
       className="card-elevated overflow-hidden cursor-pointer hover:shadow-[var(--shadow-elevated)] transition-shadow"
     >
       <div className="relative h-48 bg-muted">
-        {coverImage ? (
-          <img src={coverImage} alt={vehicleTitle} className="w-full h-full object-cover" />
+        {coverImage && imgOk ? (
+          <img
+            src={coverImage}
+            alt={vehicleTitle}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setImgOk(false)}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             Sem foto
