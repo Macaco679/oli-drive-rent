@@ -11,7 +11,7 @@ import { useDriverLicense } from "@/contexts/DriverLicenseContext";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getVehicleById, getCurrentUser, createRental, OliVehicle } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ArrowLeft, Car, AlertCircle } from "lucide-react";
+import { ArrowLeft, Car, AlertCircle, MapPin } from "lucide-react";
 
 export default function BookVehicle() {
   const { id } = useParams<{ id: string }>();
@@ -213,32 +213,17 @@ export default function BookVehicle() {
                 </div>
               </div>
 
-              {/* Locations */}
+              {/* Locations - Read only, defined by owner */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Locais</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="pickupLocation">Local de retirada</Label>
-                    <Input
-                      id="pickupLocation"
-                      type="text"
-                      value={pickupLocation}
-                      onChange={(e) => setPickupLocation(e.target.value)}
-                      required
-                      className="mt-1 h-12"
-                    />
+                <h3 className="font-semibold text-lg">Local de Retirada e Devolução</h3>
+                <div className="bg-secondary/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <MapPin className="w-4 h-4" />
+                    <span className="font-medium text-foreground">{pickupLocation || "A definir com o proprietário"}</span>
                   </div>
-                  <div>
-                    <Label htmlFor="dropoffLocation">Local de devolução</Label>
-                    <Input
-                      id="dropoffLocation"
-                      type="text"
-                      value={dropoffLocation}
-                      onChange={(e) => setDropoffLocation(e.target.value)}
-                      required
-                      className="mt-1 h-12"
-                    />
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    O local exato de retirada e devolução será combinado diretamente com o proprietário após a aprovação da reserva.
+                  </p>
                 </div>
               </div>
 

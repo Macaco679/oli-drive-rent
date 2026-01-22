@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser, getMyRentalsAsRenter, getMyRentalsAsOwner, getVehicleById, OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, Car } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Car } from "lucide-react";
+import { RentalCardRenter } from "@/components/reservations/RentalCardRenter";
+import { RentalCardOwner } from "@/components/reservations/RentalCardOwner";
+import { RentalDetailsModal } from "@/components/reservations/RentalDetailsModal";
+import { toast } from "sonner";
 
 interface RentalWithVehicle extends OliRental {
   vehicle?: OliVehicle;
@@ -17,6 +18,8 @@ export default function Reservations() {
   const [asRenter, setAsRenter] = useState<RentalWithVehicle[]>([]);
   const [asOwner, setAsOwner] = useState<RentalWithVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRental, setSelectedRental] = useState<RentalWithVehicle | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,75 +57,26 @@ export default function Reservations() {
     setLoading(false);
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
-      pending_approval: { label: "Pendente", variant: "secondary" },
-      awaiting_payment: { label: "Aguardando pagamento", variant: "secondary" },
-      confirmed: { label: "Confirmada", variant: "default" },
-      in_use: { label: "Em uso", variant: "default" },
-      completed: { label: "Concluída", variant: "secondary" },
-      cancelled: { label: "Cancelada", variant: "destructive" },
-    };
-
-    const statusInfo = statusMap[status] || { label: status, variant: "secondary" as const };
-    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  const handleOwnerCardClick = (rental: RentalWithVehicle) => {
+    setSelectedRental(rental);
+    setShowDetailsModal(true);
   };
 
-  const RentalCard = ({ rental }: { rental: RentalWithVehicle }) => {
-    const vehicleTitle = rental.vehicle?.title || 
-      `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-      "Veículo";
-
-    return (
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4 hover:shadow-lg transition-shadow">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="font-semibold text-xl">{vehicleTitle}</h3>
-            {rental.vehicle && (
-              <p className="text-muted-foreground">
-                {rental.vehicle.location_city} - {rental.vehicle.location_state}
-              </p>
-            )}
-          </div>
-          {getStatusBadge(rental.status)}
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Calendar className="w-5 h-5 flex-shrink-0" />
-            <span>
-              {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} até{" "}
-              {format(new Date(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
-            </span>
-          </div>
-          
-          {rental.pickup_location && (
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <MapPin className="w-5 h-5 flex-shrink-0" />
-              <span>{rental.pickup_location}</span>
-            </div>
-          )}
-        </div>
-
-        {rental.total_price && (
-          <div className="flex items-center justify-between pt-4 border-t border-border">
-            <span className="text-muted-foreground">Total</span>
-            <span className="text-xl font-bold text-primary">
-              R$ {rental.total_price.toLocaleString('pt-BR')}
-            </span>
-          </div>
-        )}
-      </div>
-    );
+  const handleViewContract = () => {
+    toast.info("Funcionalidade de contrato em desenvolvimento");
   };
 
-  const EmptyState = ({ message, action }: { message: string; action: string }) => (
+  const handlePay = () => {
+    toast.info("Funcionalidade de pagamento em desenvolvimento");
+  };
+
+  const EmptyState = ({ message, action, onAction }: { message: string; action: string; onAction: () => void }) => (
     <div className="text-center py-16">
       <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
         <Car className="w-10 h-10 text-muted-foreground" />
       </div>
       <p className="text-xl text-muted-foreground mb-6">{message}</p>
-      <Button onClick={() => navigate("/search")} size="lg">
+      <Button onClick={onAction} size="lg">
         {action}
       </Button>
     </div>
@@ -147,10 +101,18 @@ export default function Reservations() {
                 <EmptyState
                   message="Você ainda não tem reservas ativas"
                   action="Buscar carros"
+                  onAction={() => navigate("/search")}
                 />
               ) : (
                 <div className="grid gap-6">
-                  {asRenter.map((rental) => <RentalCard key={rental.id} rental={rental} />)}
+                  {asRenter.map((rental) => (
+                    <RentalCardRenter 
+                      key={rental.id} 
+                      rental={rental}
+                      onViewContract={handleViewContract}
+                      onPay={handlePay}
+                    />
+                  ))}
                 </div>
               )}
             </TabsContent>
@@ -160,16 +122,30 @@ export default function Reservations() {
                 <EmptyState
                   message="Você ainda não tem reservas como locador"
                   action="Ver meus veículos"
+                  onAction={() => navigate("/my-vehicles")}
                 />
               ) : (
                 <div className="grid gap-6">
-                  {asOwner.map((rental) => <RentalCard key={rental.id} rental={rental} />)}
+                  {asOwner.map((rental) => (
+                    <RentalCardOwner 
+                      key={rental.id} 
+                      rental={rental}
+                      onClick={() => handleOwnerCardClick(rental)}
+                    />
+                  ))}
                 </div>
               )}
             </TabsContent>
           </Tabs>
         )}
       </div>
+
+      <RentalDetailsModal
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        rental={selectedRental}
+        onStatusChange={loadRentals}
+      />
     </WebLayout>
   );
 }
