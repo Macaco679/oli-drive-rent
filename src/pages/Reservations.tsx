@@ -11,6 +11,7 @@ import { RentalCardOwner } from "@/components/reservations/RentalCardOwner";
 import { RentalDetailsModal } from "@/components/reservations/RentalDetailsModal";
 import { ContractViewModal } from "@/components/contracts/ContractViewModal";
 import { SignatureModal } from "@/components/contracts/SignatureModal";
+import { PixPaymentModal } from "@/components/payments/PixPaymentModal";
 import { toast } from "sonner";
 
 interface RentalWithVehicle extends OliRental {
@@ -27,6 +28,7 @@ export default function Reservations() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showPixModal, setShowPixModal] = useState(false);
   const [contractMode, setContractMode] = useState<"owner" | "renter">("owner");
   const [selectedContract, setSelectedContract] = useState<RentalContract | null>(null);
   
@@ -100,8 +102,14 @@ export default function Reservations() {
     setShowSignatureModal(true);
   };
 
-  const handlePay = () => {
-    toast.info("Funcionalidade de pagamento em desenvolvimento");
+  const handlePay = (rental: RentalWithVehicle) => {
+    setSelectedRental(rental);
+    setShowPixModal(true);
+  };
+
+  const handlePaymentComplete = () => {
+    toast.success("Pagamento confirmado! O veículo está liberado para uso.");
+    loadRentals();
   };
 
   const handleContractSent = () => {
@@ -155,7 +163,7 @@ export default function Reservations() {
                       rental={rental}
                       onViewContract={(contract) => handleViewContract(rental, contract)}
                       onSignContract={(contract) => handleSignContract(rental, contract)}
-                      onPay={handlePay}
+                      onPay={() => handlePay(rental)}
                     />
                   ))}
                 </div>
@@ -215,6 +223,14 @@ export default function Reservations() {
         onOpenChange={setShowSignatureModal}
         contract={selectedContract}
         onSigned={handleContractSigned}
+      />
+
+      {/* Modal: Pagamento PIX */}
+      <PixPaymentModal
+        open={showPixModal}
+        onOpenChange={setShowPixModal}
+        rental={selectedRental}
+        onPaymentComplete={handlePaymentComplete}
       />
     </WebLayout>
   );

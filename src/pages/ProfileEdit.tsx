@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { getCurrentUser, getProfile, updateProfile, OliProfile } from "@/lib/supabase";
 import { getMissingFields } from "@/hooks/useProfileCompletion";
+import { SignatureField } from "@/components/profile/SignatureField";
 
 // Validation schema
 const formSchema = z.object({
@@ -334,6 +335,16 @@ export default function ProfileEdit() {
                 />
               </CardContent>
             </Card>
+
+            {/* Signature */}
+            <SignatureField
+              currentSignature={profile?.signature_url || null}
+              onSignatureChange={(url) => {
+                if (profile) {
+                  setProfile({ ...profile, signature_url: url });
+                }
+              }}
+            />
 
             {/* Submit */}
             <Button
