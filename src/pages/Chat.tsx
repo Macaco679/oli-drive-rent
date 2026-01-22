@@ -3,12 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Mic } from "lucide-react";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
-import { getMessages, sendMessage, markConversationAsRead, Message } from "@/lib/chatService";
+import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ChatMessageBubble } from "@/components/chat/ChatMessageBubble";
+import { ChatImageUpload } from "@/components/chat/ChatImageUpload";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 
 // Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
@@ -23,10 +25,45 @@ export default function Chat() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState<string>("Usuário");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator hook
+  const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
+    conversationId || "",
+    currentUserId
+  );
 
   useEffect(() => {
     if (conversationId) {
       loadChat();
+      
+      // Subscribe to new messages
+      const channel = supabase
+        .channel(`chat-page-${conversationId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "oli_messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const newMsg = payload.new as Message;
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            if (newMsg.sender_id !== currentUserId) {
+              markConversationAsRead(conversationId);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [conversationId]);
 
@@ -74,12 +111,26 @@ export default function Chat() {
     if (!newMessage.trim() || !conversationId || sending) return;
 
     setSending(true);
+    stopTyping();
     const sent = await sendMessage(conversationId, newMessage.trim());
     if (sent) {
-      setMessages([...messages, sent]);
       setNewMessage("");
+      inputRef.current?.focus();
     }
     setSending(false);
+  };
+
+  const handleImageUploaded = async (imageUrl: string) => {
+    if (!conversationId) return;
+    
+    setSending(true);
+    try {
+      await sendImageMessage(conversationId, imageUrl);
+    } catch (error) {
+      console.error("Error sending image:", error);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -87,6 +138,11 @@ export default function Chat() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleInputChangeLocal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    handleInputChange();
   };
 
   if (loading) {
@@ -110,9 +166,18 @@ export default function Chat() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-primary font-semibold">
+              {otherUserName.charAt(0).toUpperCase()}
+            </span>
+          </div>
           <div>
             <h1 className="font-semibold">{otherUserName}</h1>
-            <p className="text-sm text-muted-foreground">Conversa</p>
+            {isOtherUserTyping ? (
+              <p className="text-sm text-primary">Digitando...</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Conversa</p>
+            )}
           </div>
         </div>
 
@@ -123,42 +188,42 @@ export default function Chat() {
               Nenhuma mensagem ainda. Comece a conversa!
             </div>
           ) : (
-            messages.map((msg) => {
-              const isOwn = msg.sender_id === currentUserId;
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                      isOwn
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary text-secondary-foreground rounded-bl-md"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                    <p
-                      className={`text-xs mt-1 ${
-                        isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                      }`}
-                    >
-                      {format(new Date(msg.created_at), "HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
+            messages.map((msg) => (
+              <ChatMessageBubble
+                key={msg.id}
+                message={msg}
+                isOwn={msg.sender_id === currentUserId}
+              />
+            ))
+          )}
+          {isOtherUserTyping && (
+            <div className="flex justify-start">
+              <TypingIndicator userName={otherUserName} />
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
         <div className="p-4 border-t border-border">
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center gap-1">
+              <ChatImageUpload
+                conversationId={conversationId || ""}
+                onImageUploaded={handleImageUploaded}
+                disabled={sending}
+              />
+              <button
+                className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                title="Gravar áudio"
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+            </div>
             <Input
+              ref={inputRef}
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={handleInputChangeLocal}
               onKeyPress={handleKeyPress}
               placeholder="Digite sua mensagem..."
               className="flex-1"
