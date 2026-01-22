@@ -10,259 +10,132 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
-      "Clientes DBIANCO": {
+      oli_conversation_participants: {
         Row: {
-          "Customer ID": string
-          "Default Address Phone": string | null
-          Email: string | null
-          "First Name": string | null
-          "Last Name": string | null
+          conversation_id: string
+          joined_at: string
+          last_read_at: string | null
+          muted_until: string | null
+          role: string
+          user_id: string
         }
         Insert: {
-          "Customer ID": string
-          "Default Address Phone"?: string | null
-          Email?: string | null
-          "First Name"?: string | null
-          "Last Name"?: string | null
+          conversation_id: string
+          joined_at?: string
+          last_read_at?: string | null
+          muted_until?: string | null
+          role?: string
+          user_id: string
         }
         Update: {
-          "Customer ID"?: string
-          "Default Address Phone"?: string | null
-          Email?: string | null
-          "First Name"?: string | null
-          "Last Name"?: string | null
+          conversation_id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          muted_until?: string | null
+          role?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "oli_conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "oli_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      contatos_total: {
+      oli_conversations: {
         Row: {
-          country: string | null
           created_at: string
-          email: string | null
-          first_name: string | null
-          id: number
-          last_name: string | null
-          nome_contato: string | null
-          telefone: string | null
-        }
-        Insert: {
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
-          id?: number
-          last_name?: string | null
-          nome_contato?: string | null
-          telefone?: string | null
-        }
-        Update: {
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
-          id?: number
-          last_name?: string | null
-          nome_contato?: string | null
-          telefone?: string | null
-        }
-        Relationships: []
-      }
-      despachante_infos: {
-        Row: {
-          categoria: string | null
-          created_at: string | null
+          created_by: string
           id: string
-          pergunta: string
-          resposta: string
-          updated_at: string | null
-        }
-        Insert: {
-          categoria?: string | null
-          created_at?: string | null
-          id?: string
-          pergunta: string
-          resposta: string
-          updated_at?: string | null
-        }
-        Update: {
-          categoria?: string | null
-          created_at?: string | null
-          id?: string
-          pergunta?: string
-          resposta?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      despachantes_clientes: {
-        Row: {
-          conversa_id: string | null
-          CPF: number | null
-          created_at: string
-          email: string | null
-          id: string
-          id_assas: string | null
-          invoiceUrl: string | null
-          multas_total: string | null
-          observacao: string | null
-          placa: string | null
-          renavam: string | null
-          session_id: number | null
-          status_consulta: string
-          telefone: string
+          last_message_at: string | null
+          subject: string | null
+          type: Database["public"]["Enums"]["oli_conversation_type"]
           updated_at: string
         }
         Insert: {
-          conversa_id?: string | null
-          CPF?: number | null
           created_at?: string
-          email?: string | null
+          created_by: string
           id?: string
-          id_assas?: string | null
-          invoiceUrl?: string | null
-          multas_total?: string | null
-          observacao?: string | null
-          placa?: string | null
-          renavam?: string | null
-          session_id?: number | null
-          status_consulta?: string
-          telefone: string
+          last_message_at?: string | null
+          subject?: string | null
+          type?: Database["public"]["Enums"]["oli_conversation_type"]
           updated_at?: string
         }
         Update: {
-          conversa_id?: string | null
-          CPF?: number | null
           created_at?: string
-          email?: string | null
+          created_by?: string
           id?: string
-          id_assas?: string | null
-          invoiceUrl?: string | null
-          multas_total?: string | null
-          observacao?: string | null
-          placa?: string | null
-          renavam?: string | null
-          session_id?: number | null
-          status_consulta?: string
-          telefone?: string
+          last_message_at?: string | null
+          subject?: string | null
+          type?: Database["public"]["Enums"]["oli_conversation_type"]
           updated_at?: string
         }
         Relationships: []
       }
-      documents: {
+      oli_driver_licenses: {
         Row: {
-          content: string | null
-          embedding: string | null
-          id: number
-          metadata: Json | null
-          title: string | null
+          back_path: string | null
+          category: string | null
+          created_at: string
+          document_url: string | null
+          expires_at: string | null
+          front_path: string | null
+          full_name: string | null
+          id: string
+          license_number: string | null
+          notes: string | null
+          selfie_path: string | null
+          status: Database["public"]["Enums"]["oli_driver_license_status"]
+          storage_path: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
-          content?: string | null
-          embedding?: string | null
-          id?: number
-          metadata?: Json | null
-          title?: string | null
+          back_path?: string | null
+          category?: string | null
+          created_at?: string
+          document_url?: string | null
+          expires_at?: string | null
+          front_path?: string | null
+          full_name?: string | null
+          id?: string
+          license_number?: string | null
+          notes?: string | null
+          selfie_path?: string | null
+          status?: Database["public"]["Enums"]["oli_driver_license_status"]
+          storage_path?: string | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
-          content?: string | null
-          embedding?: string | null
-          id?: number
-          metadata?: Json | null
-          title?: string | null
-        }
-        Relationships: []
-      }
-      "Iphones Contato": {
-        Row: {
-          Celular: string | null
-          "E-mail": string | null
-          id: number
-          Nome: string
-        }
-        Insert: {
-          Celular?: string | null
-          "E-mail"?: string | null
-          id: number
-          Nome: string
-        }
-        Update: {
-          Celular?: string | null
-          "E-mail"?: string | null
-          id?: number
-          Nome?: string
-        }
-        Relationships: []
-      }
-      mensagem_processos: {
-        Row: {
-          conteudo_texto: string | null
-          id: number
-          message_id: string | null
-          metadados_imagem: Json | null
-          status: string | null
-          timestamp_chegada: string | null
-          tipo: string
-          url_imagem: string | null
-        }
-        Insert: {
-          conteudo_texto?: string | null
-          id?: number
-          message_id?: string | null
-          metadados_imagem?: Json | null
-          status?: string | null
-          timestamp_chegada?: string | null
-          tipo: string
-          url_imagem?: string | null
-        }
-        Update: {
-          conteudo_texto?: string | null
-          id?: number
-          message_id?: string | null
-          metadados_imagem?: Json | null
-          status?: string | null
-          timestamp_chegada?: string | null
-          tipo?: string
-          url_imagem?: string | null
-        }
-        Relationships: []
-      }
-      n8n_chat_agentesdr: {
-        Row: {
-          id: number
-          message: Json
-          session_id: string
-        }
-        Insert: {
-          id?: number
-          message: Json
-          session_id: string
-        }
-        Update: {
-          id?: number
-          message?: Json
-          session_id?: string
-        }
-        Relationships: []
-      }
-      n8n_chat_histories: {
-        Row: {
-          id: number
-          message: Json
-          session_id: string
-        }
-        Insert: {
-          id?: number
-          message: Json
-          session_id: string
-        }
-        Update: {
-          id?: number
-          message?: Json
-          session_id?: string
+          back_path?: string | null
+          category?: string | null
+          created_at?: string
+          document_url?: string | null
+          expires_at?: string | null
+          front_path?: string | null
+          full_name?: string | null
+          id?: string
+          license_number?: string | null
+          notes?: string | null
+          selfie_path?: string | null
+          status?: Database["public"]["Enums"]["oli_driver_license_status"]
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }
@@ -305,7 +178,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          inspection_kind: Database["public"]["Enums"]["oli_inspection_type"]
+          inspection_kind: Database["public"]["Enums"]["oli_inspection_kind"]
           notes: string | null
           performed_by: string
           rental_id: string
@@ -315,7 +188,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          inspection_kind: Database["public"]["Enums"]["oli_inspection_type"]
+          inspection_kind: Database["public"]["Enums"]["oli_inspection_kind"]
           notes?: string | null
           performed_by: string
           rental_id: string
@@ -325,7 +198,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          inspection_kind?: Database["public"]["Enums"]["oli_inspection_type"]
+          inspection_kind?: Database["public"]["Enums"]["oli_inspection_kind"]
           notes?: string | null
           performed_by?: string
           rental_id?: string
@@ -333,13 +206,6 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "oli_inspections_performed_by_fkey"
-            columns: ["performed_by"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "oli_inspections_rental_id_fkey"
             columns: ["rental_id"]
@@ -352,6 +218,50 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "oli_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oli_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          id: string
+          metadata: Json
+          sender_id: string
+          type: Database["public"]["Enums"]["oli_message_type"]
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          metadata?: Json
+          sender_id: string
+          type?: Database["public"]["Enums"]["oli_message_type"]
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          metadata?: Json
+          sender_id?: string
+          type?: Database["public"]["Enums"]["oli_message_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oli_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "oli_conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -401,13 +311,6 @@ export type Database = {
             referencedRelation: "oli_rentals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "oli_payments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       oli_profiles: {
@@ -415,6 +318,12 @@ export type Database = {
           birth_date: string | null
           cpf: string | null
           created_at: string
+          driver_license_id: string | null
+          driver_license_status:
+            | Database["public"]["Enums"]["oli_driver_license_status"]
+            | null
+          driver_license_verified_at: string | null
+          email: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -426,6 +335,12 @@ export type Database = {
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          driver_license_id?: string | null
+          driver_license_status?:
+            | Database["public"]["Enums"]["oli_driver_license_status"]
+            | null
+          driver_license_verified_at?: string | null
+          email?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -437,6 +352,12 @@ export type Database = {
           birth_date?: string | null
           cpf?: string | null
           created_at?: string
+          driver_license_id?: string | null
+          driver_license_status?:
+            | Database["public"]["Enums"]["oli_driver_license_status"]
+            | null
+          driver_license_verified_at?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
@@ -444,12 +365,21 @@ export type Database = {
           updated_at?: string
           whatsapp_phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "oli_profiles_driver_license_id_fkey"
+            columns: ["driver_license_id"]
+            isOneToOne: false
+            referencedRelation: "oli_driver_licenses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       oli_rental_contracts: {
         Row: {
           contract_number: string | null
           created_at: string
+          driver_license_id: string | null
           file_url: string | null
           id: string
           owner_signed_at: string | null
@@ -462,6 +392,7 @@ export type Database = {
         Insert: {
           contract_number?: string | null
           created_at?: string
+          driver_license_id?: string | null
           file_url?: string | null
           id?: string
           owner_signed_at?: string | null
@@ -474,6 +405,7 @@ export type Database = {
         Update: {
           contract_number?: string | null
           created_at?: string
+          driver_license_id?: string | null
           file_url?: string | null
           id?: string
           owner_signed_at?: string | null
@@ -485,9 +417,16 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "oli_rental_contracts_driver_license_id_fkey"
+            columns: ["driver_license_id"]
+            isOneToOne: false
+            referencedRelation: "oli_driver_licenses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "oli_rental_contracts_rental_id_fkey"
             columns: ["rental_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "oli_rentals"
             referencedColumns: ["id"]
           },
@@ -497,6 +436,7 @@ export type Database = {
         Row: {
           created_at: string
           deposit_amount: number | null
+          driver_license_id: string | null
           dropoff_location: string | null
           end_date: string
           id: string
@@ -514,6 +454,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deposit_amount?: number | null
+          driver_license_id?: string | null
           dropoff_location?: string | null
           end_date: string
           id?: string
@@ -531,6 +472,7 @@ export type Database = {
         Update: {
           created_at?: string
           deposit_amount?: number | null
+          driver_license_id?: string | null
           dropoff_location?: string | null
           end_date?: string
           id?: string
@@ -547,17 +489,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "oli_rentals_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "oli_rentals_driver_license_id_fkey"
+            columns: ["driver_license_id"]
             isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "oli_rentals_renter_id_fkey"
-            columns: ["renter_id"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
+            referencedRelation: "oli_driver_licenses"
             referencedColumns: ["id"]
           },
           {
@@ -618,15 +553,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "oli_user_addresses_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       oli_user_documents: {
         Row: {
@@ -671,15 +598,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "oli_user_documents_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       oli_vehicle_photos: {
         Row: {
@@ -715,6 +634,7 @@ export type Database = {
       }
       oli_vehicles: {
         Row: {
+          body_type: Database["public"]["Enums"]["oli_vehicle_body_type"] | null
           brand: string | null
           color: string | null
           created_at: string
@@ -723,6 +643,7 @@ export type Database = {
           fuel_type: string | null
           id: string
           is_active: boolean
+          is_popular: boolean
           location_city: string | null
           location_state: string | null
           model: string | null
@@ -731,16 +652,19 @@ export type Database = {
           plate: string | null
           renavam: string | null
           seats: number | null
+          segment: Database["public"]["Enums"]["oli_vehicle_segment"] | null
           status: Database["public"]["Enums"]["oli_vehicle_status"]
           title: string | null
-          transmission:
-            | Database["public"]["Enums"]["oli_transmission_type"]
-            | null
+          transmission: Database["public"]["Enums"]["oli_transmission"] | null
           updated_at: string
+          vehicle_type: Database["public"]["Enums"]["oli_vehicle_type"]
           weekly_price: number | null
           year: number | null
         }
         Insert: {
+          body_type?:
+            | Database["public"]["Enums"]["oli_vehicle_body_type"]
+            | null
           brand?: string | null
           color?: string | null
           created_at?: string
@@ -749,6 +673,7 @@ export type Database = {
           fuel_type?: string | null
           id?: string
           is_active?: boolean
+          is_popular?: boolean
           location_city?: string | null
           location_state?: string | null
           model?: string | null
@@ -757,16 +682,19 @@ export type Database = {
           plate?: string | null
           renavam?: string | null
           seats?: number | null
+          segment?: Database["public"]["Enums"]["oli_vehicle_segment"] | null
           status?: Database["public"]["Enums"]["oli_vehicle_status"]
           title?: string | null
-          transmission?:
-            | Database["public"]["Enums"]["oli_transmission_type"]
-            | null
+          transmission?: Database["public"]["Enums"]["oli_transmission"] | null
           updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["oli_vehicle_type"]
           weekly_price?: number | null
           year?: number | null
         }
         Update: {
+          body_type?:
+            | Database["public"]["Enums"]["oli_vehicle_body_type"]
+            | null
           brand?: string | null
           color?: string | null
           created_at?: string
@@ -775,6 +703,7 @@ export type Database = {
           fuel_type?: string | null
           id?: string
           is_active?: boolean
+          is_popular?: boolean
           location_city?: string | null
           location_state?: string | null
           model?: string | null
@@ -783,138 +712,14 @@ export type Database = {
           plate?: string | null
           renavam?: string | null
           seats?: number | null
+          segment?: Database["public"]["Enums"]["oli_vehicle_segment"] | null
           status?: Database["public"]["Enums"]["oli_vehicle_status"]
           title?: string | null
-          transmission?:
-            | Database["public"]["Enums"]["oli_transmission_type"]
-            | null
+          transmission?: Database["public"]["Enums"]["oli_transmission"] | null
           updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["oli_vehicle_type"]
           weekly_price?: number | null
           year?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "oli_vehicles_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "oli_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pedidos_assas_pagamento: {
-        Row: {
-          cobranca_id: string | null
-          created_at: string | null
-          id_asaas: string | null
-          invoiceUrl: string | null
-          pedido_id: number
-          resumo: string | null
-          status: string | null
-          user_id: number | null
-          valor: number | null
-        }
-        Insert: {
-          cobranca_id?: string | null
-          created_at?: string | null
-          id_asaas?: string | null
-          invoiceUrl?: string | null
-          pedido_id?: number
-          resumo?: string | null
-          status?: string | null
-          user_id?: number | null
-          valor?: number | null
-        }
-        Update: {
-          cobranca_id?: string | null
-          created_at?: string | null
-          id_asaas?: string | null
-          invoiceUrl?: string | null
-          pedido_id?: number
-          resumo?: string | null
-          status?: string | null
-          user_id?: number | null
-          valor?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pedidos_assas_pagamento_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "usuarios_asas_pagamento"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      reparo_iphone: {
-        Row: {
-          alto_falante: number | null
-          bateria: number | null
-          camera_frontal: number | null
-          carcaca: number | null
-          conector_carga: number | null
-          created_at: string
-          id: number
-          modelo_iphone: string | null
-          tampa_traseira: number | null
-          tela_original: number | null
-          tela_premium: number | null
-          vidro_frontal: number | null
-        }
-        Insert: {
-          alto_falante?: number | null
-          bateria?: number | null
-          camera_frontal?: number | null
-          carcaca?: number | null
-          conector_carga?: number | null
-          created_at?: string
-          id?: number
-          modelo_iphone?: string | null
-          tampa_traseira?: number | null
-          tela_original?: number | null
-          tela_premium?: number | null
-          vidro_frontal?: number | null
-        }
-        Update: {
-          alto_falante?: number | null
-          bateria?: number | null
-          camera_frontal?: number | null
-          carcaca?: number | null
-          conector_carga?: number | null
-          created_at?: string
-          id?: number
-          modelo_iphone?: string | null
-          tampa_traseira?: number | null
-          tela_original?: number | null
-          tela_premium?: number | null
-          vidro_frontal?: number | null
-        }
-        Relationships: []
-      }
-      usuarios_asas_pagamento: {
-        Row: {
-          cpf: string | null
-          created_at: string | null
-          email: string | null
-          id_assas: string | null
-          nome: string | null
-          user_id: number
-        }
-        Insert: {
-          cpf?: string | null
-          created_at?: string | null
-          email?: string | null
-          id_assas?: string | null
-          nome?: string | null
-          user_id?: number
-        }
-        Update: {
-          cpf?: string | null
-          created_at?: string | null
-          email?: string | null
-          id_assas?: string | null
-          nome?: string | null
-          user_id?: number
         }
         Relationships: []
       }
@@ -923,63 +728,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      enqueue_inbox: {
-        Args: {
-          p_chat_id: string
-          p_payload: Json
-          p_source_msg_id: string
-          p_ts_arrival_ms?: number
-        }
-        Returns: {
-          id: number
-        }[]
-      }
-      match_documents: {
-        Args: { filter?: Json; match_count?: number; query_embedding: string }
-        Returns: {
-          content: string
-          id: number
-          metadata: Json
-          similarity: number
-        }[]
-      }
-      normalize_br_phone: {
-        Args: { ddd_default?: string; p_in: string }
+      oli_create_direct_conversation: {
+        Args: { other_user_id: string }
         Returns: string
       }
-      normalize_email: { Args: { e_in: string }; Returns: string }
     }
     Enums: {
-      oli_contract_status:
-        | "pending"
-        | "partially_signed"
-        | "signed"
-        | "cancelled"
+      oli_contract_status: "pending" | "signed" | "cancelled"
+      oli_conversation_type: "direct" | "support" | "group"
       oli_document_status: "pending" | "approved" | "rejected"
-      oli_document_type:
-        | "cpf"
-        | "cnh"
-        | "rg"
-        | "passport"
-        | "selfie"
-        | "address_proof"
-        | "other"
-      oli_inspection_side: "owner" | "renter" | "platform"
-      oli_inspection_type: "checkin" | "checkout"
+      oli_document_type: "cnh" | "rg" | "cpf" | "comprovante_residencia"
+      oli_driver_license_status: "pending" | "approved" | "rejected"
+      oli_inspection_kind: "pickup" | "dropoff"
+      oli_inspection_side: "front" | "back" | "left" | "right" | "interior"
+      oli_license_status: "pending" | "approved" | "rejected"
+      oli_message_type: "text" | "system"
       oli_payment_status: "pending" | "paid" | "failed" | "refunded"
-      oli_payment_type: "deposit" | "rental" | "fine" | "other"
+      oli_payment_type: "rental" | "deposit" | "fine"
       oli_rental_status:
         | "pending_approval"
-        | "awaiting_payment"
-        | "confirmed"
-        | "in_use"
+        | "approved"
+        | "active"
         | "completed"
         | "cancelled"
-        | "no_show"
-        | "problem"
-      oli_transmission_type: "manual" | "automatic" | "other"
+      oli_transmission: "manual" | "automatic"
       oli_user_role: "renter" | "owner" | "both"
-      oli_vehicle_status: "available" | "unavailable" | "maintenance"
+      oli_vehicle_body_type:
+        | "hatch"
+        | "sedan"
+        | "suv"
+        | "pickup"
+        | "van"
+        | "coupe"
+        | "wagon"
+        | "other"
+      oli_vehicle_segment: "economy" | "standard" | "premium" | "luxury"
+      oli_vehicle_status: "available" | "rented" | "maintenance" | "inactive"
+      oli_vehicle_type:
+        | "carro"
+        | "moto"
+        | "van"
+        | "caminhonete"
+        | "suv"
+        | "outro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1107,39 +898,39 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      oli_contract_status: [
-        "pending",
-        "partially_signed",
-        "signed",
-        "cancelled",
-      ],
+      oli_contract_status: ["pending", "signed", "cancelled"],
+      oli_conversation_type: ["direct", "support", "group"],
       oli_document_status: ["pending", "approved", "rejected"],
-      oli_document_type: [
-        "cpf",
-        "cnh",
-        "rg",
-        "passport",
-        "selfie",
-        "address_proof",
-        "other",
-      ],
-      oli_inspection_side: ["owner", "renter", "platform"],
-      oli_inspection_type: ["checkin", "checkout"],
+      oli_document_type: ["cnh", "rg", "cpf", "comprovante_residencia"],
+      oli_driver_license_status: ["pending", "approved", "rejected"],
+      oli_inspection_kind: ["pickup", "dropoff"],
+      oli_inspection_side: ["front", "back", "left", "right", "interior"],
+      oli_license_status: ["pending", "approved", "rejected"],
+      oli_message_type: ["text", "system"],
       oli_payment_status: ["pending", "paid", "failed", "refunded"],
-      oli_payment_type: ["deposit", "rental", "fine", "other"],
+      oli_payment_type: ["rental", "deposit", "fine"],
       oli_rental_status: [
         "pending_approval",
-        "awaiting_payment",
-        "confirmed",
-        "in_use",
+        "approved",
+        "active",
         "completed",
         "cancelled",
-        "no_show",
-        "problem",
       ],
-      oli_transmission_type: ["manual", "automatic", "other"],
+      oli_transmission: ["manual", "automatic"],
       oli_user_role: ["renter", "owner", "both"],
-      oli_vehicle_status: ["available", "unavailable", "maintenance"],
+      oli_vehicle_body_type: [
+        "hatch",
+        "sedan",
+        "suv",
+        "pickup",
+        "van",
+        "coupe",
+        "wagon",
+        "other",
+      ],
+      oli_vehicle_segment: ["economy", "standard", "premium", "luxury"],
+      oli_vehicle_status: ["available", "rented", "maintenance", "inactive"],
+      oli_vehicle_type: ["carro", "moto", "van", "caminhonete", "suv", "outro"],
     },
   },
 } as const
