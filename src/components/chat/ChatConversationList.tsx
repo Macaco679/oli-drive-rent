@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getMyConversations, ConversationWithDetails } from "@/lib/chatService";
+import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/lib/supabase";
 import { MessageCircle, Search, Car, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -56,13 +58,9 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  const loadConversations = async () => {
-    setLoading(true);
+  const loadConversations = useCallback(async () => {
     try {
       const data = await getMyConversations();
       setConversations(data);
@@ -71,7 +69,44 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    const init = async () => {
+      const { user } = await getCurrentUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+      loadConversations();
+    };
+    init();
+  }, [loadConversations]);
+
+  // Real-time subscription for new messages to update the list
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel(`conversation-list-${currentUserId}-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "oli_messages",
+        },
+        () => {
+          // Reload conversations when any new message arrives
+          loadConversations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, loadConversations]);
 
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery.trim()) return true;

@@ -35,39 +35,50 @@ export function ChatWidget() {
 
     loadUnreadCount();
 
-    // Subscribe to new messages globally
-    const channel = supabase
-      .channel("global-messages-notification")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "oli_messages",
-        },
-        async (payload) => {
-          const newMsg = payload.new as any;
-          const { user } = await getCurrentUser();
-          
-          // Only count if not from current user
-          if (user && newMsg.sender_id !== user.id) {
-            // Play notification sound
-            playNotificationSound();
+    const setupSubscription = async () => {
+      const { user } = await getCurrentUser();
+      if (!user) return;
+
+      // Subscribe to new messages globally with unique channel
+      const channel = supabase
+        .channel(`global-messages-${user.id}-${Date.now()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "oli_messages",
+          },
+          async (payload) => {
+            const newMsg = payload.new as any;
             
-            // Update badge if not in active conversation
-            if (!isOpen || newMsg.conversation_id !== activeConversationId) {
-              setTotalUnread((prev) => prev + 1);
-            } else {
-              // Auto mark as read if conversation is open
-              markConversationAsRead(newMsg.conversation_id);
+            // Only count if not from current user
+            if (newMsg.sender_id !== user.id) {
+              // Play notification sound
+              playNotificationSound();
+              
+              // Update badge if not in active conversation
+              if (!isOpen || newMsg.conversation_id !== activeConversationId) {
+                setTotalUnread((prev) => prev + 1);
+              } else {
+                // Auto mark as read if conversation is open
+                markConversationAsRead(newMsg.conversation_id);
+              }
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+
+      return channel;
+    };
+
+    let channel: any;
+    setupSubscription().then(c => { channel = c; });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [isAuthenticated, isOpen, activeConversationId, playNotificationSound]);
 
