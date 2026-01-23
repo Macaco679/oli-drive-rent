@@ -46,8 +46,10 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
   useEffect(() => {
     if (!currentUserId) return;
 
+    console.log("[ChatConversationView] Setting up realtime subscription for conversation:", conversationId);
+
     const channel = supabase
-      .channel(`chat-${conversationId}-${currentUserId}`)
+      .channel(`widget-chat-${conversationId}-${currentUserId}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -57,11 +59,14 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
+          console.log("[ChatConversationView] Received new message:", payload.new);
           const newMsg = payload.new as Message;
           setMessages((prev) => {
-            // Avoid duplicates
+            // Avoid duplicates (check both real id and temp ids)
             if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
+            // Also filter out temp messages that match this new message (optimistic update replacement)
+            const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.body !== newMsg.body);
+            return [...filtered, newMsg];
           });
           // Mark as read if message is from other user
           if (newMsg.sender_id !== currentUserId) {
@@ -70,9 +75,12 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[ChatConversationView] Subscription status:", status);
+      });
 
     return () => {
+      console.log("[ChatConversationView] Cleaning up subscription");
       supabase.removeChannel(channel);
     };
   }, [conversationId, currentUserId, onRead]);
