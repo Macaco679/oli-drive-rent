@@ -37,8 +37,16 @@ export interface ConversationWithDetails extends Conversation {
   otherParticipant?: {
     id: string;
     full_name?: string;
+    role?: string; // 'owner' | 'renter' | 'both'
   };
   unreadCount?: number;
+  // Vehicle context (if conversation originated from a vehicle/rental)
+  vehicleContext?: {
+    vehicleId: string;
+    vehicleTitle: string;
+  };
+  // Derived role label
+  roleLabel?: string; // "Proprietário" | "Locatário"
 }
 
 // Helper para queries em tabelas ainda não tipadas
@@ -64,7 +72,7 @@ export async function getOrCreateDirectConversation(otherUserId: string): Promis
   }
 }
 
-// Buscar todas as conversas do usuário
+// Buscar todas as conversas do usuário com contexto de veículo
 export async function getMyConversations(): Promise<ConversationWithDetails[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
@@ -89,7 +97,7 @@ export async function getMyConversations(): Promise<ConversationWithDetails[]> {
 
   if (!conversations) return [];
 
-  // Para cada conversa, buscar o outro participante e última mensagem
+  // Para cada conversa, buscar o outro participante, última mensagem e contexto
   const conversationsWithDetails: ConversationWithDetails[] = await Promise.all(
     conversations.map(async (conv: any) => {
       // Buscar outro participante
@@ -101,14 +109,44 @@ export async function getMyConversations(): Promise<ConversationWithDetails[]> {
         .limit(1)
         .single();
 
-      let otherUser = null;
+      let otherUser: { id: string; full_name?: string; role?: string } | null = null;
+      let roleLabel: string | undefined;
+      
       if (otherParticipant) {
         const { data: profile } = await supabase
           .from("oli_profiles")
-          .select("id, full_name")
+          .select("id, full_name, role")
           .eq("id", otherParticipant.user_id)
           .single();
-        otherUser = profile;
+        
+        if (profile) {
+          otherUser = { 
+            id: profile.id, 
+            full_name: profile.full_name || undefined,
+            role: profile.role || undefined
+          };
+          
+          // Determine role label based on context
+          // Check if current user has vehicles (is an owner)
+          const { count: vehicleCount } = await db
+            .from("oli_vehicles")
+            .select("*", { count: "exact", head: true })
+            .eq("owner_id", user.id);
+          
+          // Check if other user has vehicles
+          const { count: otherVehicleCount } = await db
+            .from("oli_vehicles")
+            .select("*", { count: "exact", head: true })
+            .eq("owner_id", profile.id);
+          
+          // If other user has vehicles, they are a "Proprietário" to us
+          // If we have vehicles, other user is likely a "Locatário"
+          if (otherVehicleCount && otherVehicleCount > 0) {
+            roleLabel = "Proprietário";
+          } else if (vehicleCount && vehicleCount > 0) {
+            roleLabel = "Locatário";
+          }
+        }
       }
 
       // Buscar última mensagem
@@ -143,11 +181,34 @@ export async function getMyConversations(): Promise<ConversationWithDetails[]> {
         unreadCount = count || 0;
       }
 
+      // Try to find vehicle context from rentals between these users
+      let vehicleContext: { vehicleId: string; vehicleTitle: string } | undefined;
+      if (otherUser) {
+        const { data: rental } = await db
+          .from("oli_rentals")
+          .select("vehicle_id, oli_vehicles(id, title, brand, model)")
+          .or(`renter_id.eq.${user.id},owner_id.eq.${user.id}`)
+          .or(`renter_id.eq.${otherUser.id},owner_id.eq.${otherUser.id}`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (rental?.oli_vehicles) {
+          const v = rental.oli_vehicles;
+          vehicleContext = {
+            vehicleId: v.id,
+            vehicleTitle: v.title || `${v.brand || ''} ${v.model || ''}`.trim() || 'Veículo'
+          };
+        }
+      }
+
       return {
         ...conv,
         lastMessage: lastMessage || undefined,
         otherParticipant: otherUser || undefined,
         unreadCount,
+        vehicleContext,
+        roleLabel,
       } as ConversationWithDetails;
     })
   );
