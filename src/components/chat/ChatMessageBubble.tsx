@@ -3,15 +3,23 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Message } from "@/lib/chatService";
 import { useState } from "react";
+import { Check, CheckCheck, Clock } from "lucide-react";
+
+export type MessageStatus = "sending" | "sent" | "delivered" | "read";
 
 interface ChatMessageBubbleProps {
   message: Message;
   isOwn: boolean;
+  status?: MessageStatus;
 }
 
-export function ChatMessageBubble({ message, isOwn }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isOwn, status = "sent" }: ChatMessageBubbleProps) {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  
+  // Check if this is an optimistic message (temp id)
+  const isSending = message.id.startsWith("temp-");
+  const effectiveStatus = isSending ? "sending" : status;
   
   // Check if message is an image (type = 'image' or body contains image URL)
   const isImage = message.type === "image" || 
@@ -21,6 +29,23 @@ export function ChatMessageBubble({ message, isOwn }: ChatMessageBubbleProps) {
 
   const imageUrl = (message.metadata as any)?.imageUrl || message.body;
 
+  const renderStatusIcon = () => {
+    if (!isOwn) return null;
+    
+    switch (effectiveStatus) {
+      case "sending":
+        return <Clock className="w-3 h-3 text-primary-foreground/50" />;
+      case "sent":
+        return <Check className="w-3 h-3 text-primary-foreground/70" />;
+      case "delivered":
+        return <CheckCheck className="w-3 h-3 text-primary-foreground/70" />;
+      case "read":
+        return <CheckCheck className="w-3 h-3 text-blue-400" />;
+      default:
+        return <Check className="w-3 h-3 text-primary-foreground/70" />;
+    }
+  };
+
   return (
     <div className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
       <div
@@ -29,7 +54,8 @@ export function ChatMessageBubble({ message, isOwn }: ChatMessageBubbleProps) {
           isImage ? "p-1" : "px-3 py-2",
           isOwn
             ? "bg-primary text-primary-foreground rounded-br-sm"
-            : "bg-secondary text-secondary-foreground rounded-bl-sm"
+            : "bg-secondary text-secondary-foreground rounded-bl-sm",
+          isSending && "opacity-70"
         )}
       >
         {isImage && !imageError ? (
@@ -62,15 +88,23 @@ export function ChatMessageBubble({ message, isOwn }: ChatMessageBubbleProps) {
           <p className="whitespace-pre-wrap break-words">{message.body}</p>
         )}
         
-        <p
+        <div
           className={cn(
-            "text-[10px] mt-1",
+            "flex items-center gap-1 mt-1",
             isImage && "px-2",
-            isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+            isOwn ? "justify-end" : "justify-start"
           )}
         >
-          {format(new Date(message.created_at), "HH:mm", { locale: ptBR })}
-        </p>
+          <span
+            className={cn(
+              "text-[10px]",
+              isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+            )}
+          >
+            {format(new Date(message.created_at), "HH:mm", { locale: ptBR })}
+          </span>
+          {renderStatusIcon()}
+        </div>
       </div>
     </div>
   );
