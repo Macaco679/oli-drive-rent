@@ -83,57 +83,74 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
     init();
   }, [loadConversations]);
 
-  // Real-time subscription for new messages to update the list
+  // Real-time subscription for messages (INSERT, UPDATE, DELETE)
   useEffect(() => {
     if (!currentUserId) return;
 
+    const handleMessageChange = (payload: any, eventType: string) => {
+      const msg = payload.new || payload.old;
+      if (!msg) return;
+
+      setConversations((prev) => {
+        let updated = prev.map((conv) => {
+          if (conv.id !== msg.conversation_id) return conv;
+
+          if (eventType === "DELETE" || msg.deleted_at) {
+            // Message deleted - reload would be cleaner but we can clear last message
+            if (conv.lastMessage?.id === msg.id) {
+              return { ...conv, lastMessage: undefined };
+            }
+            return conv;
+          }
+
+          // INSERT or UPDATE
+          const updatedConv: ConversationWithDetails = {
+            ...conv,
+            lastMessage: {
+              id: msg.id,
+              conversation_id: msg.conversation_id,
+              body: msg.body,
+              created_at: msg.created_at,
+              sender_id: msg.sender_id,
+              metadata: msg.metadata || {},
+              type: msg.type || "text",
+              edited_at: msg.edited_at || null,
+              deleted_at: msg.deleted_at || null,
+            },
+            // Increment unread only on INSERT from other user
+            unreadCount:
+              eventType === "INSERT" && msg.sender_id !== currentUserId
+                ? (conv.unreadCount || 0) + 1
+                : conv.unreadCount,
+          };
+          return updatedConv;
+        });
+
+        // Sort by last message time (most recent first)
+        return updated.sort((a, b) => {
+          const aTime = a.lastMessage?.created_at || a.created_at || "";
+          const bTime = b.lastMessage?.created_at || b.created_at || "";
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
+      });
+    };
+
     const channel = supabase
-      .channel(`conversation-list-${currentUserId}-${Date.now()}`)
+      .channel(`conversation-list-${currentUserId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "oli_messages",
-        },
-        (payload) => {
-          const newMsg = payload.new as any;
-          
-          // Update the specific conversation with the new message
-          setConversations((prev) => {
-            const updated = prev.map((conv) => {
-              if (conv.id === newMsg.conversation_id) {
-                const updatedConv: ConversationWithDetails = {
-                  ...conv,
-                  lastMessage: {
-                    id: newMsg.id,
-                    conversation_id: newMsg.conversation_id,
-                    body: newMsg.body,
-                    created_at: newMsg.created_at,
-                    sender_id: newMsg.sender_id,
-                    metadata: newMsg.metadata || {},
-                    type: newMsg.type || "text",
-                    edited_at: newMsg.edited_at || null,
-                    deleted_at: newMsg.deleted_at || null,
-                  },
-                  // Increment unread if message is from other user
-                  unreadCount: newMsg.sender_id !== currentUserId 
-                    ? (conv.unreadCount || 0) + 1 
-                    : conv.unreadCount,
-                };
-                return updatedConv;
-              }
-              return conv;
-            });
-            
-            // Sort by last message time (most recent first)
-            return updated.sort((a, b) => {
-              const aTime = a.lastMessage?.created_at || a.created_at || "";
-              const bTime = b.lastMessage?.created_at || b.created_at || "";
-              return new Date(bTime).getTime() - new Date(aTime).getTime();
-            });
-          });
-        }
+        { event: "INSERT", schema: "public", table: "oli_messages" },
+        (payload) => handleMessageChange(payload, "INSERT")
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "oli_messages" },
+        (payload) => handleMessageChange(payload, "UPDATE")
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "oli_messages" },
+        (payload) => handleMessageChange(payload, "DELETE")
       )
       .subscribe();
 
@@ -276,9 +293,17 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
                             conv.unreadCount && conv.unreadCount > 0 && "text-foreground font-medium"
                           )}
                         >
-                          {conv.lastMessage?.metadata?.imageUrl 
-                            ? "📷 Imagem" 
-                            : conv.lastMessage?.body || "Nenhuma mensagem"}
+                          {(() => {
+                            const lm = conv.lastMessage;
+                            if (!lm) return "Nenhuma mensagem";
+                            if (lm.deleted_at) return "🚫 Mensagem apagada";
+                            const isOwn = lm.sender_id === currentUserId;
+                            const prefix = isOwn ? "Você: " : "";
+                            const isImage = lm.metadata?.imageUrl || lm.body?.startsWith("https://") && /\.(jpg|jpeg|png|gif|webp)/i.test(lm.body);
+                            if (isImage) return `${prefix}📷 Imagem`;
+                            const edited = lm.edited_at ? " (editada)" : "";
+                            return `${prefix}${lm.body}${edited}`;
+                          })()}
                         </p>
                         {conv.unreadCount && conv.unreadCount > 0 && (
                           <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 font-bold">

@@ -43,9 +43,62 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     currentUserId
   );
 
+  // Initial load
   useEffect(() => {
     loadChat();
   }, [conversationId]);
+
+  // Fallback sync: poll every 2s for first 30s, then every 10s
+  useEffect(() => {
+    if (!currentUserId || loading) return;
+
+    let elapsed = 0;
+    const fastInterval = 2000; // 2s
+    const slowInterval = 10000; // 10s
+    const fastDuration = 30000; // 30s of fast polling
+
+    const poll = async () => {
+      try {
+        const msgs = await getMessages(conversationId);
+        setMessages((prev) => {
+          // Merge new messages, keeping optimistic ones
+          const optimistic = prev.filter((m) => m.id.startsWith("temp-"));
+          const realIds = new Set(msgs.map((m) => m.id));
+          const keptOptimistic = optimistic.filter(
+            (o) => !msgs.some((m) => m.body === o.body && m.sender_id === o.sender_id)
+          );
+          return [...msgs, ...keptOptimistic];
+        });
+      } catch (e) {
+        console.warn("[ChatConversationView] Poll failed:", e);
+      }
+    };
+
+    // Fast polling initially
+    const fastId = window.setInterval(() => {
+      elapsed += fastInterval;
+      if (elapsed <= fastDuration) {
+        poll();
+      }
+    }, fastInterval);
+
+    // After 30s, switch to slow polling
+    const slowTimeoutId = window.setTimeout(() => {
+      window.clearInterval(fastId);
+      const slowId = window.setInterval(poll, slowInterval);
+      // Store for cleanup
+      (window as any).__chatSlowPollId = slowId;
+    }, fastDuration);
+
+    return () => {
+      window.clearInterval(fastId);
+      window.clearTimeout(slowTimeoutId);
+      if ((window as any).__chatSlowPollId) {
+        window.clearInterval((window as any).__chatSlowPollId);
+        delete (window as any).__chatSlowPollId;
+      }
+    };
+  }, [conversationId, currentUserId, loading]);
 
   // Separate effect for realtime subscription - runs after currentUserId is set
   useEffect(() => {
