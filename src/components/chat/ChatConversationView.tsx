@@ -11,6 +11,7 @@ import { ChatMessageBubble } from "./ChatMessageBubble";
 import { ChatImageUpload } from "./ChatImageUpload";
 import { TypingIndicator } from "./TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
+import { toast } from "sonner";
 
 // Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
@@ -122,9 +123,12 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         // Message will be added via realtime subscription
         setNewMessage("");
         inputRef.current?.focus();
+      } else {
+        toast.error("Não foi possível enviar a mensagem. Tente novamente.");
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      toast.error("Erro ao enviar mensagem");
     } finally {
       setSending(false);
     }

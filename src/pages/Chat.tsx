@@ -11,6 +11,7 @@ import { ChatMessageBubble } from "@/components/chat/ChatMessageBubble";
 import { ChatImageUpload } from "@/components/chat/ChatImageUpload";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
+import { toast } from "sonner";
 
 // Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
@@ -112,12 +113,20 @@ export default function Chat() {
 
     setSending(true);
     stopTyping();
-    const sent = await sendMessage(conversationId, newMessage.trim());
-    if (sent) {
-      setNewMessage("");
-      inputRef.current?.focus();
+    try {
+      const sent = await sendMessage(conversationId, newMessage.trim());
+      if (sent) {
+        setNewMessage("");
+        inputRef.current?.focus();
+      } else {
+        toast.error("Não foi possível enviar a mensagem. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Erro ao enviar mensagem");
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const handleImageUploaded = async (imageUrl: string) => {
