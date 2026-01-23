@@ -7,10 +7,11 @@ import { ArrowLeft, Send, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChatMessageBubble } from "./ChatMessageBubble";
+import { ChatMessageBubble, MessageStatus } from "./ChatMessageBubble";
 import { ChatImageUpload } from "./ChatImageUpload";
 import { TypingIndicator } from "./TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { toast } from "sonner";
 
 // Helper para queries em tabelas ainda não tipadas
@@ -29,8 +30,12 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState("Usuário");
+  const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Notification sound hook
+  const { playNotificationSound } = useNotificationSound();
 
   // Typing indicator hook
   const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
@@ -68,10 +73,13 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.body !== newMsg.body);
             return [...filtered, newMsg];
           });
-          // Mark as read if message is from other user
+          // Play notification sound and mark as read if message is from other user
           if (newMsg.sender_id !== currentUserId) {
+            playNotificationSound();
             markConversationAsRead(conversationId);
             onRead?.();
+            // Mark message as read
+            setReadMessageIds((prev) => new Set([...prev, newMsg.id]));
           }
         }
       )
@@ -83,7 +91,7 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
       console.log("[ChatConversationView] Cleaning up subscription");
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId, onRead]);
+  }, [conversationId, currentUserId, onRead, playNotificationSound]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -233,13 +241,27 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             Nenhuma mensagem ainda. Comece a conversa!
           </div>
         ) : (
-          messages.map((msg) => (
-            <ChatMessageBubble
-              key={msg.id}
-              message={msg}
-              isOwn={msg.sender_id === currentUserId}
-            />
-          ))
+          messages.map((msg) => {
+            const isOwn = msg.sender_id === currentUserId;
+            // Determine message status
+            let status: MessageStatus = "sent";
+            if (msg.id.startsWith("temp-")) {
+              status = "sending";
+            } else if (isOwn && readMessageIds.has(msg.id)) {
+              status = "read";
+            } else if (isOwn) {
+              status = "delivered";
+            }
+            
+            return (
+              <ChatMessageBubble
+                key={msg.id}
+                message={msg}
+                isOwn={isOwn}
+                status={status}
+              />
+            );
+          })
         )}
         {isOtherUserTyping && (
           <div className="flex justify-start">

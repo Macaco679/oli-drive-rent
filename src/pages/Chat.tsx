@@ -7,10 +7,11 @@ import { ArrowLeft, Send, Mic } from "lucide-react";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { supabase } from "@/integrations/supabase/client";
-import { ChatMessageBubble } from "@/components/chat/ChatMessageBubble";
+import { ChatMessageBubble, MessageStatus } from "@/components/chat/ChatMessageBubble";
 import { ChatImageUpload } from "@/components/chat/ChatImageUpload";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { toast } from "sonner";
 
 // Helper para queries em tabelas ainda não tipadas
@@ -25,8 +26,12 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState<string>("Usuário");
+  const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Notification sound hook
+  const { playNotificationSound } = useNotificationSound();
 
   // Typing indicator hook
   const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
@@ -45,7 +50,7 @@ export default function Chat() {
     if (!conversationId || !currentUserId) return;
 
     const channel = supabase
-      .channel(`chat-page-${conversationId}-${currentUserId}`)
+      .channel(`chat-page-${conversationId}-${currentUserId}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -58,10 +63,14 @@ export default function Chat() {
           const newMsg = payload.new as Message;
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
+            // Filter out temp messages that match
+            const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.body !== newMsg.body);
+            return [...filtered, newMsg];
           });
           if (newMsg.sender_id !== currentUserId) {
+            playNotificationSound();
             markConversationAsRead(conversationId);
+            setReadMessageIds((prev) => new Set([...prev, newMsg.id]));
           }
         }
       )
@@ -70,7 +79,7 @@ export default function Chat() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId]);
+  }, [conversationId, currentUserId, playNotificationSound]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -226,13 +235,26 @@ export default function Chat() {
               Nenhuma mensagem ainda. Comece a conversa!
             </div>
           ) : (
-            messages.map((msg) => (
-              <ChatMessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={msg.sender_id === currentUserId}
-              />
-            ))
+            messages.map((msg) => {
+              const isOwn = msg.sender_id === currentUserId;
+              let status: MessageStatus = "sent";
+              if (msg.id.startsWith("temp-")) {
+                status = "sending";
+              } else if (isOwn && readMessageIds.has(msg.id)) {
+                status = "read";
+              } else if (isOwn) {
+                status = "delivered";
+              }
+              
+              return (
+                <ChatMessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isOwn={isOwn}
+                  status={status}
+                />
+              );
+            })
           )}
           {isOtherUserTyping && (
             <div className="flex justify-start">
