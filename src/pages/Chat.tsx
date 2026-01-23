@@ -37,36 +37,40 @@ export default function Chat() {
   useEffect(() => {
     if (conversationId) {
       loadChat();
-      
-      // Subscribe to new messages
-      const channel = supabase
-        .channel(`chat-page-${conversationId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "oli_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            const newMsg = payload.new as Message;
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
-            if (newMsg.sender_id !== currentUserId) {
-              markConversationAsRead(conversationId);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [conversationId]);
+
+  // Separate effect for realtime subscription - runs after currentUserId is set
+  useEffect(() => {
+    if (!conversationId || !currentUserId) return;
+
+    const channel = supabase
+      .channel(`chat-page-${conversationId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "oli_messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+          if (newMsg.sender_id !== currentUserId) {
+            markConversationAsRead(conversationId);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,20 +113,45 @@ export default function Chat() {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !conversationId || sending) return;
+    if (!newMessage.trim() || !conversationId || sending || !currentUserId) return;
 
+    const messageText = newMessage.trim();
     setSending(true);
     stopTyping();
+    setNewMessage("");
+
+    // Optimistic update - add message immediately to UI
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_id: currentUserId,
+      body: messageText,
+      type: "text",
+      metadata: {},
+      created_at: new Date().toISOString(),
+      edited_at: null,
+      deleted_at: null,
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
-      const sent = await sendMessage(conversationId, newMessage.trim());
+      const sent = await sendMessage(conversationId, messageText);
       if (sent) {
-        setNewMessage("");
+        // Replace optimistic message with real one
+        setMessages((prev) => 
+          prev.map((m) => m.id === optimisticMessage.id ? sent : m)
+        );
         inputRef.current?.focus();
       } else {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+        setNewMessage(messageText);
         toast.error("Não foi possível enviar a mensagem. Tente novamente.");
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setNewMessage(messageText);
       toast.error("Erro ao enviar mensagem");
     } finally {
       setSending(false);
