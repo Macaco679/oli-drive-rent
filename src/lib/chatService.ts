@@ -240,7 +240,8 @@ export async function sendImageMessage(conversationId: string, imageUrl: string)
     .insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      type: "image",
+      // DB enum supports only 'text' | 'system'. We keep image semantics in metadata/body.
+      type: "text",
       body: imageUrl,
       metadata: { imageUrl },
     })
