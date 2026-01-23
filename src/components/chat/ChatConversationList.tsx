@@ -96,9 +96,43 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
           schema: "public",
           table: "oli_messages",
         },
-        () => {
-          // Reload conversations when any new message arrives
-          loadConversations();
+        (payload) => {
+          const newMsg = payload.new as any;
+          
+          // Update the specific conversation with the new message
+          setConversations((prev) => {
+            const updated = prev.map((conv) => {
+              if (conv.id === newMsg.conversation_id) {
+                const updatedConv: ConversationWithDetails = {
+                  ...conv,
+                  lastMessage: {
+                    id: newMsg.id,
+                    conversation_id: newMsg.conversation_id,
+                    body: newMsg.body,
+                    created_at: newMsg.created_at,
+                    sender_id: newMsg.sender_id,
+                    metadata: newMsg.metadata || {},
+                    type: newMsg.type || "text",
+                    edited_at: newMsg.edited_at || null,
+                    deleted_at: newMsg.deleted_at || null,
+                  },
+                  // Increment unread if message is from other user
+                  unreadCount: newMsg.sender_id !== currentUserId 
+                    ? (conv.unreadCount || 0) + 1 
+                    : conv.unreadCount,
+                };
+                return updatedConv;
+              }
+              return conv;
+            });
+            
+            // Sort by last message time (most recent first)
+            return updated.sort((a, b) => {
+              const aTime = a.lastMessage?.created_at || a.created_at || "";
+              const bTime = b.lastMessage?.created_at || b.created_at || "";
+              return new Date(bTime).getTime() - new Date(aTime).getTime();
+            });
+          });
         }
       )
       .subscribe();
@@ -106,7 +140,7 @@ export function ChatConversationList({ onOpenConversation }: ChatConversationLis
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, loadConversations]);
+  }, [currentUserId]);
 
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery.trim()) return true;
