@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { getCurrentUser } from "@/lib/supabase";
 import { getOrCreateDirectConversation, getMyConversations, markConversationAsRead } from "@/lib/chatService";
@@ -22,7 +22,27 @@ export function ChatWidget() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { playNotificationSound } = useNotificationSound();
+
+  // Keep latest UI state for realtime callback without resubscribing
+  const isOpenRef = useRef(isOpen);
+  const activeConversationIdRef = useRef(activeConversationId);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    activeConversationIdRef.current = activeConversationId;
+  }, [isOpen, activeConversationId]);
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const conversations = await getMyConversations();
+      const total = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      setTotalUnread(total);
+    } catch (error) {
+      console.error("Error loading unread count:", error);
+    }
+  }, []);
 
   // Check authentication
   useEffect(() => {
@@ -31,56 +51,64 @@ export function ChatWidget() {
 
   // Load unread count and subscribe to new messages
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentUserId) return;
 
     loadUnreadCount();
 
-    const setupSubscription = async () => {
-      const { user } = await getCurrentUser();
-      if (!user) return;
+    // One stable global subscription per logged user
+    const channel = supabase
+      .channel(`global-messages-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "oli_messages",
+        },
+        async (payload) => {
+          const newMsg = payload.new as any;
+          if (!newMsg) return;
 
-      // Subscribe to new messages globally with unique channel
-      const channel = supabase
-        .channel(`global-messages-${user.id}-${Date.now()}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "oli_messages",
-          },
-          async (payload) => {
-            const newMsg = payload.new as any;
-            
-            // Only count if not from current user
-            if (newMsg.sender_id !== user.id) {
-              // Play notification sound
-              playNotificationSound();
-              
-              // Update badge if not in active conversation
-              if (!isOpen || newMsg.conversation_id !== activeConversationId) {
-                setTotalUnread((prev) => prev + 1);
-              } else {
-                // Auto mark as read if conversation is open
-                markConversationAsRead(newMsg.conversation_id);
-              }
-            }
+          // Ignore own messages
+          if (newMsg.sender_id === currentUserId) return;
+
+          // Play notification sound
+          playNotificationSound();
+
+          const isOpenNow = isOpenRef.current;
+          const activeConvNow = activeConversationIdRef.current;
+
+          // If user is currently viewing this conversation, mark as read.
+          if (isOpenNow && activeConvNow && newMsg.conversation_id === activeConvNow) {
+            await markConversationAsRead(newMsg.conversation_id);
+            // Keep badge accurate (server is source of truth)
+            setTimeout(loadUnreadCount, 200);
+            return;
           }
-        )
-        .subscribe();
 
-      return channel;
-    };
-
-    let channel: any;
-    setupSubscription().then(c => { channel = c; });
+          // Otherwise, bump badge quickly (optimistic) and refresh soon after
+          setTotalUnread((prev) => prev + 1);
+          setTimeout(loadUnreadCount, 400);
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, isOpen, activeConversationId, playNotificationSound]);
+  }, [isAuthenticated, currentUserId, playNotificationSound, loadUnreadCount]);
+
+  // Fallback: lightweight polling while widget is open to avoid "only updates after refresh"
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!isOpen) return;
+
+    const id = window.setInterval(() => {
+      loadUnreadCount();
+    }, 4000);
+
+    return () => window.clearInterval(id);
+  }, [isAuthenticated, isOpen, loadUnreadCount]);
 
   // Reset unread when opening widget
   useEffect(() => {
@@ -94,22 +122,14 @@ export function ChatWidget() {
     try {
       const { user } = await getCurrentUser();
       setIsAuthenticated(!!user);
+      setCurrentUserId(user?.id ?? null);
     } catch {
       setIsAuthenticated(false);
+      setCurrentUserId(null);
     } finally {
       setLoading(false);
     }
   };
-
-  const loadUnreadCount = useCallback(async () => {
-    try {
-      const conversations = await getMyConversations();
-      const total = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      setTotalUnread(total);
-    } catch (error) {
-      console.error("Error loading unread count:", error);
-    }
-  }, []);
 
   // Handle pending user conversation
   useEffect(() => {
