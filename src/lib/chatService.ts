@@ -249,11 +249,7 @@ export async function sendMessage(conversationId: string, body: string): Promise
     return null;
   }
 
-  // Atualizar last_message_at da conversa
-  await db
-    .from("oli_conversations")
-    .update({ last_message_at: new Date().toISOString() })
-    .eq("id", conversationId);
+  // last_message_at is updated automatically by trigger oli_touch_conversation_last_message
 
   // Enviar notificação por email para o destinatário
   sendMessageNotification(conversationId, user.id, body);
@@ -314,11 +310,7 @@ export async function sendImageMessage(conversationId: string, imageUrl: string)
     return null;
   }
 
-  // Atualizar last_message_at da conversa
-  await db
-    .from("oli_conversations")
-    .update({ last_message_at: new Date().toISOString() })
-    .eq("id", conversationId);
+  // last_message_at is updated automatically by trigger oli_touch_conversation_last_message
 
   return data;
 }
