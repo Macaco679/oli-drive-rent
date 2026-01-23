@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Calendar, MessageSquare, User, HelpCircle, LogIn, Car } from "lucide-react";
+import { Home, Search, Calendar, MessageCircle, User, HelpCircle, LogIn, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/supabase";
@@ -19,6 +19,7 @@ const authNavItems = [
   { path: "/search", label: "Buscar", icon: Search },
   { path: "/my-vehicles", label: "Meus Veículos", icon: Car },
   { path: "/reservations", label: "Reservas", icon: Calendar },
+  { path: "/messages", label: "Mensagens", icon: MessageCircle },
   { path: "/profile", label: "Perfil", icon: User },
 ];
 
