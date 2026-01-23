@@ -17,7 +17,8 @@ import {
   Timer, 
   CheckCircle2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft
 } from "lucide-react";
 import { 
   PixPaymentData, 
@@ -34,9 +35,10 @@ interface PixPaymentModalProps {
   onOpenChange: (open: boolean) => void;
   rental: (OliRental & { vehicle?: OliVehicle }) | null;
   onPaymentComplete?: () => void;
+  onBack?: () => void;
 }
 
-export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete }: PixPaymentModalProps) {
+export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete, onBack }: PixPaymentModalProps) {
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<PixPaymentData | null>(null);
   const [copied, setCopied] = useState(false);
@@ -154,10 +156,17 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" />
-            Pagamento via PIX
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            {onBack && !isPaid && (
+              <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
+              Pagamento via PIX
+            </DialogTitle>
+          </div>
         </DialogHeader>
 
         {loading ? (

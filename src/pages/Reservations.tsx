@@ -11,7 +11,9 @@ import { RentalCardOwner } from "@/components/reservations/RentalCardOwner";
 import { RentalDetailsModal } from "@/components/reservations/RentalDetailsModal";
 import { ContractViewModal } from "@/components/contracts/ContractViewModal";
 import { SignatureModal } from "@/components/contracts/SignatureModal";
+import { PaymentMethodSelector, PaymentMethod } from "@/components/payments/PaymentMethodSelector";
 import { PixPaymentModal } from "@/components/payments/PixPaymentModal";
+import { CardPaymentModal } from "@/components/payments/CardPaymentModal";
 import { toast } from "sonner";
 
 interface RentalWithVehicle extends OliRental {
@@ -28,7 +30,9 @@ export default function Reservations() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
+  const [showCardModal, setShowCardModal] = useState(false);
   const [contractMode, setContractMode] = useState<"owner" | "renter">("owner");
   const [selectedContract, setSelectedContract] = useState<RentalContract | null>(null);
   
@@ -104,7 +108,22 @@ export default function Reservations() {
 
   const handlePay = (rental: RentalWithVehicle) => {
     setSelectedRental(rental);
-    setShowPixModal(true);
+    setShowPaymentSelector(true);
+  };
+
+  const handleSelectPaymentMethod = (method: PaymentMethod) => {
+    setShowPaymentSelector(false);
+    if (method === "pix") {
+      setShowPixModal(true);
+    } else if (method === "card") {
+      setShowCardModal(true);
+    }
+  };
+
+  const handleBackToPaymentSelector = () => {
+    setShowPixModal(false);
+    setShowCardModal(false);
+    setShowPaymentSelector(true);
   };
 
   const handlePaymentComplete = () => {
@@ -225,12 +244,30 @@ export default function Reservations() {
         onSigned={handleContractSigned}
       />
 
+      {/* Modal: Seleção de Método de Pagamento */}
+      <PaymentMethodSelector
+        open={showPaymentSelector}
+        onOpenChange={setShowPaymentSelector}
+        rental={selectedRental}
+        onSelectMethod={handleSelectPaymentMethod}
+      />
+
       {/* Modal: Pagamento PIX */}
       <PixPaymentModal
         open={showPixModal}
         onOpenChange={setShowPixModal}
         rental={selectedRental}
         onPaymentComplete={handlePaymentComplete}
+        onBack={handleBackToPaymentSelector}
+      />
+
+      {/* Modal: Pagamento com Cartão */}
+      <CardPaymentModal
+        open={showCardModal}
+        onOpenChange={setShowCardModal}
+        rental={selectedRental}
+        onPaymentComplete={handlePaymentComplete}
+        onBack={handleBackToPaymentSelector}
       />
     </WebLayout>
   );
