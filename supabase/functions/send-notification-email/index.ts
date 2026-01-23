@@ -246,7 +246,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<{ i
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Oli Drive <noreply@olidrive.com.br>",
+      from: "Oli Locação <noreply@olilocacao.com.br>",
       to: [to],
       subject,
       html,
