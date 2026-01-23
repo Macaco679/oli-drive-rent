@@ -40,9 +40,14 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
 
   useEffect(() => {
     loadChat();
-    // Subscribe to new messages
+  }, [conversationId]);
+
+  // Separate effect for realtime subscription - runs after currentUserId is set
+  useEffect(() => {
+    if (!currentUserId) return;
+
     const channel = supabase
-      .channel(`chat-${conversationId}`)
+      .channel(`chat-${conversationId}-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -58,9 +63,10 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
-          // Mark as read if not from current user
+          // Mark as read if message is from other user
           if (newMsg.sender_id !== currentUserId) {
             markConversationAsRead(conversationId);
+            onRead?.();
           }
         }
       )
@@ -69,7 +75,7 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [conversationId, currentUserId, onRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,21 +119,45 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || !currentUserId) return;
 
+    const messageText = newMessage.trim();
     setSending(true);
     stopTyping();
+    setNewMessage("");
+
+    // Optimistic update - add message immediately to UI
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_id: currentUserId,
+      body: messageText,
+      type: "text",
+      metadata: {},
+      created_at: new Date().toISOString(),
+      edited_at: null,
+      deleted_at: null,
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
-      const sent = await sendMessage(conversationId, newMessage.trim());
+      const sent = await sendMessage(conversationId, messageText);
       if (sent) {
-        // Message will be added via realtime subscription
-        setNewMessage("");
+        // Replace optimistic message with real one
+        setMessages((prev) => 
+          prev.map((m) => m.id === optimisticMessage.id ? sent : m)
+        );
         inputRef.current?.focus();
       } else {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+        setNewMessage(messageText); // Restore message
         toast.error("Não foi possível enviar a mensagem. Tente novamente.");
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setNewMessage(messageText);
       toast.error("Erro ao enviar mensagem");
     } finally {
       setSending(false);
