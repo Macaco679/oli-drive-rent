@@ -751,6 +751,10 @@ export type Database = {
         Args: { _conversation_id: string }
         Returns: boolean
       }
+      oli_shares_conversation_with: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       oli_contract_status: "pending" | "signed" | "cancelled"
