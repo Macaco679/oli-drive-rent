@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Mic } from "lucide-react";
+import { ArrowLeft, Send, Mic, Loader2 } from "lucide-react";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +14,8 @@ import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { toast } from "sonner";
 
-// Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
+const PAGE_SIZE = 30;
 
 export default function Chat() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -23,17 +23,19 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState<string>("Usuário");
+  const [isOtherOnline, setIsOtherOnline] = useState(false);
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Notification sound hook
   const { playNotificationSound } = useNotificationSound();
-
-  // Typing indicator hook
   const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
     conversationId || "",
     currentUserId
@@ -45,7 +47,37 @@ export default function Chat() {
     }
   }, [conversationId]);
 
-  // Separate effect for realtime subscription - runs after currentUserId is set
+  // Supabase Presence for online status
+  useEffect(() => {
+    if (!conversationId || !currentUserId || !otherUserId) return;
+
+    const presenceChannel = supabase.channel(`presence-chat-${conversationId}`, {
+      config: { presence: { key: currentUserId } },
+    });
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        setIsOtherOnline(Object.keys(state).includes(otherUserId));
+      })
+      .on("presence", { event: "join" }, ({ key }) => {
+        if (key === otherUserId) setIsOtherOnline(true);
+      })
+      .on("presence", { event: "leave" }, ({ key }) => {
+        if (key === otherUserId) setIsOtherOnline(false);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [conversationId, currentUserId, otherUserId]);
+
+  // Realtime subscription
   useEffect(() => {
     if (!conversationId || !currentUserId) return;
 
@@ -63,8 +95,7 @@ export default function Chat() {
           const newMsg = payload.new as Message;
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
-            // Filter out temp messages that match
-            const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.body !== newMsg.body);
+            const filtered = prev.filter((m) => !m.id.startsWith("temp-") || m.body !== newMsg.body);
             return [...filtered, newMsg];
           });
           if (newMsg.sender_id !== currentUserId) {
@@ -95,14 +126,14 @@ export default function Chat() {
 
     if (!conversationId) return;
 
-    // Carregar mensagens
-    const msgs = await getMessages(conversationId);
+    // Load initial messages with pagination
+    const msgs = await getMessages(conversationId, { limit: PAGE_SIZE });
     setMessages(msgs);
+    setHasMore(msgs.length >= PAGE_SIZE);
 
-    // Marcar como lida
     await markConversationAsRead(conversationId);
 
-    // Buscar nome do outro participante
+    // Get other participant
     const { data: participants } = await db
       .from("oli_conversation_participants")
       .select("user_id")
@@ -112,6 +143,7 @@ export default function Chat() {
       .single();
 
     if (participants) {
+      setOtherUserId(participants.user_id);
       const profile = await getProfile(participants.user_id);
       if (profile?.full_name) {
         setOtherUserName(profile.full_name);
@@ -121,6 +153,53 @@ export default function Chat() {
     setLoading(false);
   };
 
+  // Load older messages (infinite scroll up)
+  const loadMoreMessages = useCallback(async () => {
+    if (loadingMore || !hasMore || messages.length === 0 || !conversationId) return;
+
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.created_at) return;
+
+    setLoadingMore(true);
+    try {
+      const olderMsgs = await getMessages(conversationId, {
+        limit: PAGE_SIZE,
+        before: oldestMessage.created_at,
+      });
+
+      if (olderMsgs.length === 0) {
+        setHasMore(false);
+      } else {
+        const container = messagesContainerRef.current;
+        const prevScrollHeight = container?.scrollHeight || 0;
+
+        setMessages((prev) => [...olderMsgs, ...prev]);
+        setHasMore(olderMsgs.length >= PAGE_SIZE);
+
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [conversationId, loadingMore, hasMore, messages]);
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      if (target.scrollTop < 50 && hasMore && !loadingMore) {
+        loadMoreMessages();
+      }
+    },
+    [hasMore, loadingMore, loadMoreMessages]
+  );
+
   const handleSend = async () => {
     if (!newMessage.trim() || !conversationId || sending || !currentUserId) return;
 
@@ -129,7 +208,6 @@ export default function Chat() {
     stopTyping();
     setNewMessage("");
 
-    // Optimistic update - add message immediately to UI
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: conversationId,
@@ -146,13 +224,9 @@ export default function Chat() {
     try {
       const sent = await sendMessage(conversationId, messageText);
       if (sent) {
-        // Replace optimistic message with real one
-        setMessages((prev) => 
-          prev.map((m) => m.id === optimisticMessage.id ? sent : m)
-        );
+        setMessages((prev) => prev.map((m) => (m.id === optimisticMessage.id ? sent : m)));
         inputRef.current?.focus();
       } else {
-        // Remove optimistic message on failure
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
         setNewMessage(messageText);
         toast.error("Não foi possível enviar a mensagem. Tente novamente.");
@@ -169,7 +243,7 @@ export default function Chat() {
 
   const handleImageUploaded = async (imageUrl: string) => {
     if (!conversationId) return;
-    
+
     setSending(true);
     try {
       await sendImageMessage(conversationId, imageUrl);
@@ -213,15 +287,22 @@ export default function Chat() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary font-semibold">
-              {otherUserName.charAt(0).toUpperCase()}
-            </span>
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-primary font-semibold">
+                {otherUserName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            {isOtherOnline && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background" />
+            )}
           </div>
           <div>
             <h1 className="font-semibold">{otherUserName}</h1>
             {isOtherUserTyping ? (
               <p className="text-sm text-primary">Digitando...</p>
+            ) : isOtherOnline ? (
+              <p className="text-sm text-emerald-600">Online</p>
             ) : (
               <p className="text-sm text-muted-foreground">Conversa</p>
             )}
@@ -229,7 +310,22 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
+          {loadingMore && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!hasMore && messages.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground py-2">
+              Início da conversa
+            </p>
+          )}
+
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               Nenhuma mensagem ainda. Comece a conversa!
@@ -245,14 +341,9 @@ export default function Chat() {
               } else if (isOwn) {
                 status = "delivered";
               }
-              
+
               return (
-                <ChatMessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isOwn={isOwn}
-                  status={status}
-                />
+                <ChatMessageBubble key={msg.id} message={msg} isOwn={isOwn} status={status} />
               );
             })
           )}
@@ -289,11 +380,7 @@ export default function Chat() {
               className="flex-1"
               disabled={sending}
             />
-            <Button
-              onClick={handleSend}
-              disabled={!newMessage.trim() || sending}
-              size="icon"
-            >
+            <Button onClick={handleSend} disabled={!newMessage.trim() || sending} size="icon">
               <Send className="w-5 h-5" />
             </Button>
           </div>

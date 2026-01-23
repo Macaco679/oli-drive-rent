@@ -1,12 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Mic } from "lucide-react";
+import { ArrowLeft, Send, Mic, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { ChatMessageBubble, MessageStatus } from "./ChatMessageBubble";
 import { ChatImageUpload } from "./ChatImageUpload";
 import { TypingIndicator } from "./TypingIndicator";
@@ -14,8 +13,8 @@ import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { toast } from "sonner";
 
-// Helper para queries em tabelas ainda não tipadas
 const db = supabase as any;
+const PAGE_SIZE = 30;
 
 interface ChatConversationViewProps {
   conversationId: string;
@@ -27,17 +26,19 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState("Usuário");
+  const [isOtherOnline, setIsOtherOnline] = useState(false);
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Notification sound hook
   const { playNotificationSound } = useNotificationSound();
-
-  // Typing indicator hook
   const { isOtherUserTyping, handleInputChange, stopTyping } = useChatTypingIndicator(
     conversationId,
     currentUserId
@@ -48,22 +49,50 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     loadChat();
   }, [conversationId]);
 
-  // Fallback sync: poll every 2s for first 30s, then every 10s
+  // Supabase Presence for online status
+  useEffect(() => {
+    if (!currentUserId || !otherUserId) return;
+
+    const presenceChannel = supabase.channel(`presence-chat-${conversationId}`, {
+      config: { presence: { key: currentUserId } },
+    });
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        setIsOtherOnline(Object.keys(state).includes(otherUserId));
+      })
+      .on("presence", { event: "join" }, ({ key }) => {
+        if (key === otherUserId) setIsOtherOnline(true);
+      })
+      .on("presence", { event: "leave" }, ({ key }) => {
+        if (key === otherUserId) setIsOtherOnline(false);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [conversationId, currentUserId, otherUserId]);
+
+  // Fallback sync polling
   useEffect(() => {
     if (!currentUserId || loading) return;
 
     let elapsed = 0;
-    const fastInterval = 2000; // 2s
-    const slowInterval = 10000; // 10s
-    const fastDuration = 30000; // 30s of fast polling
+    const fastInterval = 2000;
+    const slowInterval = 10000;
+    const fastDuration = 30000;
 
     const poll = async () => {
       try {
-        const msgs = await getMessages(conversationId);
+        const msgs = await getMessages(conversationId, { limit: PAGE_SIZE });
         setMessages((prev) => {
-          // Merge new messages, keeping optimistic ones
           const optimistic = prev.filter((m) => m.id.startsWith("temp-"));
-          const realIds = new Set(msgs.map((m) => m.id));
           const keptOptimistic = optimistic.filter(
             (o) => !msgs.some((m) => m.body === o.body && m.sender_id === o.sender_id)
           );
@@ -74,19 +103,14 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
       }
     };
 
-    // Fast polling initially
     const fastId = window.setInterval(() => {
       elapsed += fastInterval;
-      if (elapsed <= fastDuration) {
-        poll();
-      }
+      if (elapsed <= fastDuration) poll();
     }, fastInterval);
 
-    // After 30s, switch to slow polling
     const slowTimeoutId = window.setTimeout(() => {
       window.clearInterval(fastId);
       const slowId = window.setInterval(poll, slowInterval);
-      // Store for cleanup
       (window as any).__chatSlowPollId = slowId;
     }, fastDuration);
 
@@ -100,11 +124,9 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     };
   }, [conversationId, currentUserId, loading]);
 
-  // Separate effect for realtime subscription - runs after currentUserId is set
+  // Realtime subscription
   useEffect(() => {
     if (!currentUserId) return;
-
-    console.log("[ChatConversationView] Setting up realtime subscription for conversation:", conversationId);
 
     const channel = supabase
       .channel(`widget-chat-${conversationId}-${currentUserId}-${Date.now()}`)
@@ -117,55 +139,47 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          console.log("[ChatConversationView] Received new message:", payload.new);
           const newMsg = payload.new as Message;
           setMessages((prev) => {
-            // Avoid duplicates (check both real id and temp ids)
             if (prev.some((m) => m.id === newMsg.id)) return prev;
-            // Also filter out temp messages that match this new message (optimistic update replacement)
-            const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.body !== newMsg.body);
+            const filtered = prev.filter((m) => !m.id.startsWith("temp-") || m.body !== newMsg.body);
             return [...filtered, newMsg];
           });
-          // Play notification sound and mark as read if message is from other user
           if (newMsg.sender_id !== currentUserId) {
             playNotificationSound();
             markConversationAsRead(conversationId);
             onRead?.();
-            // Mark message as read
             setReadMessageIds((prev) => new Set([...prev, newMsg.id]));
           }
         }
       )
-      .subscribe((status) => {
-        console.log("[ChatConversationView] Subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
-      console.log("[ChatConversationView] Cleaning up subscription");
       supabase.removeChannel(channel);
     };
   }, [conversationId, currentUserId, onRead, playNotificationSound]);
 
+  // Auto scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const loadChat = async () => {
     setLoading(true);
+    setHasMore(true);
     try {
       const { user } = await getCurrentUser();
       if (!user) return;
       setCurrentUserId(user.id);
 
-      // Load messages
-      const msgs = await getMessages(conversationId);
+      const msgs = await getMessages(conversationId, { limit: PAGE_SIZE });
       setMessages(msgs);
+      setHasMore(msgs.length >= PAGE_SIZE);
 
-      // Mark as read
       await markConversationAsRead(conversationId);
       onRead?.();
 
-      // Get other participant name
       const { data: participant } = await db
         .from("oli_conversation_participants")
         .select("user_id")
@@ -175,6 +189,7 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         .single();
 
       if (participant) {
+        setOtherUserId(participant.user_id);
         const profile = await getProfile(participant.user_id);
         if (profile?.full_name) {
           setOtherUserName(profile.full_name);
@@ -187,6 +202,53 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     }
   };
 
+  // Load older messages (infinite scroll up)
+  const loadMoreMessages = useCallback(async () => {
+    if (loadingMore || !hasMore || messages.length === 0) return;
+
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.created_at) return;
+
+    setLoadingMore(true);
+    try {
+      const olderMsgs = await getMessages(conversationId, {
+        limit: PAGE_SIZE,
+        before: oldestMessage.created_at,
+      });
+
+      if (olderMsgs.length === 0) {
+        setHasMore(false);
+      } else {
+        const container = messagesContainerRef.current;
+        const prevScrollHeight = container?.scrollHeight || 0;
+
+        setMessages((prev) => [...olderMsgs, ...prev]);
+        setHasMore(olderMsgs.length >= PAGE_SIZE);
+
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [conversationId, loadingMore, hasMore, messages]);
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      if (target.scrollTop < 50 && hasMore && !loadingMore) {
+        loadMoreMessages();
+      }
+    },
+    [hasMore, loadingMore, loadMoreMessages]
+  );
+
   const handleSend = async () => {
     if (!newMessage.trim() || sending || !currentUserId) return;
 
@@ -195,7 +257,6 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     stopTyping();
     setNewMessage("");
 
-    // Optimistic update - add message immediately to UI
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: conversationId,
@@ -212,15 +273,11 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     try {
       const sent = await sendMessage(conversationId, messageText);
       if (sent) {
-        // Replace optimistic message with real one
-        setMessages((prev) => 
-          prev.map((m) => m.id === optimisticMessage.id ? sent : m)
-        );
+        setMessages((prev) => prev.map((m) => (m.id === optimisticMessage.id ? sent : m)));
         inputRef.current?.focus();
       } else {
-        // Remove optimistic message on failure
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
-        setNewMessage(messageText); // Restore message
+        setNewMessage(messageText);
         toast.error("Não foi possível enviar a mensagem. Tente novamente.");
       }
     } catch (error) {
@@ -274,21 +331,43 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <span className="text-primary font-semibold text-sm">
-            {otherUserName.charAt(0).toUpperCase()}
-          </span>
+        <div className="relative">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-primary font-semibold text-sm">
+              {otherUserName.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          {isOtherOnline && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-background" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{otherUserName}</p>
-          {isOtherUserTyping && (
-            <p className="text-xs text-muted-foreground">Digitando...</p>
-          )}
+          {isOtherUserTyping ? (
+            <p className="text-xs text-primary">Digitando...</p>
+          ) : isOtherOnline ? (
+            <p className="text-xs text-emerald-600">Online</p>
+          ) : null}
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-3 space-y-2"
+      >
+        {loadingMore && (
+          <div className="flex justify-center py-2">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <p className="text-center text-xs text-muted-foreground py-2">
+            Início da conversa
+          </p>
+        )}
+
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-8">
             Nenhuma mensagem ainda. Comece a conversa!
@@ -296,7 +375,6 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
         ) : (
           messages.map((msg) => {
             const isOwn = msg.sender_id === currentUserId;
-            // Determine message status
             let status: MessageStatus = "sent";
             if (msg.id.startsWith("temp-")) {
               status = "sending";
@@ -305,14 +383,9 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             } else if (isOwn) {
               status = "delivered";
             }
-            
+
             return (
-              <ChatMessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={isOwn}
-                status={status}
-              />
+              <ChatMessageBubble key={msg.id} message={msg} isOwn={isOwn} status={status} />
             );
           })
         )}
@@ -327,7 +400,6 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
       {/* Input Area */}
       <div className="p-3 border-t border-border bg-background">
         <div className="flex items-center gap-2">
-          {/* Attachment buttons */}
           <div className="flex items-center gap-1">
             <ChatImageUpload
               conversationId={conversationId}
@@ -342,7 +414,6 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             </button>
           </div>
 
-          {/* Input */}
           <Input
             ref={inputRef}
             value={newMessage}
@@ -353,7 +424,6 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
             disabled={sending}
           />
 
-          {/* Send button */}
           <Button
             onClick={handleSend}
             disabled={!newMessage.trim() || sending}
