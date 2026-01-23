@@ -216,16 +216,30 @@ export async function getMyConversations(): Promise<ConversationWithDetails[]> {
   return conversationsWithDetails;
 }
 
-// Buscar mensagens de uma conversa
-export async function getMessages(conversationId: string): Promise<Message[]> {
-  const { data } = await db
+// Buscar mensagens de uma conversa (com paginação)
+export async function getMessages(
+  conversationId: string,
+  options?: { limit?: number; before?: string }
+): Promise<Message[]> {
+  const limit = options?.limit || 50;
+  
+  let query = db
     .from("oli_messages")
     .select("*")
     .eq("conversation_id", conversationId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  
+  // Cursor-based pagination: get messages before a certain timestamp
+  if (options?.before) {
+    query = query.lt("created_at", options.before);
+  }
 
-  return data || [];
+  const { data } = await query;
+
+  // Return in ascending order for display
+  return (data || []).reverse();
 }
 
 // Enviar mensagem de texto
