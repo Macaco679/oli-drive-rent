@@ -1,15 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { getCurrentUser } from "@/lib/supabase";
-import { getOrCreateDirectConversation, getMyConversations } from "@/lib/chatService";
+import { getOrCreateDirectConversation, getMyConversations, markConversationAsRead } from "@/lib/chatService";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, X } from "lucide-react";
 import { ChatConversationList } from "./ChatConversationList";
 import { ChatConversationView } from "./ChatConversationView";
 import { cn } from "@/lib/utils";
-
-// Helper para queries em tabelas ainda não tipadas
-const db = supabase as any;
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 export function ChatWidget() {
   const {
@@ -24,6 +22,7 @@ export function ChatWidget() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [totalUnread, setTotalUnread] = useState(0);
+  const { playNotificationSound } = useNotificationSound();
 
   // Check authentication
   useEffect(() => {
@@ -50,10 +49,17 @@ export function ChatWidget() {
           const newMsg = payload.new as any;
           const { user } = await getCurrentUser();
           
-          // Only count if not from current user and not in active conversation
+          // Only count if not from current user
           if (user && newMsg.sender_id !== user.id) {
+            // Play notification sound
+            playNotificationSound();
+            
+            // Update badge if not in active conversation
             if (!isOpen || newMsg.conversation_id !== activeConversationId) {
               setTotalUnread((prev) => prev + 1);
+            } else {
+              // Auto mark as read if conversation is open
+              markConversationAsRead(newMsg.conversation_id);
             }
           }
         }
@@ -63,7 +69,7 @@ export function ChatWidget() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, isOpen, activeConversationId]);
+  }, [isAuthenticated, isOpen, activeConversationId, playNotificationSound]);
 
   // Reset unread when opening widget
   useEffect(() => {
@@ -109,11 +115,13 @@ export function ChatWidget() {
     }
   };
 
-  // When entering a conversation, reset unread for that conversation
-  const handleOpenConversation = useCallback((conversationId: string) => {
+  // When entering a conversation, mark as read and reset unread
+  const handleOpenConversation = useCallback(async (conversationId: string) => {
     openConversation(conversationId);
-    // Reload unread count after a short delay to account for mark as read
-    setTimeout(loadUnreadCount, 500);
+    // Mark as read immediately
+    await markConversationAsRead(conversationId);
+    // Reload unread count
+    setTimeout(loadUnreadCount, 300);
   }, [openConversation, loadUnreadCount]);
 
   if (loading || !isAuthenticated) {
@@ -156,7 +164,7 @@ export function ChatWidget() {
           <div className="relative">
             <MessageCircle className="w-6 h-6" />
             {totalUnread > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
+              <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-destructive text-destructive-foreground text-xs font-bold rounded-full animate-pulse">
                 {totalUnread > 99 ? "99+" : totalUnread}
               </span>
             )}
