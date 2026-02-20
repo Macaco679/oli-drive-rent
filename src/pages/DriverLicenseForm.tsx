@@ -1,17 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -23,9 +15,8 @@ import { FileUploadField } from "@/components/profile/FileUploadField";
 import { useDriverLicense, LicenseData, LicenseFiles } from "@/contexts/DriverLicenseContext";
 import { submitDriverLicense, getSignedImageUrl } from "@/lib/driverLicenseService";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, ShieldCheck, CalendarIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 const CNH_CATEGORIES = ["A", "B", "AB", "C", "D", "E", "AC", "AD", "AE"];
 
@@ -37,11 +28,8 @@ export default function DriverLicenseForm() {
   const [fullName, setFullName] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [category, setCategory] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
   const [cpf, setCpf] = useState("");
-  const [registro, setRegistro] = useState("");
   const [codigoSeguranca, setCodigoSeguranca] = useState("");
-  const [nomeCondutor, setNomeCondutor] = useState("");
   const [nomeMae, setNomeMae] = useState("");
 
   // Files state
@@ -72,7 +60,6 @@ export default function DriverLicenseForm() {
       setFullName(licenseData.fullName || "");
       setLicenseNumber(licenseData.licenseNumber || "");
       setCategory(licenseData.category || "");
-      setExpiresAt(licenseData.expiresAt || "");
 
       // Carregar previews das imagens existentes
       const loadPreviews = async () => {
@@ -105,10 +92,6 @@ export default function DriverLicenseForm() {
     if (!category) {
       newErrors.category = "Categoria é obrigatória";
     }
-    if (!expiresAt) {
-      newErrors.expiresAt = "Validade é obrigatória";
-    }
-
     // Para novo envio, exigir fotos. Para reenvio, já pode ter paths salvos
     const hasExistingFront = licenseData.frontPath;
     const hasExistingBack = licenseData.backPath;
@@ -150,7 +133,7 @@ export default function DriverLicenseForm() {
           fullName,
           licenseNumber,
           category,
-          expiresAt,
+          expiresAt: "",
         },
         {
           front: frontFile,
@@ -184,11 +167,8 @@ export default function DriverLicenseForm() {
             full_name: fullName,
             license_number: licenseNumber,
             category,
-            expires_at: expiresAt,
             cpf,
-            registro,
             codigo_seguranca: codigoSeguranca,
-            nome_condutor: nomeCondutor,
             nome_mae: nomeMae,
             front_image_url: frontUrl,
             back_image_url: backUrl,
@@ -335,77 +315,32 @@ export default function DriverLicenseForm() {
                 )}
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">
-                    Categoria <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={category}
-                    onValueChange={setCategory}
-                    disabled={isViewMode}
+              <div>
+                <Label htmlFor="category">
+                  Categoria <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={category}
+                  onValueChange={setCategory}
+                  disabled={isViewMode}
+                >
+                  <SelectTrigger
+                    className={`mt-1 h-12 ${errors.category ? "border-destructive" : ""}`}
                   >
-                    <SelectTrigger
-                      className={`mt-1 h-12 ${errors.category ? "border-destructive" : ""}`}
-                    >
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CNH_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          Categoria {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.category && (
-                    <p className="text-sm text-destructive mt-1">{errors.category}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>
-                    Validade <span className="text-destructive">*</span>
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild disabled={isViewMode}>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full mt-1 h-12 justify-start text-left font-normal",
-                          !expiresAt && "text-muted-foreground",
-                          errors.expiresAt && "border-destructive"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {expiresAt ? (
-                          format(new Date(expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-card" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={expiresAt ? new Date(expiresAt) : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            setExpiresAt(format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                        locale={ptBR}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {errors.expiresAt && (
-                    <p className="text-sm text-destructive mt-1">{errors.expiresAt}</p>
-                  )}
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CNH_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        Categoria {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.category && (
+                  <p className="text-sm text-destructive mt-1">{errors.category}</p>
+                )}
               </div>
-            </div>
 
             {/* Additional Fields */}
             <div className="space-y-4 pt-2">
@@ -425,40 +360,16 @@ export default function DriverLicenseForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="registro">Registro</Label>
+                  <Label htmlFor="codigoSeguranca">Código de Segurança</Label>
                   <Input
-                    id="registro"
-                    value={registro}
-                    onChange={(e) => setRegistro(e.target.value)}
-                    placeholder="Número do registro"
+                    id="codigoSeguranca"
+                    value={codigoSeguranca}
+                    onChange={(e) => setCodigoSeguranca(e.target.value)}
+                    placeholder="Código de segurança da CNH"
                     className="mt-1 h-12"
                     disabled={isViewMode}
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="codigoSeguranca">Código de Segurança</Label>
-                <Input
-                  id="codigoSeguranca"
-                  value={codigoSeguranca}
-                  onChange={(e) => setCodigoSeguranca(e.target.value)}
-                  placeholder="Código de segurança da CNH"
-                  className="mt-1 h-12"
-                  disabled={isViewMode}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="nomeCondutor">Nome do Condutor</Label>
-                <Input
-                  id="nomeCondutor"
-                  value={nomeCondutor}
-                  onChange={(e) => setNomeCondutor(e.target.value)}
-                  placeholder="Nome do condutor"
-                  className="mt-1 h-12"
-                  disabled={isViewMode}
-                />
               </div>
 
               <div>
