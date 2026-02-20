@@ -321,28 +321,35 @@ export default function RegisterVehicle() {
           photos: photoUrls,
         };
 
-        const webhookResponse = await fetch(
-          "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
+        // DEBUG logs
+        console.log("=== WEBHOOK PAYLOAD ===", webhookPayload);
+
+        const { data: webhookData, error: webhookError } = await supabase.functions.invoke(
+          "webhook-proxy",
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(webhookPayload),
-            signal: controller.signal,
+            body: webhookPayload,
           }
         );
+
+        console.log("=== WEBHOOK RESPONSE ===", { data: webhookData, error: webhookError });
 
         clearTimeout(timeoutId);
         if (timerRef.current) clearInterval(timerRef.current);
 
-        if (webhookResponse.ok) {
-          const rawText = await webhookResponse.text();
+        if (!webhookError && webhookData) {
           let result: any;
-          try {
-            const parsed = JSON.parse(rawText);
-            result = Array.isArray(parsed) ? parsed[0] : parsed;
-          } catch {
-            result = { aprovado: false };
+          if (typeof webhookData === "string") {
+            try {
+              const parsed = JSON.parse(webhookData);
+              result = Array.isArray(parsed) ? parsed[0] : parsed;
+            } catch {
+              result = { aprovado: false };
+            }
+          } else {
+            result = Array.isArray(webhookData) ? webhookData[0] : webhookData;
           }
+
+          console.log("=== PARSED RESULT ===", result);
 
           const isApproved = result.aprovado === true || result.carro_aprovado === true || result.status === "approved";
           const newStatus = isApproved ? "available" : "inactive";
@@ -380,17 +387,15 @@ export default function RegisterVehicle() {
           }
         } else {
           if (timerRef.current) clearInterval(timerRef.current);
+          console.error("=== WEBHOOK ERROR ===", webhookError);
           setVerificationState("rejected");
           setVerificationMessage("Erro na verificação do veículo.");
         }
       } catch (fetchErr: any) {
         if (timerRef.current) clearInterval(timerRef.current);
-        setVerificationState(fetchErr.name === "AbortError" ? "rejected" : "rejected");
-        setVerificationMessage(
-          fetchErr.name === "AbortError"
-            ? "Tempo de verificação esgotado. Tente novamente."
-            : "Erro na comunicação com o serviço de verificação."
-        );
+        console.error("=== FETCH ERROR ===", fetchErr);
+        setVerificationState("rejected");
+        setVerificationMessage("Erro na comunicação com o serviço de verificação.");
       }
     } catch (error) {
       console.error("Error:", error);
