@@ -117,12 +117,17 @@ export default function DriverLicenseForm() {
     if (!fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
     if (!licenseNumber.trim()) newErrors.licenseNumber = "Número da CNH é obrigatório";
     if (!category) newErrors.category = "Categoria é obrigatória";
+    if (!cpf.trim()) newErrors.cpf = "CPF é obrigatório";
+    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Código de segurança é obrigatório";
+    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mãe é obrigatório";
 
     const hasExistingFront = licenseData?.frontPath;
     const hasExistingBack = licenseData?.backPath;
+    const hasExistingSelfie = licenseData?.selfiePath;
 
     if (!frontFile && !hasExistingFront) newErrors.front = "Foto da frente é obrigatória";
     if (!backFile && !hasExistingBack) newErrors.back = "Foto do verso é obrigatória";
+    if (!selfieFile && !hasExistingSelfie) newErrors.selfie = "Selfie segurando a CNH é obrigatória";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -532,38 +537,41 @@ export default function DriverLicenseForm() {
                 <h3 className="font-medium text-base text-muted-foreground">Dados adicionais</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cpf">CPF</Label>
+                    <Label htmlFor="cpf">CPF <span className="text-destructive">*</span></Label>
                     <Input
                       id="cpf"
                       value={cpf}
                       onChange={(e) => setCpf(e.target.value)}
                       placeholder="000.000.000-00"
-                      className="mt-1 h-12"
+                      className={`mt-1 h-12 ${errors.cpf ? "border-destructive" : ""}`}
                       disabled={isViewMode}
                     />
+                    {errors.cpf && <p className="text-sm text-destructive mt-1">{errors.cpf}</p>}
                   </div>
                   <div>
-                    <Label htmlFor="codigoSeguranca">Código de Segurança</Label>
+                    <Label htmlFor="codigoSeguranca">Código de Segurança <span className="text-destructive">*</span></Label>
                     <Input
                       id="codigoSeguranca"
                       value={codigoSeguranca}
                       onChange={(e) => setCodigoSeguranca(e.target.value)}
                       placeholder="Código de segurança da CNH"
-                      className="mt-1 h-12"
+                      className={`mt-1 h-12 ${errors.codigoSeguranca ? "border-destructive" : ""}`}
                       disabled={isViewMode}
                     />
+                    {errors.codigoSeguranca && <p className="text-sm text-destructive mt-1">{errors.codigoSeguranca}</p>}
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="nomeMae">Nome da Mãe</Label>
+                  <Label htmlFor="nomeMae">Nome da Mãe <span className="text-destructive">*</span></Label>
                   <Input
                     id="nomeMae"
                     value={nomeMae}
                     onChange={(e) => setNomeMae(e.target.value)}
                     placeholder="Nome completo da mãe"
-                    className="mt-1 h-12"
+                    className={`mt-1 h-12 ${errors.nomeMae ? "border-destructive" : ""}`}
                     disabled={isViewMode}
                   />
+                  {errors.nomeMae && <p className="text-sm text-destructive mt-1">{errors.nomeMae}</p>}
                 </div>
               </div>
             </div>
@@ -592,10 +600,12 @@ export default function DriverLicenseForm() {
                 />
               </div>
               <FileUploadField
-                label="Selfie segurando CNH (opcional)"
+                label="Selfie segurando CNH"
+                required
                 file={selfieFile}
                 preview={selfiePreview}
                 onFileSelect={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); }}
+                error={errors.selfie}
               />
             </div>
           )}
