@@ -110,7 +110,7 @@ export async function saveDriverLicense(
     full_name: data.full_name,
     license_number: data.license_number,
     category: data.category,
-    expires_at: data.expires_at,
+    expires_at: data.expires_at || null,
     status: "pending" as const, // Sempre volta para pending ao enviar/reenviar
     updated_at: new Date().toISOString(),
     ...(data.front_path && { front_path: data.front_path }),
