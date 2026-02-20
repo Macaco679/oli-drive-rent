@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Car, Loader2, CheckCircle, ArrowLeft, Bike, Truck, Upload, X, Star } from "lucide-react";
+import { Car, Loader2, CheckCircle, XCircle, ArrowLeft, Bike, Truck, Upload, X, Star, Clock, Search as SearchIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +115,10 @@ export default function RegisterVehicle() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "approved" | "rejected">("idle");
+  const [verificationTimer, setVerificationTimer] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -246,6 +252,13 @@ export default function RegisterVehicle() {
     });
   };
 
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
 
@@ -258,19 +271,133 @@ export default function RegisterVehicle() {
         return;
       }
 
+      // Upload photos
+      const photoUrls: string[] = [];
       if (photos.length > 0) {
         setUploadingPhotos(true);
-
         for (let i = 0; i < photos.length; i++) {
           const isCover = i === 0;
-          await uploadVehiclePhoto(vehicle.id, photos[i].file, isCover);
+          const photo = await uploadVehiclePhoto(vehicle.id, photos[i].file, isCover);
+          if (photo) photoUrls.push(photo.image_url);
         }
-
         setUploadingPhotos(false);
       }
 
-      toast.success("Veículo cadastrado com sucesso!");
-      navigate("/my-vehicles");
+      // Start verification via n8n webhook
+      setVerificationState("verifying");
+      setVerificationTimer(0);
+      
+      const startTime = Date.now();
+      timerRef.current = setInterval(() => {
+        setVerificationTimer(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+        const webhookPayload = {
+          vehicle_id: vehicle.id,
+          vehicle_type: values.vehicle_type,
+          title: values.title,
+          brand: values.brand,
+          model: values.model,
+          year: values.year,
+          color: values.color,
+          plate: values.plate,
+          renavam: values.renavam,
+          fuel_type: values.fuel_type,
+          transmission: values.transmission,
+          seats: values.seats,
+          location_city: values.location_city,
+          location_state: values.location_state,
+          daily_price: values.daily_price,
+          weekly_price: values.weekly_price,
+          monthly_price: values.monthly_price,
+          deposit_amount: values.deposit_amount,
+          body_type: values.body_type,
+          segment: values.segment,
+          is_popular: values.is_popular,
+          photos: photoUrls,
+        };
+
+        // Send as query params for GET request
+        const params = new URLSearchParams();
+        Object.entries(webhookPayload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            params.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
+          }
+        });
+
+        const webhookResponse = await fetch(
+          `https://n8n.srv1153225.hstgr.cloud/webhook-test/validarcarro?${params.toString()}`,
+          {
+            method: "GET",
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        if (webhookResponse.ok) {
+          const rawText = await webhookResponse.text();
+          let result: any;
+          try {
+            const parsed = JSON.parse(rawText);
+            result = Array.isArray(parsed) ? parsed[0] : parsed;
+          } catch {
+            result = { aprovado: false };
+          }
+
+          const isApproved = result.aprovado === true || result.carro_aprovado === true || result.status === "approved";
+          const newStatus = isApproved ? "available" : "inactive";
+
+          // Update vehicle status
+          await supabase
+            .from("oli_vehicles")
+            .update({ 
+              status: newStatus as any,
+              is_active: isApproved,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", vehicle.id);
+
+          setVerificationState(isApproved ? "approved" : "rejected");
+          setVerificationMessage(result.mensagem || result.message || (isApproved ? "Veículo aprovado com sucesso!" : "Veículo não aprovado. Verifique os documentos."));
+
+          // Send notification email
+          try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData?.user) {
+              await supabase.functions.invoke("send-notification-email", {
+                body: {
+                  type: isApproved ? "vehicle_approved" : "vehicle_rejected",
+                  recipient_id: userData.user.id,
+                  data: {
+                    vehicle_title: values.title,
+                    status_label: isApproved ? "Aprovado" : "Reprovado",
+                  },
+                },
+              });
+            }
+          } catch (emailErr) {
+            console.error("Erro ao enviar email:", emailErr);
+          }
+        } else {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setVerificationState("rejected");
+          setVerificationMessage("Erro na verificação do veículo.");
+        }
+      } catch (fetchErr: any) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setVerificationState(fetchErr.name === "AbortError" ? "rejected" : "rejected");
+        setVerificationMessage(
+          fetchErr.name === "AbortError"
+            ? "Tempo de verificação esgotado. Tente novamente."
+            : "Erro na comunicação com o serviço de verificação."
+        );
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("Erro ao cadastrar veículo");
@@ -314,7 +441,67 @@ export default function RegisterVehicle() {
         </div>
       </div>
 
+      {/* Verification overlay */}
+      {verificationState !== "idle" && (
+        <div className="relative z-10 max-w-3xl mx-auto px-4 py-6 pb-24">
+          <Card className="shadow-md border-0">
+            <CardContent className="pt-8 pb-8">
+              {verificationState === "verifying" && (
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Clock className="w-10 h-10 text-primary animate-pulse" />
+                  </div>
+                  <h2 className="text-xl font-bold">Verificando veículo...</h2>
+                  <p className="text-muted-foreground">Estamos validando os documentos do seu veículo. Aguarde.</p>
+                  <div className="w-full max-w-xs">
+                    <Progress value={Math.min((verificationTimer / 60) * 100, 95)} className="h-3" />
+                  </div>
+                  <div className="text-3xl font-mono font-bold text-primary">
+                    {Math.floor(verificationTimer / 60).toString().padStart(2, "0")}:{(verificationTimer % 60).toString().padStart(2, "0")}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Isso pode levar até 1 minuto</p>
+                </div>
+              )}
+
+              {verificationState === "approved" && (
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="w-10 h-10 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-green-700">Veículo Aprovado!</h2>
+                  <p className="text-muted-foreground">{verificationMessage}</p>
+                  <p className="text-sm text-muted-foreground">Seu veículo já está disponível para aluguel.</p>
+                  <Button onClick={() => navigate("/my-vehicles")} className="mt-4">
+                    <SearchIcon className="w-4 h-4 mr-2" />
+                    Ver Meus Veículos
+                  </Button>
+                </div>
+              )}
+
+              {verificationState === "rejected" && (
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
+                    <XCircle className="w-10 h-10 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-red-700">Veículo Não Aprovado</h2>
+                  <p className="text-muted-foreground">{verificationMessage}</p>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => navigate("/my-vehicles")}>
+                      Meus Veículos
+                    </Button>
+                    <Button onClick={() => setVerificationState("idle")}>
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Content */}
+      {verificationState === "idle" && (
       <div className="relative z-10 max-w-3xl mx-auto px-4 py-6 pb-24">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -875,6 +1062,7 @@ export default function RegisterVehicle() {
           </form>
         </Form>
       </div>
+      )}
     </div>
   );
 }
