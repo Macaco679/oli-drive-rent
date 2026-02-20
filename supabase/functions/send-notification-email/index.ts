@@ -19,7 +19,9 @@ type NotificationType =
   | "pickup_inspection_completed"
   | "dropoff_inspection_completed"
   | "cnh_approved"
-  | "cnh_rejected";
+  | "cnh_rejected"
+  | "vehicle_approved"
+  | "vehicle_rejected";
 
 interface NotificationPayload {
   type: NotificationType;
@@ -246,6 +248,48 @@ const emailTemplates: Record<NotificationType, { subject: string; html: (data: R
            style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; 
                   border-radius: 8px; text-decoration: none; margin-top: 16px;">
           Reenviar CNH
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
+          Oli Drive - Aluguel de veículos entre pessoas
+        </p>
+      </div>
+    `,
+  },
+  vehicle_approved: {
+    subject: "✅ Veículo Aprovado! - Oli Drive",
+    html: (data) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Seu veículo foi aprovado! 🚗✅</h2>
+        <p>O veículo <strong>${data.vehicle_title || "Veículo"}</strong> foi verificado e <strong>aprovado</strong>.</p>
+        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #bbf7d0;">
+          <p style="margin: 0 0 8px 0;"><strong>Status:</strong> ✅ ${data.status_label || "APROVADO"}</p>
+          <p style="margin: 0;"><strong>Próximo passo:</strong> Seu veículo já está disponível para aluguel!</p>
+        </div>
+        <a href="https://oli-drive-rent.lovable.app/my-vehicles" 
+           style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; 
+                  border-radius: 8px; text-decoration: none; margin-top: 16px;">
+          Ver Meus Veículos
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
+          Oli Drive - Aluguel de veículos entre pessoas
+        </p>
+      </div>
+    `,
+  },
+  vehicle_rejected: {
+    subject: "❌ Veículo Não Aprovado - Oli Drive",
+    html: (data) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Veículo não aprovado</h2>
+        <p>O veículo <strong>${data.vehicle_title || "Veículo"}</strong> <strong>não foi aprovado</strong> na verificação.</p>
+        <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #fecaca;">
+          <p style="margin: 0 0 8px 0;"><strong>Status:</strong> ❌ ${data.status_label || "REPROVADO"}</p>
+          <p style="margin: 0;"><strong>O que fazer:</strong> Verifique os documentos do veículo e tente novamente.</p>
+        </div>
+        <a href="https://oli-drive-rent.lovable.app/my-vehicles" 
+           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; 
+                  border-radius: 8px; text-decoration: none; margin-top: 16px;">
+          Meus Veículos
         </a>
         <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
           Oli Drive - Aluguel de veículos entre pessoas
