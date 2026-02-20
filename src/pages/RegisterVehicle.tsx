@@ -321,18 +321,12 @@ export default function RegisterVehicle() {
           photos: photoUrls,
         };
 
-        // Send as query params for GET request
-        const params = new URLSearchParams();
-        Object.entries(webhookPayload).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            params.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
-          }
-        });
-
         const webhookResponse = await fetch(
-          `https://n8n.srv1153225.hstgr.cloud/webhook-test/validarcarro?${params.toString()}`,
+          "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
           {
-            method: "GET",
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(webhookPayload),
             signal: controller.signal,
           }
         );
