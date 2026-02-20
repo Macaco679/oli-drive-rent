@@ -52,6 +52,11 @@ const formSchema = z.object({
   seats: z.coerce.number().min(1, "Mínimo 1 lugar").max(50, "Máximo 50 lugares"),
   location_city: z.string().min(1, "Cidade é obrigatória"),
   location_state: z.string().min(2, "Estado é obrigatório"),
+  pickup_neighborhood: z.string().min(1, "Bairro é obrigatório"),
+  pickup_street: z.string().min(1, "Rua é obrigatória"),
+  pickup_number: z.string().min(1, "Número é obrigatório"),
+  pickup_complement: z.string().optional(),
+  pickup_zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(9, "CEP inválido"),
   daily_price: z.coerce.number().min(1, "Preço diário é obrigatório"),
   weekly_price: z.coerce.number().optional(),
   monthly_price: z.coerce.number().optional(),
@@ -145,6 +150,11 @@ export default function RegisterVehicle() {
       seats: 5,
       location_city: "",
       location_state: "",
+      pickup_neighborhood: "",
+      pickup_street: "",
+      pickup_number: "",
+      pickup_complement: "",
+      pickup_zip_code: "",
       daily_price: 0,
       weekly_price: undefined,
       monthly_price: undefined,
@@ -321,6 +331,11 @@ export default function RegisterVehicle() {
           seats: values.seats,
           location_city: values.location_city,
           location_state: values.location_state,
+          pickup_neighborhood: values.pickup_neighborhood,
+          pickup_street: values.pickup_street,
+          pickup_number: values.pickup_number,
+          pickup_complement: values.pickup_complement,
+          pickup_zip_code: values.pickup_zip_code,
           daily_price: values.daily_price,
           weekly_price: values.weekly_price,
           monthly_price: values.monthly_price,
@@ -922,6 +937,91 @@ export default function RegisterVehicle() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="pickup_zip_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="00000-000" 
+                          value={field.value}
+                          onChange={(e) => {
+                            const cleaned = e.target.value.replace(/\D/g, "").slice(0, 8);
+                            const formatted = cleaned.length > 5 
+                              ? `${cleaned.slice(0, 5)}-${cleaned.slice(5)}` 
+                              : cleaned;
+                            field.onChange(formatted);
+                          }}
+                          maxLength={9}
+                          inputMode="numeric"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="pickup_street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua / Endereço *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Rua das Flores" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="pickup_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="pickup_complement"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Complemento</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Apto, Bloco, etc." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="pickup_neighborhood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Centro" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">O bairro será exibido publicamente. O endereço completo só aparece após aprovação.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 

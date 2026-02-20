@@ -62,7 +62,7 @@ export default function Search() {
   const applyFilters = () => {
     let filtered = [...vehicles];
 
-    // Filtro de texto (busca em title, brand, model, year)
+    // Filtro de texto (busca em title, brand, model, year, city, neighborhood)
     if (searchText) {
       const search = searchText.toLowerCase();
       filtered = filtered.filter(
@@ -70,7 +70,9 @@ export default function Search() {
           v.title?.toLowerCase().includes(search) ||
           v.brand?.toLowerCase().includes(search) ||
           v.model?.toLowerCase().includes(search) ||
-          v.year?.toString().includes(search)
+          v.year?.toString().includes(search) ||
+          v.location_city?.toLowerCase().includes(search) ||
+          (v as any).pickup_neighborhood?.toLowerCase().includes(search)
       );
     }
 
@@ -122,7 +124,7 @@ export default function Search() {
             <div className="relative flex-1">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                placeholder="Buscar por modelo, marca ou ano"
+                placeholder="Buscar por modelo, marca, ano, cidade ou bairro"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className="pl-10 h-12"

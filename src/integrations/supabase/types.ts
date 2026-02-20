@@ -664,6 +664,11 @@ export type Database = {
           model: string | null
           monthly_price: number | null
           owner_id: string
+          pickup_complement: string | null
+          pickup_neighborhood: string | null
+          pickup_number: string | null
+          pickup_street: string | null
+          pickup_zip_code: string | null
           plate: string | null
           renavam: string | null
           seats: number | null
@@ -694,6 +699,11 @@ export type Database = {
           model?: string | null
           monthly_price?: number | null
           owner_id: string
+          pickup_complement?: string | null
+          pickup_neighborhood?: string | null
+          pickup_number?: string | null
+          pickup_street?: string | null
+          pickup_zip_code?: string | null
           plate?: string | null
           renavam?: string | null
           seats?: number | null
@@ -724,6 +734,11 @@ export type Database = {
           model?: string | null
           monthly_price?: number | null
           owner_id?: string
+          pickup_complement?: string | null
+          pickup_neighborhood?: string | null
+          pickup_number?: string | null
+          pickup_street?: string | null
+          pickup_zip_code?: string | null
           plate?: string | null
           renavam?: string | null
           seats?: number | null
