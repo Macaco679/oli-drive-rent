@@ -27,6 +27,11 @@ export interface VehicleFormData {
   seats: number;
   location_city: string;
   location_state: string;
+  pickup_neighborhood?: string;
+  pickup_street?: string;
+  pickup_number?: string;
+  pickup_complement?: string;
+  pickup_zip_code?: string;
   daily_price: number;
   weekly_price?: number;
   monthly_price?: number;
@@ -69,6 +74,11 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
       seats: data.seats,
       location_city: data.location_city,
       location_state: data.location_state,
+      pickup_neighborhood: data.pickup_neighborhood || null,
+      pickup_street: data.pickup_street || null,
+      pickup_number: data.pickup_number || null,
+      pickup_complement: data.pickup_complement || null,
+      pickup_zip_code: data.pickup_zip_code || null,
       daily_price: data.daily_price,
       weekly_price: data.weekly_price || null,
       monthly_price: data.monthly_price || null,

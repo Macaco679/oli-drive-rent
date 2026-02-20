@@ -41,6 +41,11 @@ export interface OliVehicle {
   deposit_amount: number | null;
   location_city: string | null;
   location_state: string | null;
+  pickup_neighborhood: string | null;
+  pickup_street: string | null;
+  pickup_number: string | null;
+  pickup_complement: string | null;
+  pickup_zip_code: string | null;
   is_active: boolean;
   status: "available" | "rented" | "maintenance" | "inactive";
   vehicle_type: string;
