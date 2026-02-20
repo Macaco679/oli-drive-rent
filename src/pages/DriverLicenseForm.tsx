@@ -160,6 +160,35 @@ export default function DriverLicenseForm() {
         return;
       }
 
+      // Construir paths das fotos para URLs assinadas
+      const getFrontPath = frontFile ? `${user.id}/front.${frontFile.name.split(".").pop()?.toLowerCase() || "jpg"}` : licenseData.frontPath;
+      const getBackPath = backFile ? `${user.id}/back.${backFile.name.split(".").pop()?.toLowerCase() || "jpg"}` : licenseData.backPath;
+      const getSelfiePath = selfieFile ? `${user.id}/selfie.${selfieFile.name.split(".").pop()?.toLowerCase() || "jpg"}` : licenseData.selfiePath;
+
+      const frontUrl = getFrontPath ? await getSignedImageUrl(getFrontPath) : null;
+      const backUrl = getBackPath ? await getSignedImageUrl(getBackPath) : null;
+      const selfieUrl = getSelfiePath ? await getSignedImageUrl(getSelfiePath) : null;
+
+      // Chamar webhook n8n com dados do formulário e URLs das fotos
+      try {
+        await fetch("https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: user.id,
+            full_name: fullName,
+            license_number: licenseNumber,
+            category,
+            expires_at: expiresAt,
+            front_image_url: frontUrl,
+            back_image_url: backUrl,
+            selfie_image_url: selfieUrl,
+          }),
+        });
+      } catch (webhookErr) {
+        console.warn("[DriverLicenseForm] Webhook falhou (não bloqueante):", webhookErr);
+      }
+
       // Recarregar dados do contexto
       await loadFromSupabase();
 
