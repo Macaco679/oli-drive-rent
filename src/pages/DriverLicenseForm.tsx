@@ -158,8 +158,9 @@ export default function DriverLicenseForm() {
       const selfieUrl = getSelfiePath ? await getSignedImageUrl(getSelfiePath) : null;
 
       // Chamar webhook n8n com dados do formulário e URLs das fotos
+      let webhookResult: { cnh_aprovada?: boolean; status?: string } | null = null;
       try {
-        await fetch("https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck", {
+        const webhookResponse = await fetch("https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -175,15 +176,64 @@ export default function DriverLicenseForm() {
             selfie_image_url: selfieUrl,
           }),
         });
+        if (webhookResponse.ok) {
+          webhookResult = await webhookResponse.json();
+        }
       } catch (webhookErr) {
         console.warn("[DriverLicenseForm] Webhook falhou (não bloqueante):", webhookErr);
+      }
+
+      // Se recebeu resposta do webhook, atualizar status no Supabase
+      if (webhookResult && typeof webhookResult.cnh_aprovada === "boolean") {
+        const newStatus = webhookResult.cnh_aprovada ? "approved" : "rejected";
+        
+        // Atualizar oli_driver_licenses
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("oli_driver_licenses")
+          .update({ 
+            status: newStatus,
+            ...(newStatus === "approved" ? { verified_at: new Date().toISOString() } : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+
+        // Enviar email de notificação sobre o resultado
+        try {
+          const EDGE_FUNCTION_URL = `https://sgpktbljjlixmyjmhppa.supabase.co/functions/v1/send-notification-email`;
+          const { data: { session } } = await supabase.auth.getSession();
+          await fetch(EDGE_FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": session?.access_token ? `Bearer ${session.access_token}` : "",
+              "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncGt0YmxqamxpeG15am1ocHBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTE5MjksImV4cCI6MjA4NDQ4NzkyOX0.OoTf_1N0KWWGSfnk-6ZE-M2yg5z8wmej6E83bdWKUAU",
+            },
+            body: JSON.stringify({
+              type: webhookResult.cnh_aprovada ? "cnh_approved" : "cnh_rejected",
+              recipient_id: user.id,
+              data: {
+                full_name: fullName,
+                status_label: webhookResult.status || (webhookResult.cnh_aprovada ? "APROVADA" : "REPROVADA"),
+              },
+            }),
+          });
+        } catch (emailErr) {
+          console.warn("[DriverLicenseForm] Email de notificação falhou:", emailErr);
+        }
       }
 
       // Recarregar dados do contexto
       await loadFromSupabase();
 
-      toast.success("CNH enviada para verificação!");
-      navigate("/profile");
+      if (webhookResult?.cnh_aprovada === true) {
+        toast.success("CNH aprovada! Você já pode fazer reservas.");
+      } else if (webhookResult?.cnh_aprovada === false) {
+        toast.error("CNH reprovada. Verifique seus dados e tente novamente.");
+      } else {
+        toast.success("CNH enviada para verificação!");
+      }
+      navigate("/profile/driver-license");
     } catch (err) {
       console.error("[DriverLicenseForm] Erro:", err);
       toast.error("Erro inesperado ao enviar CNH");
