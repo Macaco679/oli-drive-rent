@@ -38,6 +38,11 @@ export default function DriverLicenseForm() {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [category, setCategory] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [registro, setRegistro] = useState("");
+  const [codigoSeguranca, setCodigoSeguranca] = useState("");
+  const [nomeCondutor, setNomeCondutor] = useState("");
+  const [nomeMae, setNomeMae] = useState("");
 
   // Files state
   const [frontFile, setFrontFile] = useState<File | null>(null);
@@ -180,6 +185,11 @@ export default function DriverLicenseForm() {
             license_number: licenseNumber,
             category,
             expires_at: expiresAt,
+            cpf,
+            registro,
+            codigo_seguranca: codigoSeguranca,
+            nome_condutor: nomeCondutor,
+            nome_mae: nomeMae,
             front_image_url: frontUrl,
             back_image_url: backUrl,
             selfie_image_url: selfieUrl,
@@ -394,10 +404,77 @@ export default function DriverLicenseForm() {
                   {errors.expiresAt && (
                     <p className="text-sm text-destructive mt-1">{errors.expiresAt}</p>
                   )}
+              </div>
+            </div>
+
+            {/* Additional Fields */}
+            <div className="space-y-4 pt-2">
+              <h3 className="font-medium text-base text-muted-foreground">Dados adicionais</h3>
+              
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="cpf">CPF</Label>
+                  <Input
+                    id="cpf"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                    placeholder="000.000.000-00"
+                    className="mt-1 h-12"
+                    disabled={isViewMode}
+                  />
                 </div>
+
+                <div>
+                  <Label htmlFor="registro">Registro</Label>
+                  <Input
+                    id="registro"
+                    value={registro}
+                    onChange={(e) => setRegistro(e.target.value)}
+                    placeholder="Número do registro"
+                    className="mt-1 h-12"
+                    disabled={isViewMode}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="codigoSeguranca">Código de Segurança</Label>
+                <Input
+                  id="codigoSeguranca"
+                  value={codigoSeguranca}
+                  onChange={(e) => setCodigoSeguranca(e.target.value)}
+                  placeholder="Código de segurança da CNH"
+                  className="mt-1 h-12"
+                  disabled={isViewMode}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nomeCondutor">Nome do Condutor</Label>
+                <Input
+                  id="nomeCondutor"
+                  value={nomeCondutor}
+                  onChange={(e) => setNomeCondutor(e.target.value)}
+                  placeholder="Nome do condutor"
+                  className="mt-1 h-12"
+                  disabled={isViewMode}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nomeMae">Nome da Mãe</Label>
+                <Input
+                  id="nomeMae"
+                  value={nomeMae}
+                  onChange={(e) => setNomeMae(e.target.value)}
+                  placeholder="Nome completo da mãe"
+                  className="mt-1 h-12"
+                  disabled={isViewMode}
+                />
               </div>
             </div>
           </div>
+        </div>
 
           {/* Document Photos */}
           {!isViewMode && (
