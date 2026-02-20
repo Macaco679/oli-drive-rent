@@ -11,7 +11,9 @@ type NotificationType =
   | "contract_sent"
   | "contract_signed"
   | "pickup_inspection_completed"
-  | "dropoff_inspection_completed";
+  | "dropoff_inspection_completed"
+  | "cnh_approved"
+  | "cnh_rejected";
 
 interface NotificationPayload {
   type: NotificationType;
