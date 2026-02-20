@@ -46,6 +46,7 @@ const formSchema = z.object({
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa deve ter pelo menos 7 caracteres").max(8, "Placa inválida"),
   renavam: z.string().min(9, "Renavam deve ter pelo menos 9 dígitos").max(11, "Renavam inválido"),
+  owner_cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido"),
   fuel_type: z.string().min(1, "Combustível é obrigatório"),
   transmission: z.enum(["manual", "automatic"]),
   seats: z.coerce.number().min(1, "Mínimo 1 lugar").max(50, "Máximo 50 lugares"),
@@ -106,8 +107,15 @@ const formatPlate = (value: string): string => {
 };
 
 const formatRenavam = (value: string): string => {
-  // Apenas números, máximo 11 dígitos
   return value.replace(/\D/g, "").slice(0, 11);
+};
+
+const formatCPF = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "").slice(0, 11);
+  if (cleaned.length <= 3) return cleaned;
+  if (cleaned.length <= 6) return `${cleaned.slice(0, 3)}.${cleaned.slice(3)}`;
+  if (cleaned.length <= 9) return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6)}`;
+  return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6, 9)}-${cleaned.slice(9)}`;
 };
 
 export default function RegisterVehicle() {
@@ -131,6 +139,7 @@ export default function RegisterVehicle() {
       color: "",
       plate: "",
       renavam: "",
+      owner_cpf: "",
       fuel_type: "",
       transmission: "automatic",
       seats: 5,
@@ -306,6 +315,7 @@ export default function RegisterVehicle() {
           color: values.color,
           plate: values.plate,
           renavam: values.renavam,
+          owner_cpf: values.owner_cpf,
           fuel_type: values.fuel_type,
           transmission: values.transmission,
           seats: values.seats,
@@ -700,6 +710,31 @@ export default function RegisterVehicle() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="owner_cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF do Proprietário *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="000.000.000-00" 
+                          value={field.value}
+                          onChange={(e) => {
+                            const formatted = formatCPF(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          className="font-mono tracking-wide"
+                          maxLength={14}
+                          inputMode="numeric"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">CPF necessário para verificação do veículo</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
