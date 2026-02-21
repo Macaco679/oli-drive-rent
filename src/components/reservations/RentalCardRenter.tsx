@@ -66,9 +66,12 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const isPending = rental.status === "pending_approval";
   const isActive = rental.status === "active";
   
-  // Contract states
+  // Contract states — only fully signed when BOTH parties signed (confirmed by Clicksign webhook)
   const hasContract = contract !== null;
-  const isSigned = hasContract && contract.renter_signed_at !== null;
+  const isFullySigned = hasContract && contract.status === "signed";
+  const renterSigned = hasContract && contract.renter_signed_at !== null;
+  const awaitingOwner = renterSigned && !contract.owner_signed_at;
+  const canSign = hasContract && !renterSigned && contract.status === "pending";
 
   const handleDropoffInspection = () => {
     navigate(`/reservations/${rental.id}/inspection?kind=dropoff`);
@@ -154,7 +157,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                     <Clock className="w-4 h-4" />
                     <span className="text-sm">Aguardando contrato</span>
                   </div>
-                ) : !isSigned ? (
+                ) : canSign ? (
                   <Button 
                     variant="default" 
                     size="sm" 
@@ -164,7 +167,22 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                     <FileText className="w-4 h-4 mr-2" />
                     Assinar Contrato
                   </Button>
-                ) : (
+                ) : awaitingOwner ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Aguardando proprietário
+                    </Badge>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => onViewContract?.(contract)}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Contrato
+                    </Button>
+                  </div>
+                ) : isFullySigned ? (
                   <>
                     <Button 
                       variant="outline" 
@@ -179,6 +197,15 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                       Pagar
                     </Button>
                   </>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onViewContract?.(contract)}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Ver Contrato
+                  </Button>
                 )}
               </div>
             )}

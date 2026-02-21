@@ -10,7 +10,6 @@ import { RentalCardRenter } from "@/components/reservations/RentalCardRenter";
 import { RentalCardOwner } from "@/components/reservations/RentalCardOwner";
 import { RentalDetailsModal } from "@/components/reservations/RentalDetailsModal";
 import { ContractViewModal } from "@/components/contracts/ContractViewModal";
-import { SignatureModal } from "@/components/contracts/SignatureModal";
 import { PaymentMethodSelector, PaymentMethod } from "@/components/payments/PaymentMethodSelector";
 import { PixPaymentModal } from "@/components/payments/PixPaymentModal";
 import { CardPaymentModal } from "@/components/payments/CardPaymentModal";
@@ -29,12 +28,10 @@ export default function Reservations() {
   const [selectedRental, setSelectedRental] = useState<RentalWithVehicle | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [showCardModal, setShowCardModal] = useState(false);
   const [contractMode, setContractMode] = useState<"owner" | "renter">("owner");
-  const [selectedContract, setSelectedContract] = useState<RentalContract | null>(null);
   
   const navigate = useNavigate();
 
@@ -92,18 +89,10 @@ export default function Reservations() {
     setShowContractModal(true);
   };
 
-  const handleSignContract = (rental: RentalWithVehicle, contract: RentalContract) => {
+  const handleSignContract = (rental: RentalWithVehicle, _contract: RentalContract) => {
     setSelectedRental(rental);
-    setSelectedContract(contract);
-    // First show contract, then signature
     setContractMode("renter");
     setShowContractModal(true);
-  };
-
-  const handleOpenSignature = (contract: RentalContract) => {
-    setSelectedContract(contract);
-    setShowContractModal(false);
-    setShowSignatureModal(true);
   };
 
   const handlePay = (rental: RentalWithVehicle) => {
@@ -233,15 +222,6 @@ export default function Reservations() {
         rental={selectedRental}
         mode={contractMode}
         onContractSent={handleContractSent}
-        onContractSign={handleOpenSignature}
-      />
-
-      {/* Modal: Assinatura Digital */}
-      <SignatureModal
-        open={showSignatureModal}
-        onOpenChange={setShowSignatureModal}
-        contract={selectedContract}
-        onSigned={handleContractSigned}
       />
 
       {/* Modal: Seleção de Método de Pagamento */}
