@@ -123,7 +123,7 @@ function deriveUIStatus(contract: RentalContract | null): ContractUIStatus {
   return "awaiting_renter";
 }
 
-const WEBHOOK_URL = "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato";
+const WEBHOOK_URL = "https://n8n.srv1153225.hstgr.cloud/webhook-test/oli-contrato";
 
 function generateEventId(): string {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

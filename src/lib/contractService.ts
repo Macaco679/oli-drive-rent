@@ -116,47 +116,13 @@ export async function createContract(rentalId: string): Promise<RentalContract |
   return data as RentalContract;
 }
 
-// Assinar contrato (pelo locatário)
-export async function signContractAsRenter(contractId: string): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  const { data: contract, error } = await supabase
-    .from("oli_rental_contracts")
-    .update({ 
-      renter_signed_at: new Date().toISOString(),
-      status: "signed"
-    })
-    .eq("id", contractId)
-    .select("*, rental_id")
-    .single();
-
-  if (error) {
-    console.error("Erro ao assinar contrato:", error);
-    return false;
-  }
-
-  // Notificar proprietário que o contrato foi assinado
-  if (contract) {
-    const { data: rental } = await supabase
-      .from("oli_rentals")
-      .select("*")
-      .eq("id", contract.rental_id)
-      .single();
-
-    if (rental) {
-      const vehicle = await getVehicleById(rental.vehicle_id);
-      const renter = user ? await getProfileById(user.id) : null;
-      const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
-      notifyContractSigned(
-        rental.owner_id, 
-        renter?.full_name || "Locatário", 
-        vehicleTitle, 
-        contract.contract_number || ""
-      );
-    }
-  }
-
-  return true;
+// DEPRECATED: A assinatura local foi desativada.
+// A assinatura válida é feita exclusivamente via Clicksign.
+// O status do contrato é atualizado por webhook (Clicksign -> n8n -> Supabase).
+// Esta função NÃO deve ser chamada pelo frontend.
+export async function signContractAsRenter(_contractId: string): Promise<boolean> {
+  console.warn("[OLI] signContractAsRenter foi chamada mas está desativada. A assinatura deve ser feita via Clicksign.");
+  return false;
 }
 
 // Formatar CPF para exibição
