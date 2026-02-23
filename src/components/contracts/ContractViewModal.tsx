@@ -604,6 +604,62 @@ export function ContractViewModal({
       const newContract = await createContract(rental.id);
       if (newContract) {
         setContract(newContract);
+
+        // Send webhook with enriched data when owner sends contract
+        const enrichedPayload: Record<string, unknown> = {
+          event: "contract_sent",
+          event_id: generateEventId(),
+          timestamp: new Date().toISOString(),
+          source: "lovable_frontend",
+          page: "/reservations",
+          environment: window.location.hostname.includes("localhost") ? "development" : "production",
+          reservation: {
+            id: rental.id,
+            status: rental.status,
+            vehicle_id: rental.vehicle_id,
+            renter_id: rental.renter_id,
+            owner_id: rental.owner_id,
+            start_date: rental.start_date,
+            end_date: rental.end_date,
+            pickup_location: rental.pickup_location,
+            dropoff_location: rental.dropoff_location,
+            total_price: rental.total_price,
+            deposit_amount: rental.deposit_amount,
+            notes: rental.notes,
+          },
+          contract: {
+            id: newContract.id,
+            rental_id: newContract.rental_id,
+            status: newContract.status,
+            contract_num: newContract.contract_number,
+            version: newContract.version,
+            file_url: newContract.file_url,
+            renter_signed_at: newContract.renter_signed_at,
+            owner_signed_at: newContract.owner_signed_at,
+            provider: "clicksign",
+            created_at: newContract.created_at,
+            updated_at: newContract.updated_at,
+          },
+          vehicle: rental.vehicle
+            ? {
+                id: rental.vehicle.id,
+                title: rental.vehicle.title,
+                brand: rental.vehicle.brand,
+                model: rental.vehicle.model,
+                year: rental.vehicle.year,
+                plate: rental.vehicle.plate,
+                color: rental.vehicle.color,
+              }
+            : null,
+          renter: renter && renterAddress
+            ? buildEnrichedParty(renter, renterAddress)
+            : { id: rental.renter_id, name: renter?.full_name, email: renter?.email, phone: renter?.phone },
+          owner: owner && ownerAddress
+            ? buildEnrichedParty(owner, ownerAddress)
+            : { id: rental.owner_id, name: owner?.full_name, email: owner?.email, phone: owner?.phone },
+        };
+        sendContractWebhook(enrichedPayload);
+
         toast.success("Contrato enviado! O locatário poderá visualizar e assinar via Clicksign.");
         onContractSent?.();
       } else {
