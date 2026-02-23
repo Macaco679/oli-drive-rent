@@ -8,7 +8,7 @@ const corsHeaders = {
 // Allowed webhook destinations (whitelist for security)
 const ALLOWED_URLS: Record<string, string> = {
   "validarcarro": "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
-  "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook-test/oli-contrato",
+  "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato",
 };
 
 serve(async (req) => {

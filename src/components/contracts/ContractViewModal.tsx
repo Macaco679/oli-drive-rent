@@ -46,6 +46,108 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ============================================================
+// ADDRESS & CPF TYPES
+// ============================================================
+
+interface UserAddress {
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+}
+
+interface EnrichedParty {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  cpf: string;
+  address: {
+    street: string;
+    number: string;
+    complement: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+}
+
+function sanitizeCpf(cpf: string | null): string {
+  if (!cpf) return "";
+  return cpf.replace(/\D/g, "");
+}
+
+function sanitizeZip(zip: string | null): string {
+  if (!zip) return "";
+  return zip.replace(/\D/g, "");
+}
+
+function sanitizeState(state: string | null): string {
+  if (!state) return "";
+  return state.trim().toUpperCase().slice(0, 2);
+}
+
+async function fetchUserAddress(userId: string): Promise<UserAddress | null> {
+  const { data, error } = await supabase
+    .from("oli_user_addresses")
+    .select("street, number, complement, neighborhood, city, state, postal_code, is_default, created_at")
+    .eq("user_id", userId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data;
+}
+
+function validatePartyData(
+  profile: OliProfile | null,
+  address: UserAddress | null,
+  role: string
+): string[] {
+  const missing: string[] = [];
+  if (!profile?.cpf || sanitizeCpf(profile.cpf).length < 11) missing.push(`${role}: CPF`);
+  if (!profile?.email) missing.push(`${role}: E-mail`);
+  if (!address) {
+    missing.push(`${role}: Endereço completo`);
+  } else {
+    if (!address.street) missing.push(`${role}: Logradouro`);
+    if (!address.number) missing.push(`${role}: Número`);
+    if (!address.neighborhood) missing.push(`${role}: Bairro`);
+    if (!address.city) missing.push(`${role}: Cidade`);
+    if (!address.state) missing.push(`${role}: Estado (UF)`);
+    if (!address.postal_code || sanitizeZip(address.postal_code).length < 8) missing.push(`${role}: CEP`);
+  }
+  return missing;
+}
+
+function buildEnrichedParty(
+  profile: OliProfile,
+  address: UserAddress
+): EnrichedParty {
+  return {
+    id: profile.id,
+    name: profile.full_name,
+    email: profile.email,
+    phone: profile.phone || profile.whatsapp_phone || null,
+    cpf: sanitizeCpf(profile.cpf),
+    address: {
+      street: address.street || "",
+      number: address.number || "",
+      complement: address.complement || "",
+      neighborhood: address.neighborhood || "",
+      city: address.city || "",
+      state: sanitizeState(address.state),
+      zip: sanitizeZip(address.postal_code),
+    },
+  };
+}
+
+// ============================================================
 // TYPES & HELPERS
 // ============================================================
 
@@ -355,6 +457,9 @@ export function ContractViewModal({
   const [contract, setContract] = useState<RentalContract | null>(null);
   const [owner, setOwner] = useState<OliProfile | null>(null);
   const [renter, setRenter] = useState<OliProfile | null>(null);
+  const [ownerAddress, setOwnerAddress] = useState<UserAddress | null>(null);
+  const [renterAddress, setRenterAddress] = useState<UserAddress | null>(null);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [acknowledged, setAcknowledged] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -406,17 +511,31 @@ export function ContractViewModal({
     setLoading(true);
 
     try {
-      const [ownerData, renterData, existingContract, { user }] = await Promise.all([
+      const [ownerData, renterData, existingContract, { user }, ownerAddr, renterAddr] = await Promise.all([
         getProfileById(rental.owner_id),
         getProfileById(rental.renter_id),
         getContractByRentalId(rental.id),
         getCurrentUser(),
+        fetchUserAddress(rental.owner_id),
+        fetchUserAddress(rental.renter_id),
       ]);
 
       setOwner(ownerData);
       setRenter(renterData);
       setContract(existingContract);
       setCurrentUser(user ? { id: user.id } : null);
+      setOwnerAddress(ownerAddr);
+      setRenterAddress(renterAddr);
+
+      // Validate required fields
+      const missing = [
+        ...validatePartyData(renterData, renterAddr, "Locatário"),
+        ...validatePartyData(ownerData, ownerAddr, "Locador"),
+      ];
+      setMissingFields(missing);
+      if (missing.length > 0) {
+        console.warn("[OLI] Campos obrigatórios faltando:", missing);
+      }
 
       if (ownerData && renterData && rental.vehicle) {
         const data: ContractData = {
@@ -445,6 +564,7 @@ export function ContractViewModal({
               modal_status_label: CONTRACT_UI_STATUS[uiStatus].label,
               has_contract_preview: true,
               has_contract_pdf: !!existingContract?.file_url,
+              missing_fields: missing,
             }
           )
         );
@@ -462,6 +582,7 @@ export function ContractViewModal({
   const hasContract = contract !== null;
   const isFullySigned = uiStatus === "signed";
   const canSign = mode === "renter" && hasContract && uiStatus === "awaiting_renter";
+  const dataComplete = missingFields.length === 0;
 
   // Determine progress step
   const getProgressStep = (): number => {
@@ -500,87 +621,86 @@ export function ContractViewModal({
   // RENTER: Initiate Clicksign signing (NO local signing)
   // ============================================================
   const handleClicksignSign = async () => {
-    if (!contract || !rental) return;
+    if (!contract || !rental || !owner || !renter || !ownerAddress || !renterAddress) return;
+    if (missingFields.length > 0) {
+      toast.error("Complete os dados obrigatórios antes de assinar.");
+      console.error("[OLI] Bloqueando assinatura — campos faltando:", missingFields);
+      return;
+    }
     setSigning(true);
 
-    const uiState = {
-      modal_status_label: statusConfig.label,
-      cta_label: "Assinar com Clicksign",
-      checkbox_acknowledged: acknowledged,
-      has_contract_preview: true,
-      has_contract_pdf: !!contract.file_url,
+    const enrichedRenter = buildEnrichedParty(renter, renterAddress);
+    const enrichedOwner = buildEnrichedParty(owner, ownerAddress);
+
+    const fullPayload: Record<string, unknown> = {
+      event: "clicksign_start",
+      event_id: generateEventId(),
+      timestamp: new Date().toISOString(),
+      source: "lovable_frontend",
+      page: "/reservations",
+      environment: window.location.hostname.includes("localhost") ? "development" : "production",
+      reservation: {
+        id: rental.id,
+        status: rental.status,
+        vehicle_id: rental.vehicle_id,
+        renter_id: rental.renter_id,
+        owner_id: rental.owner_id,
+        start_date: rental.start_date,
+        end_date: rental.end_date,
+        pickup_location: rental.pickup_location,
+        dropoff_location: rental.dropoff_location,
+        total_price: rental.total_price,
+        deposit_amount: rental.deposit_amount,
+        notes: rental.notes,
+        created_at: rental.created_at,
+        updated_at: rental.updated_at,
+      },
+      contract: {
+        id: contract.id,
+        rental_id: contract.rental_id,
+        status: contract.status,
+        contract_num: contract.contract_number,
+        version: contract.version,
+        file_url: contract.file_url,
+        renter_signed_at: contract.renter_signed_at,
+        owner_signed_at: contract.owner_signed_at,
+        provider: "clicksign",
+        created_at: contract.created_at,
+        updated_at: contract.updated_at,
+      },
+      vehicle: rental.vehicle
+        ? {
+            id: rental.vehicle.id,
+            title: rental.vehicle.title,
+            brand: rental.vehicle.brand,
+            model: rental.vehicle.model,
+            year: rental.vehicle.year,
+            plate: rental.vehicle.plate,
+            color: rental.vehicle.color,
+          }
+        : null,
+      renter: enrichedRenter,
+      owner: enrichedOwner,
+      ui: {
+        checkbox_acknowledged: acknowledged,
+        modal_status_label: statusConfig.label,
+        cta_label: "Assinar com Clicksign",
+        has_contract_preview: true,
+        has_contract_pdf: !!contract.file_url,
+      },
     };
 
-    // Webhook: start requested
-    sendContractWebhook(
-      await buildWebhookPayload(
-        "clicksign_start_requested",
-        rental,
-        contract,
-        owner,
-        renter,
-        currentUser,
-        uiState,
-        { name: "click_sign_clicksign", result: "started", error_message: null }
-      )
-    );
-
     try {
-      // ─────────────────────────────────────────────────────────
-      // CLICKSIGN INTEGRATION POINT
-      // When the Clicksign API is ready, replace the block below:
-      //
-      // 1. Call your edge function to create the Clicksign document
-      //    const { sign_url } = await createClicksignDocument(contract.id);
-      //
-      // 2. Redirect the user:
-      //    window.location.href = sign_url;
-      //
-      // 3. The contract status will be updated by the Clicksign
-      //    webhook → n8n → Supabase pipeline. The frontend will
-      //    NOT mark the contract as signed.
-      // ─────────────────────────────────────────────────────────
+      // Send the enriched payload via proxy
+      await sendContractWebhook(fullPayload);
 
-      // Placeholder: show message that integration is being configured
       toast.info(
-        "A integração com a Clicksign está sendo configurada. Em breve você será redirecionado para assinar.",
+        "Solicitação de assinatura enviada. Aguarde o redirecionamento para a Clicksign.",
         { duration: 5000 }
-      );
-
-      // Webhook: redirect ready (placeholder)
-      sendContractWebhook(
-        await buildWebhookPayload(
-          "clicksign_redirect_ready",
-          rental,
-          contract,
-          owner,
-          renter,
-          currentUser,
-          uiState,
-          {
-            name: "click_sign_clicksign",
-            result: "redirect_ready",
-            error_message: null,
-            sign_url: null, // Will be filled when Clicksign is integrated
-          }
-        )
       );
     } catch (error) {
       console.error("Erro ao iniciar assinatura:", error);
       toast.error("Erro ao iniciar assinatura. Tente novamente.");
-
-      sendContractWebhook(
-        await buildWebhookPayload(
-          "clicksign_start_failed",
-          rental,
-          contract,
-          owner,
-          renter,
-          currentUser,
-          uiState,
-          { name: "click_sign_clicksign", result: "failed", error_message: String(error) }
-        )
-      );
     } finally {
       setSigning(false);
     }
@@ -634,6 +754,37 @@ export function ContractViewModal({
                         <p className="text-muted-foreground">
                           Após concluir, volte para esta página. O status será atualizado automaticamente.
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing fields warning */}
+                {canSign && !dataComplete && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1 text-sm">
+                        <p className="font-medium text-foreground">
+                          Complete seus dados para assinar
+                        </p>
+                        <p className="text-muted-foreground">
+                          Para iniciar a assinatura, é necessário que locatário e locador tenham CPF e endereço completos cadastrados.
+                        </p>
+                        <ul className="list-disc ml-4 text-muted-foreground text-xs space-y-0.5">
+                          {missingFields.map((f) => (
+                            <li key={f}>{f}</li>
+                          ))}
+                        </ul>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 gap-1"
+                          onClick={() => window.open("/profile/edit", "_blank")}
+                        >
+                          Atualizar dados
+                          <ExternalLink className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -814,7 +965,7 @@ export function ContractViewModal({
                     {canSign && (
                       <Button
                         onClick={handleClicksignSign}
-                        disabled={signing || !acknowledged}
+                        disabled={signing || !acknowledged || !dataComplete}
                         className="gap-2"
                       >
                         {signing ? (
