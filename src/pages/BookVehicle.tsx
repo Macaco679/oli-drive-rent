@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,7 +11,12 @@ import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getVehicleById, getCurrentUser, createRental, OliVehicle, getProfile } from "@/lib/supabase";
 import { notifyRentalRequest } from "@/lib/notificationService";
 import { toast } from "sonner";
-import { ArrowLeft, Car, AlertCircle, MapPin } from "lucide-react";
+import { ArrowLeft, Car, AlertCircle, MapPin, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function BookVehicle() {
   const { id } = useParams<{ id: string }>();
@@ -53,10 +57,16 @@ export default function BookVehicle() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
-  const calculateTotal = () => {
+  const calculateRentalPrice = () => {
     if (!vehicle?.daily_price) return 0;
     const days = calculateDays();
     return days * vehicle.daily_price;
+  };
+
+  const calculateTotal = () => {
+    const rentalPrice = calculateRentalPrice();
+    const deposit = vehicle?.deposit_amount || 0;
+    return rentalPrice + deposit;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -201,28 +211,64 @@ export default function BookVehicle() {
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <h3 className="font-semibold text-lg">Período</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="startDate">Data de início</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      required
-                      className="mt-1 h-12"
-                    />
+                  <div className="space-y-1.5">
+                    <Label>Data de início</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-12",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(parse(startDate, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecione a data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate ? parse(startDate, "yyyy-MM-dd", new Date()) : undefined}
+                          onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                          locale={ptBR}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                  <div>
-                    <Label htmlFor="endDate">Data de término</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      required
-                      min={startDate}
-                      className="mt-1 h-12"
-                    />
+                  <div className="space-y-1.5">
+                    <Label>Data de término</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-12",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(parse(endDate, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecione a data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate ? parse(endDate, "yyyy-MM-dd", new Date()) : undefined}
+                          onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                          locale={ptBR}
+                          disabled={(date) => {
+                            const minDate = startDate ? parse(startDate, "yyyy-MM-dd", new Date()) : new Date();
+                            return date < minDate;
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </div>
@@ -282,14 +328,20 @@ export default function BookVehicle() {
                       R$ {vehicle.daily_price?.toLocaleString('pt-BR')}
                     </span>
                   </div>
-                  {vehicle.deposit_amount && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal diárias</span>
+                    <span className="font-medium">
+                      R$ {calculateRentalPrice().toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  {vehicle.deposit_amount ? (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Caução</span>
                       <span className="font-medium">
                         R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
                       </span>
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex justify-between pt-4 border-t border-border">
                     <span className="font-semibold">Total</span>
                     <span className="text-2xl font-bold text-primary">

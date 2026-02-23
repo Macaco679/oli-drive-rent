@@ -5,7 +5,12 @@ import { VehicleCard } from "@/components/vehicles/VehicleCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCurrentUser, getProfile, getAllVehicles, getVehicleCoverPhoto, OliVehicle, OliVehiclePhoto } from "@/lib/supabase";
-import { MapPin, Calendar, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, CalendarIcon, Car, Shield, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
 import { SupabaseDebugPanel } from "@/components/debug/SupabaseDebugPanel";
@@ -162,8 +167,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchCity, setSearchCity] = useState("");
   const [searchCar, setSearchCar] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -292,7 +297,13 @@ export default function Home() {
 
   const handleSearch = () => {
     navigate("/search", {
-      state: { searchCity, searchCar, startDate, endDate, selectedType }
+      state: { 
+        searchCity, 
+        searchCar, 
+        startDate: startDate ? format(startDate, "yyyy-MM-dd") : "", 
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : "", 
+        selectedType 
+      }
     });
   };
 
@@ -353,24 +364,56 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "dd/MM/yyyy") : "Retirada"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      locale={ptBR}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "dd/MM/yyyy") : "Devolução"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      locale={ptBR}
+                      disabled={(date) => date < (startDate || new Date())}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex gap-2 flex-wrap">
