@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -123,8 +124,6 @@ function deriveUIStatus(contract: RentalContract | null): ContractUIStatus {
   return "awaiting_renter";
 }
 
-const WEBHOOK_URL = "https://n8n.srv1153225.hstgr.cloud/webhook-test/oli-contrato";
-
 function generateEventId(): string {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -143,19 +142,18 @@ function formatCurrencyBR(value: number | null): string {
   return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 }
 
-// ============================================================
-// WEBHOOK HELPER
-// ============================================================
-
+// Webhook is sent via the Supabase Edge Function proxy to avoid CORS issues
 async function sendContractWebhook(payload: Record<string, unknown>): Promise<void> {
   try {
-    console.log("[OLI Webhook] Enviando:", payload.event, payload);
-    const resp = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    console.log("[OLI Webhook] Enviando via proxy:", payload.event, payload);
+    const { data, error } = await supabase.functions.invoke("webhook-proxy", {
+      body: { ...payload, _webhook_target: "oli-contrato" },
     });
-    console.log("[OLI Webhook] Status:", resp.status);
+    if (error) {
+      console.error("[OLI Webhook] Erro proxy:", error);
+    } else {
+      console.log("[OLI Webhook] Sucesso:", data);
+    }
   } catch (err) {
     console.error("[OLI Webhook] Erro (não-bloqueante):", err);
   }
