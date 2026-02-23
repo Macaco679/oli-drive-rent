@@ -9,6 +9,7 @@ const corsHeaders = {
 const ALLOWED_URLS: Record<string, string> = {
   "validarcarro": "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
   "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato",
+  "cnhcheck": "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",
 };
 
 serve(async (req) => {

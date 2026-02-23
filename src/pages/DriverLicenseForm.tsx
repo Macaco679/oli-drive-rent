@@ -186,54 +186,53 @@ export default function DriverLicenseForm() {
       startTimer();
 
       // 4. Chamar webhook n8n com timeout de 90s
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), VERIFICATION_TIMEOUT_MS);
-
+      const timeoutId: ReturnType<typeof setTimeout> | null = null;
       let webhookResult: { cnh_aprovada?: boolean; status?: string } | null = null;
 
       try {
-        console.log("[CNH] Enviando para webhook...");
-        const webhookResponse = await fetch(
-          "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: controller.signal,
-            body: JSON.stringify({
-              user_id: user.id,
-              full_name: fullName,
-              license_number: licenseNumber,
-              category,
-              cpf,
-              codigo_seguranca: codigoSeguranca,
-              nome_mae: nomeMae,
-              front_image_url: frontUrl,
-              back_image_url: backUrl,
-              selfie_image_url: selfieUrl,
-            }),
-          }
+        console.log("[CNH] Enviando para webhook via proxy...");
+        
+        // Use Promise.race for timeout since supabase.functions.invoke doesn't support AbortController
+        const invokePromise = supabase.functions.invoke("webhook-proxy", {
+          body: {
+            _webhook_target: "cnhcheck",
+            user_id: user.id,
+            full_name: fullName,
+            license_number: licenseNumber,
+            category,
+            cpf,
+            codigo_seguranca: codigoSeguranca,
+            nome_mae: nomeMae,
+            front_image_url: frontUrl,
+            back_image_url: backUrl,
+            selfie_image_url: selfieUrl,
+          },
+        });
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("TIMEOUT")), VERIFICATION_TIMEOUT_MS)
         );
+
+        const { data: webhookData, error: webhookError } = await Promise.race([
+          invokePromise,
+          timeoutPromise,
+        ]) as Awaited<typeof invokePromise>;
 
         clearTimeout(timeoutId);
 
-        if (webhookResponse.ok) {
-          const rawText = await webhookResponse.text();
-          console.log("[CNH] Resposta bruta do webhook:", rawText);
-          
-          try {
-            const parsed = JSON.parse(rawText);
-            // Handle both array and object responses from n8n
-            webhookResult = Array.isArray(parsed) ? parsed[0] : parsed;
-            console.log("[CNH] Resultado parseado:", webhookResult);
-          } catch (parseErr) {
-            console.error("[CNH] Erro ao parsear resposta:", parseErr);
-          }
-        } else {
-          console.error("[CNH] Webhook retornou status:", webhookResponse.status);
+        if (webhookError) {
+          console.error("[CNH] Erro no webhook-proxy:", webhookError);
+        } else if (webhookData) {
+          console.log("[CNH] Resposta do webhook-proxy:", webhookData);
+          // webhookData already comes parsed from supabase.functions.invoke
+          // Handle both array and object responses from n8n
+          const parsed = typeof webhookData === "string" ? JSON.parse(webhookData) : webhookData;
+          webhookResult = Array.isArray(parsed) ? parsed[0] : parsed;
+          console.log("[CNH] Resultado parseado:", webhookResult);
         }
       } catch (fetchErr: unknown) {
         clearTimeout(timeoutId);
-        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+        if (fetchErr instanceof Error && fetchErr.message === "TIMEOUT") {
           console.error("[CNH] Webhook timeout após", VERIFICATION_TIMEOUT_MS / 1000, "segundos");
         } else {
           console.error("[CNH] Erro no webhook:", fetchErr);
