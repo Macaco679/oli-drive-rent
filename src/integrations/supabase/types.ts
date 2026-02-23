@@ -83,6 +83,8 @@ export type Database = {
         Row: {
           back_path: string | null
           category: string | null
+          codigo_segurança: number | null
+          cpf: number | null
           created_at: string
           document_url: string | null
           expires_at: string | null
@@ -90,6 +92,7 @@ export type Database = {
           full_name: string | null
           id: string
           license_number: string | null
+          nome_mae: string | null
           notes: string | null
           selfie_path: string | null
           status: Database["public"]["Enums"]["oli_driver_license_status"]
@@ -102,6 +105,8 @@ export type Database = {
         Insert: {
           back_path?: string | null
           category?: string | null
+          codigo_segurança?: number | null
+          cpf?: number | null
           created_at?: string
           document_url?: string | null
           expires_at?: string | null
@@ -109,6 +114,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           license_number?: string | null
+          nome_mae?: string | null
           notes?: string | null
           selfie_path?: string | null
           status?: Database["public"]["Enums"]["oli_driver_license_status"]
@@ -121,6 +127,8 @@ export type Database = {
         Update: {
           back_path?: string | null
           category?: string | null
+          codigo_segurança?: number | null
+          cpf?: number | null
           created_at?: string
           document_url?: string | null
           expires_at?: string | null
@@ -128,6 +136,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           license_number?: string | null
+          nome_mae?: string | null
           notes?: string | null
           selfie_path?: string | null
           status?: Database["public"]["Enums"]["oli_driver_license_status"]

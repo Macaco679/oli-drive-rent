@@ -103,6 +103,9 @@ export async function saveDriverLicense(
     front_path?: string | null;
     back_path?: string | null;
     selfie_path?: string | null;
+    cpf?: string | null;
+    codigo_seguranca?: string | null;
+    nome_mae?: string | null;
   }
 ): Promise<DriverLicenseRecord | null> {
   const upsertData = {
@@ -111,11 +114,14 @@ export async function saveDriverLicense(
     license_number: data.license_number,
     category: data.category,
     expires_at: data.expires_at || null,
-    status: "pending" as const, // Sempre volta para pending ao enviar/reenviar
+    status: "pending" as const,
     updated_at: new Date().toISOString(),
     ...(data.front_path && { front_path: data.front_path }),
     ...(data.back_path && { back_path: data.back_path }),
     ...(data.selfie_path !== undefined && { selfie_path: data.selfie_path }),
+    ...(data.cpf !== undefined && { cpf: data.cpf ? Number(data.cpf.replace(/\D/g, "")) : null }),
+    ...(data.codigo_seguranca !== undefined && { "codigo_segurança": data.codigo_seguranca ? Number(data.codigo_seguranca.replace(/\D/g, "")) : null }),
+    ...(data.nome_mae !== undefined && { nome_mae: data.nome_mae }),
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +149,9 @@ export async function submitDriverLicense(
     licenseNumber: string;
     category: string;
     expiresAt: string;
+    cpf?: string;
+    codigoSeguranca?: string;
+    nomeMae?: string;
   },
   files: {
     front: File | null;
@@ -184,6 +193,9 @@ export async function submitDriverLicense(
       front_path: frontPath,
       back_path: backPath,
       selfie_path: selfiePath,
+      cpf: formData.cpf,
+      codigo_seguranca: formData.codigoSeguranca,
+      nome_mae: formData.nomeMae,
     });
 
     if (!savedLicense) {
