@@ -155,7 +155,7 @@ export default function DriverLicenseForm() {
       // 1. Salvar dados e fotos no Supabase
       const result = await submitDriverLicense(
         user.id,
-        { fullName, licenseNumber, category, expiresAt: "" },
+        { fullName, licenseNumber, category, expiresAt: "", cpf, codigoSeguranca, nomeMae },
         { front: frontFile, back: backFile, selfie: selfieFile }
       );
 
