@@ -325,6 +325,7 @@ export type Database = {
       oli_profiles: {
         Row: {
           birth_date: string | null
+          complemention: string | null
           cpf: string | null
           created_at: string
           driver_license_id: string | null
@@ -337,16 +338,20 @@ export type Database = {
           id: string
           marital_status: string | null
           nationality: string | null
+          neigbhorhood: string | null
+          number: number | null
           phone: string | null
           profession: string | null
           rg: string | null
           role: Database["public"]["Enums"]["oli_user_role"]
           signature_url: string | null
+          street: string | null
           updated_at: string
           whatsapp_phone: string | null
         }
         Insert: {
           birth_date?: string | null
+          complemention?: string | null
           cpf?: string | null
           created_at?: string
           driver_license_id?: string | null
@@ -359,16 +364,20 @@ export type Database = {
           id: string
           marital_status?: string | null
           nationality?: string | null
+          neigbhorhood?: string | null
+          number?: number | null
           phone?: string | null
           profession?: string | null
           rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
           signature_url?: string | null
+          street?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
         }
         Update: {
           birth_date?: string | null
+          complemention?: string | null
           cpf?: string | null
           created_at?: string
           driver_license_id?: string | null
@@ -381,11 +390,14 @@ export type Database = {
           id?: string
           marital_status?: string | null
           nationality?: string | null
+          neigbhorhood?: string | null
+          number?: number | null
           phone?: string | null
           profession?: string | null
           rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
           signature_url?: string | null
+          street?: string | null
           updated_at?: string
           whatsapp_phone?: string | null
         }
