@@ -649,6 +649,15 @@ export function ContractViewModal({
                 year: rental.vehicle.year,
                 plate: rental.vehicle.plate,
                 color: rental.vehicle.color,
+                pickup_address: {
+                  street: rental.vehicle.pickup_street || "",
+                  number: rental.vehicle.pickup_number || "",
+                  complement: rental.vehicle.pickup_complement || "",
+                  neighborhood: rental.vehicle.pickup_neighborhood || "",
+                  city: rental.vehicle.location_city || "",
+                  state: rental.vehicle.location_state || "",
+                  zip: rental.vehicle.pickup_zip_code || "",
+                },
               }
             : null,
           renter: renter && renterAddress
@@ -733,6 +742,15 @@ export function ContractViewModal({
             year: rental.vehicle.year,
             plate: rental.vehicle.plate,
             color: rental.vehicle.color,
+            pickup_address: {
+              street: rental.vehicle.pickup_street || "",
+              number: rental.vehicle.pickup_number || "",
+              complement: rental.vehicle.pickup_complement || "",
+              neighborhood: rental.vehicle.pickup_neighborhood || "",
+              city: rental.vehicle.location_city || "",
+              state: rental.vehicle.location_state || "",
+              zip: rental.vehicle.pickup_zip_code || "",
+            },
           }
         : null,
       renter: enrichedRenter,

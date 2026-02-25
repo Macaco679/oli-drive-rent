@@ -26,8 +26,10 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { getCurrentUser, getProfile, updateProfile, OliProfile } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { getMissingFields } from "@/hooks/useProfileCompletion";
 import { SignatureField } from "@/components/profile/SignatureField";
+import { MapPin } from "lucide-react";
 
 // Validation schema
 const formSchema = z.object({
@@ -40,6 +42,14 @@ const formSchema = z.object({
   birth_date: z.string().min(1, "Data de nascimento é obrigatória"),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").max(15, "Telefone inválido"),
   whatsapp_phone: z.string().optional(),
+  // Address fields
+  street: z.string().optional(),
+  number: z.string().optional(),
+  neighborhood: z.string().optional(),
+  complement: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postal_code: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -75,6 +85,13 @@ const formatRG = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9.-]/g, "").slice(0, 20);
 };
 
+// CEP formatting
+const formatCEP = (value: string): string => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
 export default function ProfileEdit() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -94,6 +111,13 @@ export default function ProfileEdit() {
       birth_date: "",
       phone: "",
       whatsapp_phone: "",
+      street: "",
+      number: "",
+      neighborhood: "",
+      complement: "",
+      city: "",
+      state: "",
+      postal_code: "",
     },
   });
 
@@ -114,6 +138,16 @@ export default function ProfileEdit() {
       const userProfile = await getProfile(user.id);
       if (userProfile) {
         setProfile(userProfile);
+
+        // Load address from oli_user_addresses
+        const { data: addrData } = await supabase
+          .from("oli_user_addresses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("is_default", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
         form.reset({
           full_name: userProfile.full_name || "",
           cpf: userProfile.cpf ? formatCPF(userProfile.cpf) : "",
@@ -124,6 +158,13 @@ export default function ProfileEdit() {
           birth_date: userProfile.birth_date || "",
           phone: userProfile.phone ? formatPhone(userProfile.phone) : "",
           whatsapp_phone: userProfile.whatsapp_phone ? formatPhone(userProfile.whatsapp_phone) : "",
+          street: addrData?.street || "",
+          number: addrData?.number || "",
+          neighborhood: addrData?.neighborhood || "",
+          complement: addrData?.complement || "",
+          city: addrData?.city || "",
+          state: addrData?.state || "",
+          postal_code: addrData?.postal_code ? formatCEP(addrData.postal_code) : "",
         });
       }
     } catch (error) {
@@ -155,6 +196,41 @@ export default function ProfileEdit() {
       const updated = await updateProfile(profile.id, cleanedData);
       if (updated) {
         setProfile(updated);
+
+        // Save address to oli_user_addresses (upsert)
+        const addressData = {
+          user_id: profile.id,
+          street: data.street?.trim() || null,
+          number: data.number?.trim() || null,
+          neighborhood: data.neighborhood?.trim() || null,
+          complement: data.complement?.trim() || null,
+          city: data.city?.trim() || null,
+          state: data.state?.trim() || null,
+          postal_code: data.postal_code?.replace(/\D/g, "") || null,
+          is_default: true,
+          label: "Principal",
+        };
+
+        // Check if address already exists
+        const { data: existingAddr } = await supabase
+          .from("oli_user_addresses")
+          .select("id")
+          .eq("user_id", profile.id)
+          .order("is_default", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingAddr) {
+          await supabase
+            .from("oli_user_addresses")
+            .update(addressData)
+            .eq("id", existingAddr.id);
+        } else {
+          await supabase
+            .from("oli_user_addresses")
+            .insert(addressData);
+        }
+
         toast.success("Dados atualizados com sucesso!");
         navigate("/profile");
       } else {
@@ -448,7 +524,131 @@ export default function ProfileEdit() {
               </CardContent>
             </Card>
 
-            {/* Signature */}
+            {/* Address */}
+            <Card className="shadow-md border-0">
+              <CardHeader className="bg-primary/5 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold">3</span>
+                  </div>
+                  <MapPin className="w-5 h-5 text-primary" />
+                  Endereço
+                </CardTitle>
+                <CardDescription>
+                  Necessário para geração do contrato de locação
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <FormField
+                  control={form.control}
+                  name="street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua / Logradouro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Rua das Flores" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="complement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Complemento</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Apto, Bloco..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="neighborhood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Centro" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cidade</FormLabel>
+                        <FormControl>
+                          <Input placeholder="São Paulo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado (UF)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="SP" maxLength={2} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="postal_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="00000-000"
+                          value={field.value}
+                          onChange={(e) => field.onChange(formatCEP(e.target.value))}
+                          className="font-mono"
+                          inputMode="numeric"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
             <SignatureField
               currentSignature={profile?.signature_url || null}
               onSignatureChange={(url) => {
