@@ -181,7 +181,7 @@ export default function ProfileEdit() {
     setSaving(true);
     try {
       // Remove formatting before saving
-      const cleanedData = {
+      const cleanedData: Record<string, unknown> = {
         full_name: data.full_name.trim(),
         cpf: data.cpf.replace(/\D/g, ""),
         rg: data.rg?.trim() || null,
@@ -191,6 +191,11 @@ export default function ProfileEdit() {
         birth_date: data.birth_date,
         phone: data.phone.replace(/\D/g, ""),
         whatsapp_phone: data.whatsapp_phone?.replace(/\D/g, "") || null,
+        // Sync address fields to oli_profiles columns
+        street: data.street?.trim() || null,
+        neigbhorhood: data.neighborhood?.trim() || null,
+        number: data.number?.trim() ? Number(data.number.trim()) : null,
+        complemention: data.complement?.trim() || null,
       };
 
       const updated = await updateProfile(profile.id, cleanedData);
