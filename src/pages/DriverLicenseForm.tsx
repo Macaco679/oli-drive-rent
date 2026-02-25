@@ -53,6 +53,7 @@ export default function DriverLicenseForm() {
   const [verificationResult, setVerificationResult] = useState<{
     approved: boolean;
     statusLabel: string;
+    motivo?: string | null;
   } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -187,7 +188,7 @@ export default function DriverLicenseForm() {
 
       // 4. Chamar webhook n8n com timeout de 90s
       const timeoutId: ReturnType<typeof setTimeout> | null = null;
-      let webhookResult: { cnh_aprovada?: boolean; status?: string } | null = null;
+      let webhookResult: { cnh_aprovada?: boolean; status?: string; motivo?: string | null } | null = null;
 
       try {
         console.log("[CNH] Enviando para webhook via proxy...");
@@ -223,12 +224,33 @@ export default function DriverLicenseForm() {
         if (webhookError) {
           console.error("[CNH] Erro no webhook-proxy:", webhookError);
         } else if (webhookData) {
-          console.log("[CNH] Resposta do webhook-proxy:", webhookData);
-          // webhookData already comes parsed from supabase.functions.invoke
-          // Handle both array and object responses from n8n
-          const parsed = typeof webhookData === "string" ? JSON.parse(webhookData) : webhookData;
-          webhookResult = Array.isArray(parsed) ? parsed[0] : parsed;
-          console.log("[CNH] Resultado parseado:", webhookResult);
+          console.log("[CNH] Resposta do webhook-proxy (raw):", webhookData);
+          // webhookData comes parsed from supabase.functions.invoke
+          let parsed = typeof webhookData === "string" ? JSON.parse(webhookData) : webhookData;
+          parsed = Array.isArray(parsed) ? parsed[0] : parsed;
+
+          // n8n may return { output: "{\"status\":\"REPROVADA\",\"motivo\":\"...\"}" }
+          // Parse the nested output string if present
+          if (parsed?.output && typeof parsed.output === "string") {
+            try {
+              const inner = JSON.parse(parsed.output);
+              console.log("[CNH] Output interno parseado:", inner);
+              // Map n8n response format to our expected format
+              const statusUpper = (inner.status || "").toUpperCase();
+              const isApproved = statusUpper === "APROVADA";
+              webhookResult = {
+                cnh_aprovada: isApproved,
+                status: inner.status || statusUpper,
+                motivo: inner.motivo || null,
+              };
+            } catch {
+              console.warn("[CNH] Falha ao parsear output interno:", parsed.output);
+              webhookResult = parsed;
+            }
+          } else {
+            webhookResult = parsed;
+          }
+          console.log("[CNH] Resultado final:", webhookResult);
         }
       } catch (fetchErr: unknown) {
         clearTimeout(timeoutId);
@@ -268,7 +290,7 @@ export default function DriverLicenseForm() {
         }
 
         // 5b. Mostrar resultado na tela
-        setVerificationResult({ approved: isApproved, statusLabel });
+        setVerificationResult({ approved: isApproved, statusLabel, motivo: webhookResult?.motivo || null });
 
         // 5c. Enviar email de notificação
         try {
@@ -362,15 +384,20 @@ export default function DriverLicenseForm() {
             </>
           ) : (
             <>
-              <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
-                <XCircle className="w-10 h-10 text-red-600" />
+              <div className="mx-auto w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
+                <XCircle className="w-10 h-10 text-destructive" />
               </div>
-              <h1 className="text-2xl font-bold text-red-800 mb-2">CNH Reprovada</h1>
+              <h1 className="text-2xl font-bold text-destructive mb-2">CNH Reprovada</h1>
               <p className="text-muted-foreground mb-2">
-                Status: <span className="font-semibold text-red-700">{verificationResult.statusLabel}</span>
+                Verifique a situação da sua carteira de habilitação.
               </p>
+              {verificationResult.motivo && (
+                <p className="text-sm text-destructive/80 mb-2">
+                  Motivo: <span className="font-semibold">{verificationResult.motivo.replace(/_/g, " ")}</span>
+                </p>
+              )}
               <p className="text-muted-foreground mb-8">
-                Sua carteira de habilitação não foi aprovada. Verifique os dados informados e as fotos enviadas, depois tente novamente.
+                Sua carteira de habilitação não foi aprovada na verificação. Verifique os dados informados e as fotos enviadas, ou entre em contato com o suporte.
               </p>
               <div className="flex flex-col gap-3">
                 <Button onClick={() => { setVerificationResult(null); }} className="w-full h-12">
