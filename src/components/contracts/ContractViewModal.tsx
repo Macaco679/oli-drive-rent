@@ -269,7 +269,9 @@ async function buildWebhookPayload(
   renter: OliProfile | null,
   currentUser: { id: string } | null,
   uiState: Record<string, unknown>,
-  action?: Record<string, unknown>
+  action?: Record<string, unknown>,
+  ownerAddr?: UserAddress | null,
+  renterAddr?: UserAddress | null
 ): Promise<Record<string, unknown>> {
   const userRole =
     currentUser?.id === rental.owner_id
@@ -343,6 +345,54 @@ async function buildWebhookPayload(
             state: rental.vehicle.location_state || "",
             zip: rental.vehicle.pickup_zip_code || "",
           },
+        }
+      : null,
+    owner_profile: owner
+      ? {
+          id: owner.id,
+          full_name: owner.full_name,
+          email: owner.email,
+          phone: owner.phone,
+          whatsapp_phone: owner.whatsapp_phone,
+          cpf: owner.cpf,
+          rg: owner.rg,
+          birth_date: owner.birth_date,
+          nationality: owner.nationality,
+          marital_status: owner.marital_status,
+          profession: owner.profession,
+          address: ownerAddr ? {
+            street: ownerAddr.street || "",
+            number: ownerAddr.number || "",
+            complement: ownerAddr.complement || "",
+            neighborhood: ownerAddr.neighborhood || "",
+            city: ownerAddr.city || "",
+            state: sanitizeState(ownerAddr.state),
+            zip: sanitizeZip(ownerAddr.postal_code),
+          } : null,
+        }
+      : null,
+    renter_profile: renter
+      ? {
+          id: renter.id,
+          full_name: renter.full_name,
+          email: renter.email,
+          phone: renter.phone,
+          whatsapp_phone: renter.whatsapp_phone,
+          cpf: renter.cpf,
+          rg: renter.rg,
+          birth_date: renter.birth_date,
+          nationality: renter.nationality,
+          marital_status: renter.marital_status,
+          profession: renter.profession,
+          address: renterAddr ? {
+            street: renterAddr.street || "",
+            number: renterAddr.number || "",
+            complement: renterAddr.complement || "",
+            neighborhood: renterAddr.neighborhood || "",
+            city: renterAddr.city || "",
+            state: sanitizeState(renterAddr.state),
+            zip: sanitizeZip(renterAddr.postal_code),
+          } : null,
         }
       : null,
     ui: uiState,
@@ -574,7 +624,10 @@ export function ContractViewModal({
               has_contract_preview: true,
               has_contract_pdf: !!existingContract?.file_url,
               missing_fields: missing,
-            }
+            },
+            undefined,
+            ownerAddr,
+            renterAddr
           )
         );
       }
