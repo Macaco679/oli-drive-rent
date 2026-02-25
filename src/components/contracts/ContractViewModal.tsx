@@ -607,30 +607,7 @@ export function ContractViewModal({
         setContractText(generateContractText(data));
       }
 
-      // Webhook: modal opened (once per open)
-      if (webhookSentRef.current !== rental.id) {
-        webhookSentRef.current = rental.id;
-        const uiStatus = deriveUIStatus(existingContract);
-        sendContractWebhook(
-          await buildWebhookPayload(
-            "contract_modal_opened",
-            rental,
-            existingContract,
-            ownerData,
-            renterData,
-            user ? { id: user.id } : null,
-            {
-              modal_status_label: CONTRACT_UI_STATUS[uiStatus].label,
-              has_contract_preview: true,
-              has_contract_pdf: !!existingContract?.file_url,
-              missing_fields: missing,
-            },
-            undefined,
-            ownerAddr,
-            renterAddr
-          )
-        );
-      }
+      // No webhook on modal open — only on explicit user actions (contract_sent, clicksign_start)
     } catch (error) {
       console.error("Erro ao carregar dados do contrato:", error);
       toast.error("Erro ao carregar dados do contrato");
