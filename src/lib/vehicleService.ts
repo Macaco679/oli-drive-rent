@@ -86,8 +86,8 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
       body_type: (data.body_type as any) || null,
       segment: (data.segment as any) || null,
       is_popular: data.is_popular || false,
-      status: "available" as const,
-      is_active: true,
+      status: "inactive" as const,
+      is_active: false,
     })
     .select("id")
     .single();
