@@ -21,6 +21,18 @@ export interface RentalContract {
   version: string | null;
   created_at: string;
   updated_at: string;
+  // Clicksign fields
+  clicksign_envelope_id: string | null;
+  clicksign_document_id: string | null;
+  clicksign_owner_signer_id: string | null;
+  clicksign_renter_signer_id: string | null;
+  clicksign_status: string | null;
+  clicksign_last_event: string | null;
+  clicksign_last_event_at: string | null;
+  clicksign_payload: unknown | null;
+  signed_completed_at: string | null;
+  inspection_released_at: string | null;
+  driver_license_id: string | null;
 }
 
 // Buscar contrato de uma reserva

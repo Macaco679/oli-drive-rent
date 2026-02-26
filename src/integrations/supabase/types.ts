@@ -413,40 +413,70 @@ export type Database = {
       }
       oli_rental_contracts: {
         Row: {
+          clicksign_document_id: string | null
+          clicksign_envelope_id: string | null
+          clicksign_last_event: string | null
+          clicksign_last_event_at: string | null
+          clicksign_owner_signer_id: string | null
+          clicksign_payload: Json | null
+          clicksign_renter_signer_id: string | null
+          clicksign_status: string | null
           contract_number: string | null
           created_at: string
           driver_license_id: string | null
           file_url: string | null
           id: string
+          inspection_released_at: string | null
           owner_signed_at: string | null
           rental_id: string
           renter_signed_at: string | null
+          signed_completed_at: string | null
           status: Database["public"]["Enums"]["oli_contract_status"]
           updated_at: string
           version: string | null
         }
         Insert: {
+          clicksign_document_id?: string | null
+          clicksign_envelope_id?: string | null
+          clicksign_last_event?: string | null
+          clicksign_last_event_at?: string | null
+          clicksign_owner_signer_id?: string | null
+          clicksign_payload?: Json | null
+          clicksign_renter_signer_id?: string | null
+          clicksign_status?: string | null
           contract_number?: string | null
           created_at?: string
           driver_license_id?: string | null
           file_url?: string | null
           id?: string
+          inspection_released_at?: string | null
           owner_signed_at?: string | null
           rental_id: string
           renter_signed_at?: string | null
+          signed_completed_at?: string | null
           status?: Database["public"]["Enums"]["oli_contract_status"]
           updated_at?: string
           version?: string | null
         }
         Update: {
+          clicksign_document_id?: string | null
+          clicksign_envelope_id?: string | null
+          clicksign_last_event?: string | null
+          clicksign_last_event_at?: string | null
+          clicksign_owner_signer_id?: string | null
+          clicksign_payload?: Json | null
+          clicksign_renter_signer_id?: string | null
+          clicksign_status?: string | null
           contract_number?: string | null
           created_at?: string
           driver_license_id?: string | null
           file_url?: string | null
           id?: string
+          inspection_released_at?: string | null
           owner_signed_at?: string | null
           rental_id?: string
           renter_signed_at?: string | null
+          signed_completed_at?: string | null
           status?: Database["public"]["Enums"]["oli_contract_status"]
           updated_at?: string
           version?: string | null
