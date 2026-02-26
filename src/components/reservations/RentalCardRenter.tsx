@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool } from "lucide-react";
+import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool, Mail, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -69,7 +69,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
 
   const contractStage = deriveContractStage(contract);
   const bothSigned = contractStage === "both_signed" || contractStage === "inspection_released";
-  const canSign = contract && (contractStage === "sent" || contractStage === "awaiting_renter");
+  const renterNeedsToSign = contract && (contractStage === "sent" || contractStage === "awaiting_renter");
   const awaitingOwner = contractStage === "renter_signed";
 
   const handleDropoffInspection = () => {
@@ -82,11 +82,11 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       case "preparing":
         return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Preparando</Badge>;
       case "sent":
-        return <Badge variant="secondary" className="text-xs"><PenTool className="w-3 h-3 mr-1" />Assine agora</Badge>;
+        return <Badge variant="secondary" className="text-xs"><Mail className="w-3 h-3 mr-1" />Verifique seu e-mail</Badge>;
       case "renter_signed":
         return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando proprietário</Badge>;
       case "owner_signed":
-        return <Badge variant="secondary" className="text-xs"><PenTool className="w-3 h-3 mr-1" />Assine agora</Badge>;
+        return <Badge variant="secondary" className="text-xs"><Mail className="w-3 h-3 mr-1" />Verifique seu e-mail</Badge>;
       case "both_signed":
         return <Badge variant="default" className="text-xs"><Check className="w-3 h-3 mr-1" />Assinado</Badge>;
       case "inspection_released":
@@ -153,6 +153,12 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 {getContractStageLabel(contractStage)}
               </p>
               <ContractTimeline contract={contract} />
+              {renterNeedsToSign && (
+                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                  <Mail className="w-3 h-3" />
+                  Verifique seu e-mail para assinar via Clicksign
+                </p>
+              )}
             </div>
           )}
 
@@ -180,16 +186,24 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                     <Clock className="w-4 h-4" />
                     <span className="text-sm">Aguardando contrato</span>
                   </div>
-                ) : canSign ? (
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    onClick={() => onSignContract?.(contract)}
-                    disabled={loadingContract}
-                  >
-                    <PenTool className="w-4 h-4 mr-2" />
-                    Assinar Contrato
-                  </Button>
+                ) : renterNeedsToSign ? (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => onViewContract?.(contract)}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Contrato
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => window.open("https://app.clicksign.com", "_blank")}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Assinar na Clicksign
+                    </Button>
+                  </div>
                 ) : awaitingOwner ? (
                   <div className="flex items-center gap-2">
                     <Button 
