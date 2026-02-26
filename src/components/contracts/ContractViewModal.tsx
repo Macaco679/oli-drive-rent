@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   FileText,
   Send,
@@ -252,7 +252,7 @@ function formatCurrencyBR(value: number | null): string {
 }
 
 // Webhook is sent via the Supabase Edge Function proxy to avoid CORS issues
-async function sendContractWebhook(payload: Record<string, unknown>): Promise<void> {
+async function sendContractWebhook(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   try {
     console.log("[OLI Webhook] Enviando via proxy:", payload.event, payload);
     const { data, error } = await supabase.functions.invoke("webhook-proxy", {
@@ -260,11 +260,13 @@ async function sendContractWebhook(payload: Record<string, unknown>): Promise<vo
     });
     if (error) {
       console.error("[OLI Webhook] Erro proxy:", error);
-    } else {
-      console.log("[OLI Webhook] Sucesso:", data);
+      return null;
     }
+    console.log("[OLI Webhook] Sucesso:", data);
+    return data as Record<string, unknown> | null;
   } catch (err) {
     console.error("[OLI Webhook] Erro (não-bloqueante):", err);
+    return null;
   }
 }
 
@@ -518,7 +520,6 @@ export function ContractViewModal({
 }: ContractViewModalProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [signing, setSigning] = useState(false);
   const [contractText, setContractText] = useState("");
   const [contract, setContract] = useState<RentalContract | null>(null);
   const [owner, setOwner] = useState<OliProfile | null>(null);
@@ -526,15 +527,12 @@ export function ContractViewModal({
   const [ownerAddress, setOwnerAddress] = useState<UserAddress | null>(null);
   const [renterAddress, setRenterAddress] = useState<UserAddress | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const webhookSentRef = useRef<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (open && rental) {
-      setAcknowledged(false);
       loadContractData();
     }
     return () => stopPolling();
@@ -713,9 +711,16 @@ export function ContractViewModal({
             ? buildEnrichedParty(owner, ownerAddress)
             : { id: rental.owner_id, name: owner?.full_name, email: owner?.email, phone: owner?.phone },
         };
-        sendContractWebhook(enrichedPayload);
 
-        toast.success("Contrato enviado! O locatário poderá visualizar e assinar via Clicksign.");
+        toast.info("Enviando contrato para a Clicksign... Aguarde.", { duration: 8000 });
+        const webhookResponse = await sendContractWebhook(enrichedPayload);
+        console.log("[OLI] Webhook response:", webhookResponse);
+
+        // Wait a moment then refresh to get updated clicksign fields from DB
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await refreshContractStatus();
+
+        toast.success("Contrato enviado! O locatário receberá um e-mail da Clicksign para assinar.");
         onContractSent?.();
       } else {
         toast.error("Erro ao enviar contrato");
@@ -729,102 +734,10 @@ export function ContractViewModal({
   };
 
   // ============================================================
-  // RENTER: Initiate Clicksign signing (NO local signing)
+  // No more clicksign_start webhook from renter side.
+  // The Clicksign envelope is already created when the owner sends the contract.
+  // The renter signs via the email link sent by Clicksign.
   // ============================================================
-  const handleClicksignSign = async () => {
-    if (!contract || !rental || !owner || !renter || !ownerAddress || !renterAddress) return;
-    if (missingFields.length > 0) {
-      toast.error("Complete os dados obrigatórios antes de assinar.");
-      console.error("[OLI] Bloqueando assinatura — campos faltando:", missingFields);
-      return;
-    }
-    setSigning(true);
-
-    const enrichedRenter = buildEnrichedParty(renter, renterAddress);
-    const enrichedOwner = buildEnrichedParty(owner, ownerAddress);
-
-    const fullPayload: Record<string, unknown> = {
-      event: "clicksign_start",
-      event_id: generateEventId(),
-      timestamp: new Date().toISOString(),
-      source: "lovable_frontend",
-      page: "/reservations",
-      environment: window.location.hostname.includes("localhost") ? "development" : "production",
-      reservation: {
-        id: rental.id,
-        status: rental.status,
-        vehicle_id: rental.vehicle_id,
-        renter_id: rental.renter_id,
-        owner_id: rental.owner_id,
-        start_date: rental.start_date,
-        end_date: rental.end_date,
-        pickup_location: rental.pickup_location,
-        dropoff_location: rental.dropoff_location,
-        total_price: rental.total_price,
-        deposit_amount: rental.deposit_amount,
-        notes: rental.notes,
-        created_at: rental.created_at,
-        updated_at: rental.updated_at,
-      },
-      contract: {
-        id: contract.id,
-        rental_id: contract.rental_id,
-        status: contract.status,
-        contract_num: contract.contract_number,
-        version: contract.version,
-        file_url: contract.file_url,
-        renter_signed_at: contract.renter_signed_at,
-        owner_signed_at: contract.owner_signed_at,
-        provider: "clicksign",
-        created_at: contract.created_at,
-        updated_at: contract.updated_at,
-      },
-      vehicle: rental.vehicle
-        ? {
-            id: rental.vehicle.id,
-            title: rental.vehicle.title,
-            brand: rental.vehicle.brand,
-            model: rental.vehicle.model,
-            year: rental.vehicle.year,
-            plate: rental.vehicle.plate,
-            color: rental.vehicle.color,
-            pickup_address: {
-              street: rental.vehicle.pickup_street || "",
-              number: rental.vehicle.pickup_number || "",
-              complement: rental.vehicle.pickup_complement || "",
-              neighborhood: rental.vehicle.pickup_neighborhood || "",
-              city: rental.vehicle.location_city || "",
-              state: rental.vehicle.location_state || "",
-              zip: rental.vehicle.pickup_zip_code || "",
-            },
-          }
-        : null,
-      renter: enrichedRenter,
-      owner: enrichedOwner,
-      ui: {
-        checkbox_acknowledged: acknowledged,
-        modal_status_label: statusConfig.label,
-        cta_label: "Assinar com Clicksign",
-        has_contract_preview: true,
-        has_contract_pdf: !!contract.file_url,
-      },
-    };
-
-    try {
-      // Send the enriched payload via proxy
-      await sendContractWebhook(fullPayload);
-
-      toast.info(
-        "Solicitação de assinatura enviada. Aguarde o redirecionamento para a Clicksign.",
-        { duration: 5000 }
-      );
-    } catch (error) {
-      console.error("Erro ao iniciar assinatura:", error);
-      toast.error("Erro ao iniciar assinatura. Tente novamente.");
-    } finally {
-      setSigning(false);
-    }
-  };
 
   if (!rental) return null;
 
@@ -856,23 +769,60 @@ export function ContractViewModal({
                 {/* Progress Steps */}
                 <ProgressSteps currentStep={getProgressStep()} />
 
-                {/* Clicksign Info Block (renter only, not fully signed) */}
-                {mode === "renter" && !isFullySigned && uiStatus !== "cancelled" && (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+                {/* Renter: Email-based signing info */}
+                {mode === "renter" && !isFullySigned && uiStatus !== "cancelled" && hasContract && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
                     <div className="flex items-start gap-2">
-                      <ShieldCheck className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div className="space-y-1 text-sm">
+                      <Send className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2 text-sm">
                         <p className="font-medium text-foreground">
-                          Assinatura digital segura via Clicksign
+                          {uiStatus === "awaiting_renter" 
+                            ? "📧 O contrato foi enviado para seu e-mail!" 
+                            : "Assinatura digital segura via Clicksign"}
                         </p>
-                        <p className="text-muted-foreground">
-                          A assinatura jurídica deste contrato é feita exclusivamente via Clicksign, em ambiente seguro e certificado.
+                        {uiStatus === "awaiting_renter" && (
+                          <>
+                            <p className="text-muted-foreground">
+                              Verifique sua caixa de entrada (e a pasta de spam). Você receberá um e-mail da <strong>Clicksign</strong> com o link para assinar o contrato digitalmente.
+                            </p>
+                            <div className="flex flex-col gap-2 mt-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="gap-2 w-fit"
+                                onClick={() => window.open("https://app.clicksign.com", "_blank")}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                Abrir Clicksign
+                              </Button>
+                              <p className="text-xs text-muted-foreground">
+                                Ou acesse o link diretamente pelo e-mail recebido.
+                              </p>
+                            </div>
+                          </>
+                        )}
+                        {uiStatus === "pending" && (
+                          <p className="text-muted-foreground">
+                            O proprietário está preparando o contrato. Você receberá um e-mail da Clicksign assim que ele for enviado.
+                          </p>
+                        )}
+                        <p className="text-muted-foreground text-xs">
+                          Após assinar, volte para esta página. O status será atualizado automaticamente.
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Renter: No contract yet */}
+                {mode === "renter" && !hasContract && uiStatus === "no_contract" && (
+                  <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                    <div className="flex items-start gap-2 text-sm">
+                      <Clock className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Aguardando envio do contrato</p>
                         <p className="text-muted-foreground">
-                          Ao continuar, você será redirecionado para concluir a assinatura eletrônica. O contrato só será considerado assinado após confirmação da Clicksign.
-                        </p>
-                        <p className="text-muted-foreground">
-                          Após concluir, volte para esta página. O status será atualizado automaticamente.
+                          O proprietário precisa revisar e enviar o contrato. Você será notificado por e-mail quando estiver pronto para assinatura.
                         </p>
                       </div>
                     </div>
@@ -1042,20 +992,6 @@ export function ContractViewModal({
 
             {/* Footer */}
             <div className="px-6 py-4 space-y-3">
-              {/* Checkbox — renter only, can sign */}
-              {canSign && (
-                <label className="flex items-start gap-3 cursor-pointer select-none">
-                  <Checkbox
-                    checked={acknowledged}
-                    onCheckedChange={(v) => setAcknowledged(v === true)}
-                    className="mt-0.5"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Li e estou ciente das principais condições da locação.
-                  </span>
-                </label>
-              )}
-
               <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-end">
                 {mode === "owner" ? (
                   <>
@@ -1068,13 +1004,21 @@ export function ContractViewModal({
                       className="gap-2"
                     >
                       {sending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Enviando para Clicksign...
+                        </>
                       ) : hasContract ? (
-                        <Check className="w-4 h-4" />
+                        <>
+                          <Check className="w-4 h-4" />
+                          Reenviar Contrato
+                        </>
                       ) : (
-                        <Send className="w-4 h-4" />
+                        <>
+                          <Send className="w-4 h-4" />
+                          Enviar Contrato
+                        </>
                       )}
-                      {hasContract ? "Reenviar Contrato" : "Enviar Contrato"}
                     </Button>
                   </>
                 ) : (
@@ -1082,24 +1026,20 @@ export function ContractViewModal({
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                       Fechar
                     </Button>
-                    {canSign && (
+                    {uiStatus === "awaiting_renter" && (
                       <Button
-                        onClick={handleClicksignSign}
-                        disabled={signing || !acknowledged || !dataComplete}
                         className="gap-2"
+                        onClick={() => window.open("https://app.clicksign.com", "_blank")}
                       >
-                        {signing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Preparando assinatura...
-                          </>
-                        ) : (
-                          <>
-                            <PenTool className="w-4 h-4" />
-                            Assinar com Clicksign
-                          </>
-                        )}
+                        <ExternalLink className="w-4 h-4" />
+                        Assinar na Clicksign
                       </Button>
+                    )}
+                    {!hasContract && (
+                      <Badge variant="outline" className="px-4 py-2">
+                        <Clock className="w-4 h-4 mr-2" />
+                        Aguardando contrato
+                      </Badge>
                     )}
                     {isFullySigned && (
                       <Badge variant="default" className="px-4 py-2">
@@ -1108,9 +1048,15 @@ export function ContractViewModal({
                       </Badge>
                     )}
                     {uiStatus === "awaiting_owner" && (
-                      <Badge variant="outline" className="px-4 py-2 border-blue-500/20 text-blue-700 dark:text-blue-400">
+                      <Badge variant="outline" className="px-4 py-2">
                         <Clock className="w-4 h-4 mr-2" />
                         Aguardando proprietário
+                      </Badge>
+                    )}
+                    {hasContract && !isFullySigned && uiStatus !== "cancelled" && uiStatus !== "awaiting_owner" && uiStatus !== "awaiting_renter" && (
+                      <Badge variant="outline" className="px-4 py-2">
+                        <Clock className="w-4 h-4 mr-2" />
+                        Contrato sendo preparado
                       </Badge>
                     )}
                   </>
