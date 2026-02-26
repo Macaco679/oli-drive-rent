@@ -368,15 +368,25 @@ export default function RegisterVehicle() {
               const parsed = JSON.parse(webhookData);
               result = Array.isArray(parsed) ? parsed[0] : parsed;
             } catch {
-              result = { aprovado: false };
+              result = { approved: false };
             }
           } else {
             result = Array.isArray(webhookData) ? webhookData[0] : webhookData;
           }
 
+          // Handle n8n response format: { output: "{ \"approved\": true }" }
+          if (result.output && typeof result.output === "string") {
+            try {
+              const innerParsed = JSON.parse(result.output);
+              result = { ...result, ...innerParsed };
+            } catch {
+              console.warn("Could not parse output field:", result.output);
+            }
+          }
+
           console.log("=== PARSED RESULT ===", result);
 
-          const isApproved = result.aprovado === true || result.carro_aprovado === true || result.status === "approved";
+          const isApproved = result.approved === true || result.aprovado === true || result.carro_aprovado === true || result.status === "approved";
           const newStatus = isApproved ? "available" : "inactive";
 
           // Update vehicle status
