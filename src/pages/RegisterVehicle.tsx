@@ -313,7 +313,7 @@ export default function RegisterVehicle() {
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000);
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
 
         const webhookPayload = {
           vehicle_id: vehicle.id,
@@ -478,12 +478,12 @@ export default function RegisterVehicle() {
                   <h2 className="text-xl font-bold">Verificando veículo...</h2>
                   <p className="text-muted-foreground">Estamos validando os documentos do seu veículo. Aguarde.</p>
                   <div className="w-full max-w-xs">
-                    <Progress value={Math.min((verificationTimer / 60) * 100, 95)} className="h-3" />
+                    <Progress value={Math.min((verificationTimer / 90) * 100, 95)} className="h-3" />
                   </div>
                   <div className="text-3xl font-mono font-bold text-primary">
                     {Math.floor(verificationTimer / 60).toString().padStart(2, "0")}:{(verificationTimer % 60).toString().padStart(2, "0")}
                   </div>
-                  <p className="text-sm text-muted-foreground">Isso pode levar até 1 minuto</p>
+                  <p className="text-sm text-muted-foreground">Isso pode levar até 1 minuto e 30 segundos</p>
                 </div>
               )}
 
