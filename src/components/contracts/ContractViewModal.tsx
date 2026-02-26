@@ -220,9 +220,16 @@ function deriveUIStatus(contract: RentalContract | null): ContractUIStatus {
   if (!contract) return "no_contract";
   if (contract.status === "cancelled") return "cancelled";
   if (contract.status === "signed") return "signed";
-  // status === "pending" — check individual signatures
-  if (contract.renter_signed_at && contract.owner_signed_at) return "signed";
-  if (contract.renter_signed_at && !contract.owner_signed_at) return "awaiting_owner";
+  // Use clicksign fields for richer status
+  const renterSigned = !!contract.renter_signed_at;
+  const ownerSigned = !!contract.owner_signed_at;
+  if (renterSigned && ownerSigned) return "signed";
+  if (renterSigned && !ownerSigned) return "awaiting_owner";
+  if (ownerSigned && !renterSigned) return "awaiting_renter";
+  // Has envelope but nobody signed
+  if (contract.clicksign_envelope_id && contract.clicksign_status === "running") return "awaiting_renter";
+  // No envelope yet — still preparing
+  if (!contract.clicksign_envelope_id) return "pending";
   return "awaiting_renter";
 }
 
