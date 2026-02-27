@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Allowed webhook destinations (whitelist for security)
@@ -10,6 +10,8 @@ const ALLOWED_URLS: Record<string, string> = {
   "validarcarro": "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
   "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato",
   "cnhcheck": "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",
+  "oli-vistoria-validar": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-validar",
+  "oli-asaas-criar-cobranca": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-asaas-criar-cobranca",
 };
 
 serve(async (req) => {
