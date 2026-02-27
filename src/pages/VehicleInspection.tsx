@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { 
   Camera, 
   Check, 
@@ -16,7 +17,10 @@ import {
   Car,
   Image as ImageIcon,
   Download,
-  FileText
+  FileText,
+  XCircle,
+  RefreshCw,
+  ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,8 +32,10 @@ import {
   uploadInspectionPhoto,
   createInspection,
   getInspectionByRental,
+  validateInspectionPhotosViaAI,
   Inspection,
   InspectionPhoto,
+  PhotoValidationStatus,
 } from "@/lib/inspectionService";
 import { generateInspectionPDF, generateComparisonPDF, InspectionReportData } from "@/lib/inspectionPdfService";
 import { notifyDropoffInspectionCompleted, notifyPickupInspectionCompleted } from "@/lib/notificationService";
@@ -41,6 +47,8 @@ interface PhotoState {
   uploaded: boolean;
   url: string | null;
   hasDamage: boolean;
+  validationStatus: PhotoValidationStatus;
+  validationReason: string | null;
 }
 
 export default function VehicleInspection() {
@@ -51,6 +59,7 @@ export default function VehicleInspection() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [rental, setRental] = useState<OliRental | null>(null);
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
@@ -58,6 +67,7 @@ export default function VehicleInspection() {
   const [renter, setRenter] = useState<OliProfile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [validationProgress, setValidationProgress] = useState(0);
   const [existingInspection, setExistingInspection] = useState<{
     inspection: Inspection;
     photos: InspectionPhoto[];
@@ -78,6 +88,8 @@ export default function VehicleInspection() {
         uploaded: false,
         url: null,
         hasDamage: false,
+        validationStatus: "pending",
+        validationReason: null,
       };
     });
     return initial;
@@ -114,7 +126,6 @@ export default function VehicleInspection() {
     }
 
     // For pickup: only owner can do it
-    // For dropoff: renter does it (or owner)
     if (inspectionKind === "pickup" && rentalData.owner_id !== user.id) {
       toast.error("Apenas o proprietário pode realizar a vistoria de retirada");
       navigate("/reservations");
@@ -127,9 +138,9 @@ export default function VehicleInspection() {
       return;
     }
 
-    // Check rental status - must be active (after payment)
-    if (rentalData.status !== "active") {
-      toast.error("A vistoria só pode ser realizada durante o período de locação");
+    // Check rental status - must be approved or active
+    if (!["approved", "active"].includes(rentalData.status)) {
+      toast.error("A vistoria só pode ser realizada após aprovação da reserva");
       navigate("/reservations");
       return;
     }
@@ -169,7 +180,6 @@ export default function VehicleInspection() {
       return;
     }
 
-    // Create preview
     const preview = URL.createObjectURL(file);
 
     setPhotos((prev) => ({
@@ -180,6 +190,8 @@ export default function VehicleInspection() {
         preview,
         uploaded: false,
         url: null,
+        validationStatus: "pending",
+        validationReason: null,
       },
     }));
   };
@@ -194,12 +206,13 @@ export default function VehicleInspection() {
     }));
   };
 
-  const uploadAllPhotos = async (): Promise<Array<{ photoTypeId: string; url: string; hasDamage: boolean }>> => {
+  const uploadAllPhotos = async (): Promise<Array<{ photoTypeId: string; url: string; hasDamage: boolean; sortOrder: number }>> => {
     if (!userId || !rentalId) return [];
 
-    const uploadedPhotos: Array<{ photoTypeId: string; url: string; hasDamage: boolean }> = [];
+    const uploadedPhotos: Array<{ photoTypeId: string; url: string; hasDamage: boolean; sortOrder: number }> = [];
 
-    for (const type of INSPECTION_PHOTO_TYPES) {
+    for (let i = 0; i < INSPECTION_PHOTO_TYPES.length; i++) {
+      const type = INSPECTION_PHOTO_TYPES[i];
       const photoState = photos[type.id];
       if (!photoState.file) continue;
 
@@ -215,6 +228,7 @@ export default function VehicleInspection() {
           photoTypeId: type.id,
           url,
           hasDamage: photoState.hasDamage,
+          sortOrder: i,
         });
 
         setPhotos((prev) => ({
@@ -233,7 +247,7 @@ export default function VehicleInspection() {
   };
 
   const handleSubmit = async () => {
-    if (!rental || !userId) return;
+    if (!rental || !userId || !vehicle) return;
 
     // Check if all photos are selected
     const missingPhotos = INSPECTION_PHOTO_TYPES.filter((type) => !photos[type.id].file);
@@ -245,18 +259,94 @@ export default function VehicleInspection() {
     }
 
     setSubmitting(true);
+    setValidationProgress(10);
 
     try {
-      // Upload all photos
+      // Step 1: Upload all photos
+      toast.info("Enviando fotos...");
       const uploadedPhotos = await uploadAllPhotos();
+      setValidationProgress(40);
 
       if (uploadedPhotos.length !== INSPECTION_PHOTO_TYPES.length) {
         toast.error("Erro ao fazer upload de algumas fotos. Tente novamente.");
         setSubmitting(false);
+        setValidationProgress(0);
         return;
       }
 
-      // Create inspection
+      // Step 2: Send for AI validation
+      setValidating(true);
+      setValidationProgress(50);
+      toast.info("Validando fotos com IA... Isso pode levar até 1 minuto.");
+
+      const validationResult = await validateInspectionPhotosViaAI({
+        rentalId: rental.id,
+        vehicleId: rental.vehicle_id,
+        inspectionKind: inspectionKind,
+        inspectionStage: inspectionKind === "pickup" ? "pre_rental" : "post_rental",
+        performedBy: userId,
+        photos: uploadedPhotos.map((p) => ({
+          photo_type: p.photoTypeId,
+          image_url: p.url,
+          sort_order: p.sortOrder,
+        })),
+        notes,
+      });
+
+      setValidationProgress(80);
+
+      // If AI validation failed (network error etc.), still allow saving as draft
+      if (!validationResult) {
+        toast.warning("Não foi possível validar as fotos com IA. Salvando como rascunho para revisão manual.");
+        
+        const inspection = await createInspection({
+          rentalId: rental.id,
+          vehicleId: rental.vehicle_id,
+          performedBy: userId,
+          kind: inspectionKind,
+          photos: uploadedPhotos,
+          notes,
+          status: "pending_validation",
+        });
+
+        if (inspection) {
+          toast.success("Vistoria salva! Aguardando validação.");
+          navigate("/reservations");
+        } else {
+          toast.error("Erro ao salvar vistoria.");
+        }
+        return;
+      }
+
+      // Check if any photos were rejected
+      const rejectedPhotos = validationResult.results.filter((r) => r.status === "rejected");
+      
+      if (!validationResult.approved || rejectedPhotos.length > 0) {
+        // Update photo validation statuses
+        setPhotos((prev) => {
+          const updated = { ...prev };
+          validationResult.results.forEach((r) => {
+            if (updated[r.photo_type]) {
+              updated[r.photo_type] = {
+                ...updated[r.photo_type],
+                validationStatus: r.status as PhotoValidationStatus,
+                validationReason: r.reason || null,
+              };
+            }
+          });
+          return updated;
+        });
+
+        toast.error(`${rejectedPhotos.length} foto(s) foram rejeitadas pela IA. Corrija e tente novamente.`);
+        setSubmitting(false);
+        setValidating(false);
+        setValidationProgress(0);
+        return;
+      }
+
+      // Step 3: All photos approved - save inspection
+      setValidationProgress(90);
+
       const inspection = await createInspection({
         rentalId: rental.id,
         vehicleId: rental.vehicle_id,
@@ -264,34 +354,35 @@ export default function VehicleInspection() {
         kind: inspectionKind,
         photos: uploadedPhotos,
         notes,
+        status: "validated",
+        validatedByAi: true,
+        validationSummary: validationResult.summary,
+        photoValidations: validationResult.results,
       });
+
+      setValidationProgress(100);
 
       if (inspection) {
         const kindLabel = inspectionKind === "pickup" ? "retirada" : "devolução";
-        toast.success(`Vistoria de ${kindLabel} realizada com sucesso!`);
+        toast.success(`Vistoria de ${kindLabel} validada e concluída com sucesso!`);
 
         const vehicleTitle = vehicle?.title || `${vehicle?.brand} ${vehicle?.model}`;
 
-        // Send email notification when pickup inspection is completed by owner
+        // Send email notifications
         if (inspectionKind === "pickup" && renter) {
-          const ownerName = owner?.full_name || "Proprietário";
-          
           notifyPickupInspectionCompleted(
             rental.renter_id,
-            ownerName,
+            owner?.full_name || "Proprietário",
             vehicleTitle,
             rental.id
           ).catch((err) => console.error("Erro ao enviar notificação:", err));
         }
 
-        // Send email notification to owner when dropoff inspection is completed
         if (inspectionKind === "dropoff" && owner) {
           const hasDamages = uploadedPhotos.some((p) => p.hasDamage);
-          const renterName = renter?.full_name || "Locatário";
-
           notifyDropoffInspectionCompleted(
             rental.owner_id,
-            renterName,
+            renter?.full_name || "Locatário",
             vehicleTitle,
             rental.id,
             hasDamages
@@ -300,13 +391,15 @@ export default function VehicleInspection() {
 
         navigate("/reservations");
       } else {
-        toast.error("Erro ao salvar vistoria. Tente novamente.");
+        toast.error("Erro ao salvar vistoria.");
       }
     } catch (error) {
       console.error("Erro na vistoria:", error);
       toast.error("Erro ao processar vistoria");
     } finally {
       setSubmitting(false);
+      setValidating(false);
+      setValidationProgress(0);
     }
   };
 
@@ -370,6 +463,7 @@ export default function VehicleInspection() {
   const completedCount = Object.values(photos).filter((p) => p.file).length;
   const totalRequired = INSPECTION_PHOTO_TYPES.length;
   const isComplete = completedCount === totalRequired;
+  const hasRejectedPhotos = Object.values(photos).some((p) => p.validationStatus === "rejected");
 
   const kindLabel = inspectionKind === "pickup" ? "Retirada" : "Devolução";
   const kindDescription =
@@ -406,12 +500,18 @@ export default function VehicleInspection() {
               <Check className="w-10 h-10 text-primary" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Vistoria de {kindLabel} Concluída</h1>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground mb-2">
               A vistoria de {kindLabel.toLowerCase()} foi realizada em{" "}
               {new Date(existingInspection.inspection.created_at).toLocaleDateString("pt-BR")}
             </p>
+            {existingInspection.inspection.validated_by_ai && (
+              <Badge variant="default" className="gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                Validada por IA
+              </Badge>
+            )}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
               <Button onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
                 {downloadingPdf ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -441,7 +541,7 @@ export default function VehicleInspection() {
 
           {/* Show photos grid */}
           <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">Fotos da Vistoria</h2>
+            <h2 className="text-lg font-semibold mb-4">Fotos da Vistoria ({existingInspection.photos.length}/{totalRequired})</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {existingInspection.photos.map((photo) => (
                 <div key={photo.id} className="relative">
@@ -450,13 +550,16 @@ export default function VehicleInspection() {
                     alt={photo.description || "Foto"}
                     className="w-full h-32 object-cover rounded-lg"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 rounded-b-lg">
-                    {photo.description}
-                    {photo.has_damage && (
-                      <Badge variant="destructive" className="ml-2 text-xs">
-                        Avaria
-                      </Badge>
-                    )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 rounded-b-lg flex items-center justify-between">
+                    <span>{photo.description}</span>
+                    <div className="flex gap-1">
+                      {photo.has_damage && (
+                        <Badge variant="destructive" className="text-xs">Avaria</Badge>
+                      )}
+                      {photo.validation_status === "approved" && (
+                        <Badge variant="default" className="text-xs">✓</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -488,6 +591,9 @@ export default function VehicleInspection() {
                 Vistoria de {kindLabel}
               </h1>
               <p className="text-muted-foreground mt-2">{kindDescription}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                As fotos serão validadas por IA antes da conclusão
+              </p>
             </div>
             <Badge variant={isComplete ? "default" : "secondary"} className="text-lg px-4 py-2">
               {completedCount}/{totalRequired}
@@ -515,13 +621,52 @@ export default function VehicleInspection() {
           )}
         </div>
 
+        {/* Validation Progress */}
+        {(submitting || validating) && (
+          <Card className="mb-6 border-primary/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="font-medium text-sm">
+                  {validating ? "Validando fotos com IA..." : "Enviando fotos..."}
+                </span>
+              </div>
+              <Progress value={validationProgress} className="h-3" />
+              <p className="text-xs text-muted-foreground">
+                {validating 
+                  ? "A IA está analisando cada foto para garantir qualidade e conformidade."
+                  : "Fazendo upload das fotos para o servidor."
+                }
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Rejected photos alert */}
+        {hasRejectedPhotos && (
+          <Card className="mb-6 border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-2">
+                <XCircle className="w-5 h-5 text-destructive mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-destructive">Fotos rejeitadas pela IA</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Substitua as fotos marcadas em vermelho e tente novamente.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Photo Grid */}
         <div className="grid gap-4 md:grid-cols-2 mb-8">
-          {INSPECTION_PHOTO_TYPES.map((photoType) => (
+          {INSPECTION_PHOTO_TYPES.map((photoType, idx) => (
             <PhotoUploadCard
               key={photoType.id}
               photoType={photoType}
               state={photos[photoType.id]}
+              index={idx + 1}
               onFileSelect={(file) => handleFileSelect(photoType.id, file)}
               onToggleDamage={(checked) => handleToggleDamage(photoType.id, checked)}
               disabled={submitting}
@@ -559,10 +704,16 @@ export default function VehicleInspection() {
                 </span>
               </div>
             )}
-            {isComplete && (
+            {isComplete && !hasRejectedPhotos && (
               <div className="flex items-center gap-2 text-primary">
                 <Check className="w-5 h-5" />
-                <span className="font-medium">Todas as fotos foram adicionadas</span>
+                <span className="font-medium">Todas as {totalRequired} fotos adicionadas</span>
+              </div>
+            )}
+            {isComplete && hasRejectedPhotos && (
+              <div className="flex items-center gap-2 text-destructive">
+                <XCircle className="w-5 h-5" />
+                <span className="font-medium">Corrija as fotos rejeitadas</span>
               </div>
             )}
           </div>
@@ -576,12 +727,12 @@ export default function VehicleInspection() {
             {submitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Enviando...
+                {validating ? "Validando..." : "Enviando..."}
               </>
             ) : (
               <>
-                <Check className="w-5 h-5" />
-                Concluir Vistoria
+                <ShieldCheck className="w-5 h-5" />
+                Validar e Concluir
               </>
             )}
           </Button>
@@ -595,6 +746,7 @@ export default function VehicleInspection() {
 interface PhotoUploadCardProps {
   photoType: InspectionPhotoType;
   state: PhotoState;
+  index: number;
   onFileSelect: (file: File) => void;
   onToggleDamage: (checked: boolean) => void;
   disabled?: boolean;
@@ -603,11 +755,14 @@ interface PhotoUploadCardProps {
 function PhotoUploadCard({
   photoType,
   state,
+  index,
   onFileSelect,
   onToggleDamage,
   disabled,
 }: PhotoUploadCardProps) {
   const inputId = `photo-${photoType.id}`;
+  const isRejected = state.validationStatus === "rejected";
+  const isApproved = state.validationStatus === "approved";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -617,18 +772,33 @@ function PhotoUploadCard({
   };
 
   return (
-    <Card className={`overflow-hidden transition-all ${state.file ? "border-primary" : ""}`}>
+    <Card className={`overflow-hidden transition-all ${
+      isRejected ? "border-destructive" : 
+      isApproved ? "border-primary" :
+      state.file ? "border-primary/50" : ""
+    }`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            {state.file ? (
+            <span className="w-6 h-6 rounded-full bg-secondary text-xs flex items-center justify-center font-bold">
+              {index}
+            </span>
+            {isApproved ? (
               <Check className="w-4 h-4 text-primary" />
+            ) : isRejected ? (
+              <XCircle className="w-4 h-4 text-destructive" />
+            ) : state.file ? (
+              <Check className="w-4 h-4 text-primary/60" />
             ) : (
               <Camera className="w-4 h-4 text-muted-foreground" />
             )}
             {photoType.label}
           </CardTitle>
-          {state.uploading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+          <div className="flex items-center gap-1">
+            {state.uploading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+            {isRejected && <Badge variant="destructive" className="text-xs">Rejeitada</Badge>}
+            {isApproved && <Badge variant="default" className="text-xs">Aprovada</Badge>}
+          </div>
         </div>
         <CardDescription className="text-xs">{photoType.description}</CardDescription>
       </CardHeader>
@@ -638,13 +808,13 @@ function PhotoUploadCard({
             <img
               src={state.preview}
               alt={photoType.label}
-              className="w-full h-40 object-cover rounded-lg"
+              className={`w-full h-40 object-cover rounded-lg ${isRejected ? "ring-2 ring-destructive" : ""}`}
             />
             <label
               htmlFor={inputId}
               className="absolute bottom-2 right-2 bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-lg cursor-pointer hover:bg-background text-sm font-medium"
             >
-              Trocar
+              {isRejected ? "Reenviar" : "Trocar"}
             </label>
           </div>
         ) : (
@@ -655,6 +825,14 @@ function PhotoUploadCard({
             <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
             <span className="text-sm text-muted-foreground">Clique para adicionar</span>
           </label>
+        )}
+
+        {/* Rejection reason */}
+        {isRejected && state.validationReason && (
+          <div className="bg-destructive/10 rounded-lg p-2 text-xs text-destructive flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <span>{state.validationReason}</span>
+          </div>
         )}
 
         <input
