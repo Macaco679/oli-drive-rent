@@ -150,28 +150,55 @@ export type Database = {
       }
       oli_inspection_photos: {
         Row: {
+          ai_damage_detected: boolean
+          ai_labels: Json | null
           created_at: string
           description: string | null
           has_damage: boolean
           id: string
           image_url: string
           inspection_id: string
+          metadata: Json | null
+          photo_type: string | null
+          sort_order: number | null
+          uploaded_by: string | null
+          validation_confidence: number | null
+          validation_reason: string | null
+          validation_status: string
         }
         Insert: {
+          ai_damage_detected?: boolean
+          ai_labels?: Json | null
           created_at?: string
           description?: string | null
           has_damage?: boolean
           id?: string
           image_url: string
           inspection_id: string
+          metadata?: Json | null
+          photo_type?: string | null
+          sort_order?: number | null
+          uploaded_by?: string | null
+          validation_confidence?: number | null
+          validation_reason?: string | null
+          validation_status?: string
         }
         Update: {
+          ai_damage_detected?: boolean
+          ai_labels?: Json | null
           created_at?: string
           description?: string | null
           has_damage?: boolean
           id?: string
           image_url?: string
           inspection_id?: string
+          metadata?: Json | null
+          photo_type?: string | null
+          sort_order?: number | null
+          uploaded_by?: string | null
+          validation_confidence?: number | null
+          validation_reason?: string | null
+          validation_status?: string
         }
         Relationships: [
           {
@@ -185,33 +212,60 @@ export type Database = {
       }
       oli_inspections: {
         Row: {
+          completed_at: string | null
           created_at: string
           id: string
           inspection_kind: Database["public"]["Enums"]["oli_inspection_kind"]
+          inspection_stage: string | null
           notes: string | null
+          owner_approved_at: string | null
           performed_by: string
           rental_id: string
+          renter_approved_at: string | null
+          required_photos_count: number
           side: Database["public"]["Enums"]["oli_inspection_side"]
+          status: string
+          validated_at: string | null
+          validated_by_ai: boolean
+          validation_summary: string | null
           vehicle_id: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           id?: string
           inspection_kind: Database["public"]["Enums"]["oli_inspection_kind"]
+          inspection_stage?: string | null
           notes?: string | null
+          owner_approved_at?: string | null
           performed_by: string
           rental_id: string
+          renter_approved_at?: string | null
+          required_photos_count?: number
           side: Database["public"]["Enums"]["oli_inspection_side"]
+          status?: string
+          validated_at?: string | null
+          validated_by_ai?: boolean
+          validation_summary?: string | null
           vehicle_id: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           id?: string
           inspection_kind?: Database["public"]["Enums"]["oli_inspection_kind"]
+          inspection_stage?: string | null
           notes?: string | null
+          owner_approved_at?: string | null
           performed_by?: string
           rental_id?: string
+          renter_approved_at?: string | null
+          required_photos_count?: number
           side?: Database["public"]["Enums"]["oli_inspection_side"]
+          status?: string
+          validated_at?: string | null
+          validated_by_ai?: boolean
+          validation_summary?: string | null
           vehicle_id?: string
         }
         Relationships: [
@@ -278,39 +332,75 @@ export type Database = {
       oli_payments: {
         Row: {
           amount: number
+          bank_slip_url: string | null
+          billing_type: string | null
           created_at: string
+          due_date: string | null
           external_reference: string | null
           id: string
+          invoice_url: string | null
           method: string | null
+          payment_link: string | null
           payment_type: Database["public"]["Enums"]["oli_payment_type"]
+          pix_copy_paste: string | null
+          pix_qr_code: string | null
+          provider: string | null
+          provider_customer_id: string | null
+          provider_payment_id: string | null
           rental_id: string
           status: Database["public"]["Enums"]["oli_payment_status"]
+          status_detail: string | null
           updated_at: string
           user_id: string
+          webhook_payload: Json | null
         }
         Insert: {
           amount: number
+          bank_slip_url?: string | null
+          billing_type?: string | null
           created_at?: string
+          due_date?: string | null
           external_reference?: string | null
           id?: string
+          invoice_url?: string | null
           method?: string | null
+          payment_link?: string | null
           payment_type: Database["public"]["Enums"]["oli_payment_type"]
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_payment_id?: string | null
           rental_id: string
           status?: Database["public"]["Enums"]["oli_payment_status"]
+          status_detail?: string | null
           updated_at?: string
           user_id: string
+          webhook_payload?: Json | null
         }
         Update: {
           amount?: number
+          bank_slip_url?: string | null
+          billing_type?: string | null
           created_at?: string
+          due_date?: string | null
           external_reference?: string | null
           id?: string
+          invoice_url?: string | null
           method?: string | null
+          payment_link?: string | null
           payment_type?: Database["public"]["Enums"]["oli_payment_type"]
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_payment_id?: string | null
           rental_id?: string
           status?: Database["public"]["Enums"]["oli_payment_status"]
+          status_detail?: string | null
           updated_at?: string
           user_id?: string
+          webhook_payload?: Json | null
         }
         Relationships: [
           {

@@ -1,5 +1,5 @@
 // ============================================================
-// VEHICLE INSPECTION SERVICE - Upload de 8 fotos obrigatórias
+// VEHICLE INSPECTION SERVICE - Upload de 10 fotos obrigatórias + validação IA
 // ============================================================
 
 import { supabase } from "@/integrations/supabase/client";
@@ -11,15 +11,20 @@ export interface InspectionPhotoType {
 }
 
 export const INSPECTION_PHOTO_TYPES: InspectionPhotoType[] = [
-  { id: "front", label: "Frente do Carro", description: "Vista frontal completa do veículo" },
-  { id: "back", label: "Traseira do Carro", description: "Vista traseira completa do veículo" },
-  { id: "interior_driver", label: "Interior (Motorista)", description: "Painel, volante e banco do motorista" },
-  { id: "trunk_closed", label: "Porta-malas Fechado", description: "Porta-malas fechado" },
-  { id: "trunk_open", label: "Porta-malas Aberto", description: "Interior do porta-malas" },
-  { id: "tire_front_right", label: "Pneu Dianteiro Direito", description: "Estado do pneu dianteiro direito" },
-  { id: "tire_front_left", label: "Pneu Dianteiro Esquerdo", description: "Estado do pneu dianteiro esquerdo" },
-  { id: "rear_seat", label: "Banco de Trás", description: "Vista dos bancos traseiros" },
+  { id: "front", label: "Frente do veículo", description: "Vista frontal completa do veículo" },
+  { id: "back", label: "Traseira do veículo", description: "Vista traseira completa do veículo" },
+  { id: "left_side", label: "Lateral esquerda", description: "Vista lateral esquerda completa" },
+  { id: "right_side", label: "Lateral direita", description: "Vista lateral direita completa" },
+  { id: "dashboard_odometer", label: "Painel com quilometragem", description: "Painel com quilometragem e combustível visíveis" },
+  { id: "interior_front", label: "Interior dianteiro", description: "Painel, volante e bancos dianteiros" },
+  { id: "rear_seat", label: "Banco traseiro", description: "Vista dos bancos traseiros" },
+  { id: "trunk_open", label: "Porta-malas aberto", description: "Interior do porta-malas aberto" },
+  { id: "tire_front_left", label: "Pneu dianteiro esquerdo", description: "Estado do pneu dianteiro esquerdo" },
+  { id: "tire_front_right", label: "Pneu dianteiro direito", description: "Estado do pneu dianteiro direito" },
 ];
+
+export type InspectionStatus = "draft" | "pending_validation" | "validated" | "rejected" | "completed";
+export type PhotoValidationStatus = "pending" | "approved" | "rejected";
 
 export interface InspectionPhoto {
   id: string;
@@ -28,6 +33,15 @@ export interface InspectionPhoto {
   description: string | null;
   has_damage: boolean;
   created_at: string;
+  photo_type: string | null;
+  sort_order: number;
+  validation_status: string;
+  validation_reason: string | null;
+  validation_confidence: number | null;
+  ai_labels: unknown | null;
+  ai_damage_detected: boolean;
+  uploaded_by: string | null;
+  metadata: unknown | null;
 }
 
 export interface Inspection {
@@ -39,6 +53,13 @@ export interface Inspection {
   side: string;
   notes: string | null;
   created_at: string;
+  status: string;
+  inspection_stage: string | null;
+  required_photos_count: number;
+  validated_by_ai: boolean;
+  validated_at: string | null;
+  validation_summary: string | null;
+  completed_at: string | null;
 }
 
 // Validate photo file
@@ -87,18 +108,108 @@ export async function uploadInspectionPhoto(
   return urlData.publicUrl;
 }
 
-// Create inspection record with all photos
+// Validate inspection photos via AI (n8n webhook)
+export async function validateInspectionPhotosViaAI(params: {
+  rentalId: string;
+  vehicleId: string;
+  inspectionKind: "pickup" | "dropoff";
+  inspectionStage: string;
+  performedBy: string;
+  photos: Array<{ photo_type: string; image_url: string; sort_order: number }>;
+  notes?: string;
+}): Promise<{
+  approved: boolean;
+  results: Array<{
+    photo_type: string;
+    status: "approved" | "rejected";
+    reason?: string;
+    confidence?: number;
+    labels?: string[];
+    damage_detected?: boolean;
+  }>;
+  summary?: string;
+} | null> {
+  try {
+    const payload = {
+      _webhook_target: "oli-vistoria-validar",
+      rental_id: params.rentalId,
+      vehicle_id: params.vehicleId,
+      inspection_kind: params.inspectionKind,
+      inspection_stage: params.inspectionStage,
+      performed_by: params.performedBy,
+      photos: params.photos,
+      notes: params.notes || null,
+      timestamp: new Date().toISOString(),
+      source: "lovable_frontend",
+    };
+
+    console.log("[OLI Vistoria] Enviando para validação IA:", payload);
+
+    const { data, error } = await supabase.functions.invoke("webhook-proxy", {
+      body: payload,
+    });
+
+    if (error) {
+      console.error("[OLI Vistoria] Erro na validação IA:", error);
+      return null;
+    }
+
+    console.log("[OLI Vistoria] Resposta IA:", data);
+
+    // Parse n8n response
+    let result = data;
+    if (typeof result === "string") {
+      try {
+        result = JSON.parse(result);
+      } catch {
+        console.warn("[OLI Vistoria] Não foi possível parsear resposta:", result);
+        return null;
+      }
+    }
+    if (Array.isArray(result)) result = result[0];
+    if (result?.output && typeof result.output === "string") {
+      try {
+        result = { ...result, ...JSON.parse(result.output) };
+      } catch {
+        // ignore
+      }
+    }
+
+    return {
+      approved: result?.approved === true,
+      results: result?.results || result?.photos_validation || [],
+      summary: result?.summary || result?.validation_summary || null,
+    };
+  } catch (err) {
+    console.error("[OLI Vistoria] Erro:", err);
+    return null;
+  }
+}
+
+// Create inspection record with all photos (after AI validation)
 export async function createInspection(params: {
   rentalId: string;
   vehicleId: string;
   performedBy: string;
   kind: "pickup" | "dropoff";
-  photos: Array<{ photoTypeId: string; url: string; hasDamage?: boolean }>;
+  photos: Array<{ photoTypeId: string; url: string; hasDamage?: boolean; sortOrder?: number }>;
   notes?: string;
+  status?: InspectionStatus;
+  validatedByAi?: boolean;
+  validationSummary?: string;
+  photoValidations?: Array<{
+    photo_type: string;
+    status: string;
+    reason?: string;
+    confidence?: number;
+    labels?: string[];
+    damage_detected?: boolean;
+  }>;
 }): Promise<Inspection | null> {
-  const { rentalId, vehicleId, performedBy, kind, photos, notes } = params;
+  const { rentalId, vehicleId, performedBy, kind, photos, notes, status, validatedByAi, validationSummary, photoValidations } = params;
 
-  // Create main inspection record (we use 'front' as default side)
+  const inspectionStatus = status || "draft";
+
   const { data: inspection, error: inspError } = await supabase
     .from("oli_inspections")
     .insert({
@@ -108,6 +219,12 @@ export async function createInspection(params: {
       inspection_kind: kind,
       side: "front",
       notes: notes || null,
+      status: inspectionStatus,
+      required_photos_count: INSPECTION_PHOTO_TYPES.length,
+      validated_by_ai: validatedByAi || false,
+      validated_at: validatedByAi ? new Date().toISOString() : null,
+      validation_summary: validationSummary || null,
+      completed_at: inspectionStatus === "completed" ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -117,13 +234,24 @@ export async function createInspection(params: {
     return null;
   }
 
-  // Create photo records
-  const photoRecords = photos.map((p) => ({
-    inspection_id: inspection.id,
-    image_url: p.url,
-    description: INSPECTION_PHOTO_TYPES.find((t) => t.id === p.photoTypeId)?.label || p.photoTypeId,
-    has_damage: p.hasDamage || false,
-  }));
+  // Build photo records with validation data
+  const photoRecords = photos.map((p, idx) => {
+    const validationData = photoValidations?.find((v) => v.photo_type === p.photoTypeId);
+    return {
+      inspection_id: inspection.id,
+      image_url: p.url,
+      description: INSPECTION_PHOTO_TYPES.find((t) => t.id === p.photoTypeId)?.label || p.photoTypeId,
+      has_damage: validationData?.damage_detected ?? p.hasDamage ?? false,
+      photo_type: p.photoTypeId,
+      sort_order: p.sortOrder ?? idx,
+      validation_status: validationData?.status || "pending",
+      validation_reason: validationData?.reason || null,
+      validation_confidence: validationData?.confidence || null,
+      ai_labels: validationData?.labels ? JSON.stringify(validationData.labels) : null,
+      ai_damage_detected: validationData?.damage_detected || false,
+      uploaded_by: performedBy,
+    };
+  });
 
   const { error: photoError } = await supabase
     .from("oli_inspection_photos")
@@ -131,10 +259,9 @@ export async function createInspection(params: {
 
   if (photoError) {
     console.error("Erro ao salvar fotos da vistoria:", photoError);
-    // Inspection was created but photos failed - still return the inspection
   }
 
-  return inspection as Inspection;
+  return inspection as unknown as Inspection;
 }
 
 // Get inspection for a rental
@@ -159,11 +286,11 @@ export async function getInspectionByRental(
     .from("oli_inspection_photos")
     .select("*")
     .eq("inspection_id", inspection.id)
-    .order("created_at", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   return {
-    inspection: inspection as Inspection,
-    photos: (photos || []) as InspectionPhoto[],
+    inspection: inspection as unknown as Inspection,
+    photos: (photos || []) as unknown as InspectionPhoto[],
   };
 }
 
@@ -175,8 +302,16 @@ export async function hasCompleteInspection(
   const result = await getInspectionByRental(rentalId, kind);
   if (!result) return false;
 
-  // Check if we have all 8 required photos
-  return result.photos.length >= INSPECTION_PHOTO_TYPES.length;
+  // Check if we have all required photos and inspection is validated/completed
+  const hasAllPhotos = result.photos.length >= INSPECTION_PHOTO_TYPES.length;
+  const isValidated = result.inspection.status === "validated" || result.inspection.status === "completed";
+  
+  // For backwards compatibility, also check old inspections without status
+  if (!result.inspection.status || result.inspection.status === "draft") {
+    return hasAllPhotos;
+  }
+  
+  return hasAllPhotos && isValidated;
 }
 
 // Get both inspections for comparison

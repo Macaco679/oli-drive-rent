@@ -110,8 +110,10 @@ function validatePartyData(
   role: string
 ): string[] {
   const missing: string[] = [];
-  if (!profile?.cpf || sanitizeCpf(profile.cpf).length < 11) missing.push(`${role}: CPF`);
+  if (!profile?.full_name) missing.push(`${role}: Nome completo`);
   if (!profile?.email) missing.push(`${role}: E-mail`);
+  if (!profile?.phone && !profile?.whatsapp_phone) missing.push(`${role}: Telefone`);
+  if (!profile?.cpf || sanitizeCpf(profile.cpf).length < 11) missing.push(`${role}: CPF válido`);
   if (!address) {
     missing.push(`${role}: Endereço completo`);
   } else {
@@ -122,6 +124,38 @@ function validatePartyData(
     if (!address.state) missing.push(`${role}: Estado (UF)`);
     if (!address.postal_code || sanitizeZip(address.postal_code).length < 8) missing.push(`${role}: CEP`);
   }
+  return missing;
+}
+
+function validateVehicleData(vehicle: OliVehicle | null | undefined): string[] {
+  const missing: string[] = [];
+  if (!vehicle) {
+    missing.push("Veículo: Dados não encontrados");
+    return missing;
+  }
+  if (!vehicle.plate) missing.push("Veículo: Placa");
+  if (!vehicle.brand) missing.push("Veículo: Marca");
+  if (!vehicle.model) missing.push("Veículo: Modelo");
+  if (!vehicle.year) missing.push("Veículo: Ano");
+  if (!vehicle.color) missing.push("Veículo: Cor");
+  if (!vehicle.pickup_street) missing.push("Veículo: Rua de retirada");
+  if (!vehicle.pickup_number) missing.push("Veículo: Número de retirada");
+  if (!vehicle.pickup_neighborhood) missing.push("Veículo: Bairro de retirada");
+  if (!vehicle.location_city) missing.push("Veículo: Cidade");
+  if (!vehicle.location_state) missing.push("Veículo: Estado");
+  if (!vehicle.pickup_zip_code) missing.push("Veículo: CEP de retirada");
+  return missing;
+}
+
+function validateReservationData(rental: OliRental | null): string[] {
+  const missing: string[] = [];
+  if (!rental) return ["Reserva: Dados não encontrados"];
+  if (!rental.start_date) missing.push("Reserva: Data início");
+  if (!rental.end_date) missing.push("Reserva: Data fim");
+  if (!rental.total_price) missing.push("Reserva: Valor total");
+  if (!rental.owner_id) missing.push("Reserva: Proprietário");
+  if (!rental.renter_id) missing.push("Reserva: Locatário");
+  if (!rental.vehicle_id) missing.push("Reserva: Veículo");
   return missing;
 }
 
@@ -591,10 +625,12 @@ export function ContractViewModal({
       setOwnerAddress(ownerAddr);
       setRenterAddress(renterAddr);
 
-      // Validate required fields
+      // Validate required fields - all parties, vehicle, and reservation
       const missing = [
-        ...validatePartyData(renterData, renterAddr, "Locatário"),
         ...validatePartyData(ownerData, ownerAddr, "Locador"),
+        ...validatePartyData(renterData, renterAddr, "Locatário"),
+        ...validateVehicleData(rental.vehicle),
+        ...validateReservationData(rental),
       ];
       setMissingFields(missing);
       if (missing.length > 0) {
@@ -829,17 +865,17 @@ export function ContractViewModal({
                   </div>
                 )}
 
-                {/* Missing fields warning */}
-                {canSign && !dataComplete && (
+                {/* Missing fields warning - show for both owner and renter */}
+                {!dataComplete && (
                   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-2">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
                       <div className="space-y-1 text-sm">
                         <p className="font-medium text-foreground">
-                          Complete seus dados para assinar
+                          Dados obrigatórios incompletos
                         </p>
                         <p className="text-muted-foreground">
-                          Para iniciar a assinatura, é necessário que locatário e locador tenham CPF e endereço completos cadastrados.
+                          Para enviar o contrato, é necessário que locador, locatário e veículo tenham todos os dados obrigatórios preenchidos.
                         </p>
                         <ul className="list-disc ml-4 text-muted-foreground text-xs space-y-0.5">
                           {missingFields.map((f) => (
@@ -1000,7 +1036,7 @@ export function ContractViewModal({
                     </Button>
                     <Button
                       onClick={handleSendContract}
-                      disabled={sending}
+                      disabled={sending || !dataComplete}
                       className="gap-2"
                     >
                       {sending ? (
