@@ -913,7 +913,12 @@ export type Database = {
       }
     }
     Enums: {
-      oli_contract_status: "pending" | "signed" | "cancelled"
+      oli_contract_status:
+        | "pending"
+        | "signed"
+        | "cancelled"
+        | "pending_owner_signature"
+        | "pending_renter_signature"
       oli_conversation_type: "direct" | "support" | "group"
       oli_document_status: "pending" | "approved" | "rejected"
       oli_document_type: "cnh" | "rg" | "cpf" | "comprovante_residencia"
@@ -1077,7 +1082,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      oli_contract_status: ["pending", "signed", "cancelled"],
+      oli_contract_status: [
+        "pending",
+        "signed",
+        "cancelled",
+        "pending_owner_signature",
+        "pending_renter_signature",
+      ],
       oli_conversation_type: ["direct", "support", "group"],
       oli_document_status: ["pending", "approved", "rejected"],
       oli_document_type: ["cnh", "rg", "cpf", "comprovante_residencia"],

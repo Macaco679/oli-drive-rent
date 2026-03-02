@@ -8,9 +8,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
 import { RentalContract } from "@/lib/contractService";
-import { hasCompleteInspection } from "@/lib/inspectionService";
-import { ContractTimeline, deriveContractStage, getContractStageLabel } from "@/components/contracts/ContractTimeline";
+import { deriveContractStage, getContractStageLabel } from "@/components/contracts/ContractTimeline";
 import { useContractRealtime } from "@/hooks/useContractRealtime";
+import { useInspectionRealtime } from "@/hooks/useInspectionRealtime";
+import { InspectionTimeline } from "@/components/inspection/InspectionTimeline";
 
 interface RentalCardRenterProps {
   rental: OliRental & { vehicle?: OliVehicle };
@@ -30,43 +31,38 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay }: RentalCardRenterProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const { contract } = useContractRealtime(rental.id);
-  const [hasDropoffInspection, setHasDropoffInspection] = useState(false);
-  const [hasPickupInspection, setHasPickupInspection] = useState(false);
+  const { inspections } = useInspectionRealtime(rental.id);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
-    checkInspections();
-  }, [rental.vehicle_id, rental.id]);
-
-  const checkInspections = async () => {
-    const [pickup, dropoff] = await Promise.all([
-      hasCompleteInspection(rental.id, "pickup"),
-      hasCompleteInspection(rental.id, "dropoff"),
-    ]);
-    setHasPickupInspection(pickup);
-    setHasDropoffInspection(dropoff);
-  };
+  }, [rental.vehicle_id]);
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
     "Veículo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
-  const isApproved = rental.status === "approved";
   const isPending = rental.status === "pending_approval";
+  const isApproved = rental.status === "approved";
   const isActive = rental.status === "active";
 
   const contractStage = deriveContractStage(contract);
   const bothSigned = contractStage === "both_signed" || contractStage === "inspection_released";
   const renterNeedsToSign = contract && (contractStage === "sent" || contractStage === "awaiting_renter");
-  const awaitingOwner = contractStage === "renter_signed";
 
-  const handleDropoffInspection = () => {
-    navigate(`/reservations/${rental.id}/inspection?kind=dropoff`);
-  };
+  // Inspection checks
+  const ownerInitialDone = inspections.some(
+    (i) => i.inspection_stage === "owner_initial_inspection" && (i.status === "validated" || i.status === "completed")
+  );
+  const renterPickupDone = inspections.some(
+    (i) => i.inspection_stage === "renter_pickup_inspection" && (i.status === "validated" || i.status === "completed")
+  );
+  const renterReturnDone = inspections.some(
+    (i) => i.inspection_stage === "renter_return_inspection" && (i.status === "validated" || i.status === "completed")
+  );
 
   const getContractBadge = () => {
     if (!contract) return null;
@@ -77,8 +73,6 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
         return <Badge variant="secondary" className="text-xs"><Mail className="w-3 h-3 mr-1" />Verifique seu e-mail</Badge>;
       case "renter_signed":
         return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando proprietário</Badge>;
-      case "owner_signed":
-        return <Badge variant="secondary" className="text-xs"><Mail className="w-3 h-3 mr-1" />Verifique seu e-mail</Badge>;
       case "both_signed":
         return <Badge variant="default" className="text-xs"><Check className="w-3 h-3 mr-1" />Assinado</Badge>;
       case "inspection_released":
@@ -88,10 +82,98 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     }
   };
 
+  // Determine renter's current action
+  const getRenterAction = () => {
+    if (isPending) {
+      return (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          <span className="text-sm">Aguardando aprovação do proprietário</span>
+        </div>
+      );
+    }
+
+    if (isApproved && !contract) {
+      return (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          <span className="text-sm">Aguardando contrato</span>
+        </div>
+      );
+    }
+
+    if (isApproved && renterNeedsToSign) {
+      return (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
+            <FileText className="w-4 h-4 mr-2" />Ver Contrato
+          </Button>
+          <Button size="sm" onClick={() => window.open("https://app.clicksign.com", "_blank")}>
+            <ExternalLink className="w-4 h-4 mr-2" />Assinar na Clicksign
+          </Button>
+        </div>
+      );
+    }
+
+    // After owner initial inspection → renter pays
+    if (bothSigned && ownerInitialDone && !renterPickupDone) {
+      return (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
+            <FileText className="w-4 h-4 mr-2" />Contrato
+          </Button>
+          <Button size="sm" onClick={onPay}>
+            <CreditCard className="w-4 h-4 mr-2" />Pagar
+          </Button>
+        </div>
+      );
+    }
+
+    // After payment → renter does pickup inspection
+    if (renterPickupDone && !renterReturnDone) {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate(`/reservations/${rental.id}/inspection?step=renter_return_inspection`)}
+          className="gap-2"
+        >
+          <ClipboardCheck className="w-4 h-4" />Vistoria de Devolução
+        </Button>
+      );
+    }
+
+    if (renterReturnDone) {
+      return (
+        <span className="text-primary text-sm flex items-center gap-2">
+          <Check className="w-4 h-4" />Devolução registrada
+        </span>
+      );
+    }
+
+    if (bothSigned && !ownerInitialDone) {
+      return (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          <span className="text-sm">Aguardando vistoria do proprietário</span>
+        </div>
+      );
+    }
+
+    if (isApproved && contract) {
+      return (
+        <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
+          <FileText className="w-4 h-4 mr-2" />Ver Contrato
+        </Button>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
       <div className="flex flex-col sm:flex-row">
-        {/* Vehicle Image */}
         <div className="w-full sm:w-48 h-36 sm:h-auto bg-muted flex-shrink-0">
           {coverImage ? (
             <img src={coverImage} alt={vehicleTitle} className="w-full h-full object-cover" />
@@ -102,7 +184,6 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
           )}
         </div>
 
-        {/* Content */}
         <div className="flex-1 p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -116,9 +197,6 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
               {getContractBadge()}
-              {isActive && hasPickupInspection && (
-                <Badge variant="outline" className="text-xs">Vistoria OK</Badge>
-              )}
             </div>
           </div>
 
@@ -138,19 +216,14 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
             )}
           </div>
 
-          {/* Contract Timeline - show when contract exists and rental is approved */}
-          {isApproved && contract && (
+          {/* Full timeline when approved */}
+          {(isApproved || isActive) && (
             <div className="border border-border rounded-xl p-4 bg-secondary/30">
-              <p className="text-sm font-medium mb-3 text-foreground">
-                {getContractStageLabel(contractStage)}
-              </p>
-              <ContractTimeline contract={contract} />
-              {renterNeedsToSign && (
-                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                  <Mail className="w-3 h-3" />
-                  Verifique seu e-mail para assinar via Clicksign
-                </p>
-              )}
+              <InspectionTimeline
+                contract={contract}
+                inspections={inspections}
+                rentalStatus={rental.status}
+              />
             </div>
           )}
 
@@ -161,109 +234,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 R$ {rental.total_price?.toLocaleString('pt-BR') || '0'}
               </p>
             </div>
-
-            {/* Pending - waiting for owner approval */}
-            {isPending && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">Aguardando aprovação do proprietário</span>
-              </div>
-            )}
-
-            {/* Approved - show contract/payment actions */}
-            {isApproved && (
-              <div className="flex gap-2">
-                {!contract ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">Aguardando contrato</span>
-                  </div>
-                ) : renterNeedsToSign ? (
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onViewContract?.(contract)}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Ver Contrato
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => window.open("https://app.clicksign.com", "_blank")}
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Assinar na Clicksign
-                    </Button>
-                  </div>
-                ) : awaitingOwner ? (
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onViewContract?.(contract)}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Ver Contrato
-                    </Button>
-                  </div>
-                ) : bothSigned ? (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onViewContract?.(contract)}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Ver Contrato
-                    </Button>
-                    <Button size="sm" onClick={onPay}>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Pagar
-                    </Button>
-                  </>
-                ) : contractStage === "preparing" ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">Contrato sendo preparado</span>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onViewContract?.(contract)}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Ver Contrato
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Active - waiting for owner to do pickup inspection */}
-            {isActive && !hasPickupInspection && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">Aguardando vistoria do proprietário</span>
-              </div>
-            )}
-
-            {/* Active with pickup inspection done */}
-            {isActive && hasPickupInspection && (
-              <div className="flex gap-2">
-                {!hasDropoffInspection ? (
-                  <Button size="sm" variant="outline" onClick={handleDropoffInspection} className="gap-2">
-                    <ClipboardCheck className="w-4 h-4" />
-                    Vistoria de Devolução
-                  </Button>
-                ) : (
-                  <span className="text-primary text-sm flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Devolução registrada
-                  </span>
-                )}
-              </div>
-            )}
+            {getRenterAction()}
           </div>
         </div>
       </div>

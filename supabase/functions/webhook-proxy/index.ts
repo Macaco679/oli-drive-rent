@@ -11,6 +11,7 @@ const ALLOWED_URLS: Record<string, string> = {
   "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato",
   "cnhcheck": "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",
   "oli-vistoria-validar": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-validar",
+  "oli-vistoria": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria",
   "oli-asaas-criar-cobranca": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-asaas-criar-cobranca",
 };
 
@@ -20,9 +21,44 @@ serve(async (req) => {
   }
 
   try {
+    const contentType = req.headers.get("content-type") || "";
+
+    // Handle multipart/form-data (for inspection photo uploads)
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData();
+      const targetKey = formData.get("_webhook_target") as string | null;
+      const targetUrl = targetKey ? ALLOWED_URLS[targetKey] : null;
+
+      if (!targetUrl) {
+        return new Response(
+          JSON.stringify({ error: `Webhook target "${targetKey}" not allowed` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Remove internal routing field before forwarding
+      formData.delete("_webhook_target");
+
+      console.log(`=== WEBHOOK PROXY (multipart) → ${targetKey} ===`);
+
+      const n8nResponse = await fetch(targetUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log("n8n response status:", n8nResponse.status);
+      const responseText = await n8nResponse.text();
+      console.log("n8n response body:", responseText.slice(0, 300));
+
+      return new Response(responseText, {
+        status: n8nResponse.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle JSON requests (original behavior)
     const body = await req.json();
     
-    // Determine target URL: check for explicit target or default to validarcarro
     const targetKey = body._webhook_target as string | undefined;
     const targetUrl = targetKey ? ALLOWED_URLS[targetKey] : ALLOWED_URLS["validarcarro"];
 
@@ -33,7 +69,6 @@ serve(async (req) => {
       );
     }
 
-    // Remove internal routing field before forwarding
     const { _webhook_target, ...payload } = body;
 
     console.log(`=== WEBHOOK PROXY → ${targetKey || "validarcarro"} ===`);
