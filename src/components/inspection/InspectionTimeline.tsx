@@ -138,31 +138,31 @@ export function InspectionTimeline({ contract, inspections, rentalStatus, classN
         const isLast = i === steps.length - 1;
 
         return (
-          <div key={step.key} className="flex gap-3">
+          <div key={step.key} className="flex gap-2">
             <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  "w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                  "w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center flex-shrink-0",
                   statusColors[step.status]
                 )}
               >
-                <Icon className={cn("w-3.5 h-3.5", step.status === "analyzing" && "animate-spin")} />
+                <Icon className={cn("w-2.5 h-2.5", step.status === "analyzing" && "animate-spin")} />
               </div>
               {!isLast && (
-                <div className={cn("w-0.5 flex-1 min-h-[20px]", lineColors[step.status])} />
+                <div className={cn("w-0.5 flex-1 min-h-[12px]", lineColors[step.status])} />
               )}
             </div>
 
             <div
               className={cn(
-                "pt-0.5 pb-3 text-sm font-medium",
+                "pb-1.5 text-xs font-medium leading-5",
                 step.status === "pending" ? "text-muted-foreground/50" : "text-foreground"
               )}
             >
               {step.label}
-              {step.status === "done" && <span className="text-xs text-primary ml-2">✓</span>}
-              {step.status === "rejected" && <span className="text-xs text-destructive ml-2">✗</span>}
-              {step.status === "analyzing" && <span className="text-xs text-blue-600 ml-2">analisando...</span>}
+              {step.status === "done" && <span className="text-[10px] text-primary ml-1">✓</span>}
+              {step.status === "rejected" && <span className="text-[10px] text-destructive ml-1">✗</span>}
+              {step.status === "analyzing" && <span className="text-[10px] text-blue-600 ml-1">analisando...</span>}
             </div>
           </div>
         );
