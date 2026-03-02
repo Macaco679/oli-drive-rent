@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool, Mail, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool, Mail, ExternalLink, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -171,10 +171,12 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     return null;
   };
 
+  const [showTimeline, setShowTimeline] = useState(false);
+
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
       <div className="flex flex-col sm:flex-row">
-        <div className="w-full sm:w-48 h-36 sm:h-auto bg-muted flex-shrink-0">
+        <div className="w-full sm:w-40 h-32 sm:h-auto bg-muted flex-shrink-0">
           {coverImage ? (
             <img src={coverImage} alt={vehicleTitle} className="w-full h-full object-cover" />
           ) : (
@@ -184,53 +186,64 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
           )}
         </div>
 
-        <div className="flex-1 p-6 space-y-4">
-          <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-xl">{vehicleTitle}</h3>
+              <h3 className="font-semibold text-base">{vehicleTitle}</h3>
               {rental.vehicle && (
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-xs">
                   {rental.vehicle.location_city} - {rental.vehicle.location_state}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Badge variant={statusInfo.variant} className="text-xs">{statusInfo.label}</Badge>
               {getContractBadge()}
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Calendar className="w-4 h-4 flex-shrink-0" />
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
               <span>
                 {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} até{" "}
                 {format(new Date(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
               </span>
             </div>
             {rental.pickup_location && (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <MapPin className="w-4 h-4 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>{rental.pickup_location}</span>
               </div>
             )}
           </div>
 
-          {/* Full timeline when approved */}
+          {/* Collapsible timeline */}
           {(isApproved || isActive) && (
-            <div className="border border-border rounded-xl p-4 bg-secondary/30">
-              <InspectionTimeline
-                contract={contract}
-                inspections={inspections}
-                rentalStatus={rental.status}
-              />
+            <div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowTimeline(!showTimeline); }}
+                className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+              >
+                {showTimeline ? "Ocultar etapas" : "Ver etapas"}
+                <ChevronRight className={`w-3 h-3 transition-transform ${showTimeline ? "rotate-90" : ""}`} />
+              </button>
+              {showTimeline && (
+                <div className="mt-2 border border-border rounded-lg p-3 bg-secondary/30">
+                  <InspectionTimeline
+                    contract={contract}
+                    inspections={inspections}
+                    rentalStatus={rental.status}
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 border-t border-border">
+          <div className="flex items-center justify-between pt-2 border-t border-border">
             <div>
-              <span className="text-muted-foreground text-sm">Total</span>
-              <p className="text-xl font-bold text-primary">
+              <span className="text-muted-foreground text-xs">Total</span>
+              <p className="text-lg font-bold text-primary">
                 R$ {rental.total_price?.toLocaleString('pt-BR') || '0'}
               </p>
             </div>
