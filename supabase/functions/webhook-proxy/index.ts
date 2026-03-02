@@ -25,8 +25,8 @@ serve(async (req) => {
 
     // Handle multipart/form-data (for inspection photo uploads)
     if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
-      const targetKey = formData.get("_webhook_target") as string | null;
+      const incomingForm = await req.formData();
+      const targetKey = incomingForm.get("_webhook_target") as string | null;
       const targetUrl = targetKey ? ALLOWED_URLS[targetKey] : null;
 
       if (!targetUrl) {
@@ -36,14 +36,32 @@ serve(async (req) => {
         );
       }
 
-      // Remove internal routing field before forwarding
-      formData.delete("_webhook_target");
+      // Reconstruct FormData with fresh File objects to avoid Deno forwarding issues
+      const outgoing = new FormData();
+      const fieldNames: string[] = [];
+
+      for (const [key, value] of incomingForm.entries()) {
+        if (key === "_webhook_target") continue; // skip routing field
+
+        if (value instanceof File) {
+          // Re-read file content to ensure binary data is preserved
+          const arrayBuffer = await value.arrayBuffer();
+          const newFile = new File([arrayBuffer], value.name, { type: value.type || "application/octet-stream" });
+          outgoing.append(key, newFile, value.name);
+          fieldNames.push(`${key} (File: ${value.name}, ${newFile.size} bytes, ${value.type})`);
+        } else {
+          outgoing.append(key, value);
+          const valStr = typeof value === "string" ? value.slice(0, 150) : String(value);
+          fieldNames.push(`${key}: ${valStr}`);
+        }
+      }
 
       console.log(`=== WEBHOOK PROXY (multipart) → ${targetKey} ===`);
+      console.log(`Fields (${fieldNames.length}):`, fieldNames.join(" | "));
 
       const n8nResponse = await fetch(targetUrl, {
         method: "POST",
-        body: formData,
+        body: outgoing,
       });
 
       console.log("n8n response status:", n8nResponse.status);
