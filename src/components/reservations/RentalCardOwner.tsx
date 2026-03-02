@@ -7,9 +7,10 @@ import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getVehicleCoverPhoto } from "@/lib/supabase";
-import { getContractByRentalId, RentalContract } from "@/lib/contractService";
+import { RentalContract } from "@/lib/contractService";
 import { hasCompleteInspection } from "@/lib/inspectionService";
 import { ContractTimeline, deriveContractStage, getContractStageLabel } from "@/components/contracts/ContractTimeline";
+import { useContractRealtime } from "@/hooks/useContractRealtime";
 
 interface RentalCardOwnerProps {
   rental: OliRental & { vehicle?: OliVehicle };
@@ -27,7 +28,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 
 export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardOwnerProps) {
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [contract, setContract] = useState<RentalContract | null>(null);
+  const { contract } = useContractRealtime(rental.id);
   const [hasPickupInspection, setHasPickupInspection] = useState(false);
   const [hasDropoffInspection, setHasDropoffInspection] = useState(false);
   const navigate = useNavigate();
@@ -36,14 +37,8 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
     if (rental.vehicle_id) {
       getVehicleCoverPhoto(rental.vehicle_id).then(setCoverImage);
     }
-    loadContract();
     checkInspections();
   }, [rental.vehicle_id, rental.id]);
-
-  const loadContract = async () => {
-    const contractData = await getContractByRentalId(rental.id);
-    setContract(contractData);
-  };
 
   const checkInspections = async () => {
     const [pickup, dropoff] = await Promise.all([
