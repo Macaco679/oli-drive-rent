@@ -212,6 +212,10 @@ export type Database = {
       }
       oli_inspections: {
         Row: {
+          actor_role:
+            | Database["public"]["Enums"]["oli_inspection_actor_role"]
+            | null
+          approved_photos_count: number
           completed_at: string | null
           created_at: string
           id: string
@@ -220,17 +224,25 @@ export type Database = {
           notes: string | null
           owner_approved_at: string | null
           performed_by: string
+          rejected_photos_count: number
           rental_id: string
           renter_approved_at: string | null
           required_photos_count: number
           side: Database["public"]["Enums"]["oli_inspection_side"]
           status: string
+          submitted_at: string | null
+          uploaded_photos_count: number
           validated_at: string | null
           validated_by_ai: boolean
           validation_summary: string | null
           vehicle_id: string
+          webhook_payload: Json | null
         }
         Insert: {
+          actor_role?:
+            | Database["public"]["Enums"]["oli_inspection_actor_role"]
+            | null
+          approved_photos_count?: number
           completed_at?: string | null
           created_at?: string
           id?: string
@@ -239,17 +251,25 @@ export type Database = {
           notes?: string | null
           owner_approved_at?: string | null
           performed_by: string
+          rejected_photos_count?: number
           rental_id: string
           renter_approved_at?: string | null
           required_photos_count?: number
           side: Database["public"]["Enums"]["oli_inspection_side"]
           status?: string
+          submitted_at?: string | null
+          uploaded_photos_count?: number
           validated_at?: string | null
           validated_by_ai?: boolean
           validation_summary?: string | null
           vehicle_id: string
+          webhook_payload?: Json | null
         }
         Update: {
+          actor_role?:
+            | Database["public"]["Enums"]["oli_inspection_actor_role"]
+            | null
+          approved_photos_count?: number
           completed_at?: string | null
           created_at?: string
           id?: string
@@ -258,15 +278,19 @@ export type Database = {
           notes?: string | null
           owner_approved_at?: string | null
           performed_by?: string
+          rejected_photos_count?: number
           rental_id?: string
           renter_approved_at?: string | null
           required_photos_count?: number
           side?: Database["public"]["Enums"]["oli_inspection_side"]
           status?: string
+          submitted_at?: string | null
+          uploaded_photos_count?: number
           validated_at?: string | null
           validated_by_ai?: boolean
           validation_summary?: string | null
           vehicle_id?: string
+          webhook_payload?: Json | null
         }
         Relationships: [
           {
@@ -911,6 +935,10 @@ export type Database = {
         Args: { profile_id: string }
         Returns: boolean
       }
+      refresh_oli_inspection_photo_counters: {
+        Args: { p_inspection_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       oli_contract_status:
@@ -923,6 +951,7 @@ export type Database = {
       oli_document_status: "pending" | "approved" | "rejected"
       oli_document_type: "cnh" | "rg" | "cpf" | "comprovante_residencia"
       oli_driver_license_status: "pending" | "approved" | "rejected"
+      oli_inspection_actor_role: "owner" | "renter"
       oli_inspection_kind: "pickup" | "dropoff"
       oli_inspection_side: "front" | "back" | "left" | "right" | "interior"
       oli_license_status: "pending" | "approved" | "rejected"
@@ -1093,6 +1122,7 @@ export const Constants = {
       oli_document_status: ["pending", "approved", "rejected"],
       oli_document_type: ["cnh", "rg", "cpf", "comprovante_residencia"],
       oli_driver_license_status: ["pending", "approved", "rejected"],
+      oli_inspection_actor_role: ["owner", "renter"],
       oli_inspection_kind: ["pickup", "dropoff"],
       oli_inspection_side: ["front", "back", "left", "right", "interior"],
       oli_license_status: ["pending", "approved", "rejected"],

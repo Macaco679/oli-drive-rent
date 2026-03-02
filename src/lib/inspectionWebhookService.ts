@@ -11,6 +11,16 @@ import {
  * Sends inspection data and photos to the oli-vistoria webhook via multipart/form-data.
  * The real image files are sent as form fields so n8n receives the binary data.
  */
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return `data:${file.type || "image/jpeg"};base64,${btoa(binary)}`;
+}
+
 export async function submitInspectionToWebhook(params: {
   rentalId: string;
   contractId?: string;
@@ -28,13 +38,23 @@ export async function submitInspectionToWebhook(params: {
   photos: Record<string, PhotoState>;
   extraPhotos: Array<{ file: File; preview: string }>;
 }): Promise<WebhookResponse> {
-  const formData = new FormData();
+  // Convert all photos to base64
+  const images: Record<string, string> = {};
+  for (const slot of INSPECTION_PHOTO_SLOTS) {
+    const state = params.photos[slot.id];
+    if (state?.file) {
+      images[slot.id] = await fileToBase64(state.file);
+    }
+  }
 
-  // Add the routing target
-  formData.append("_webhook_target", "oli-vistoria");
+  const extraImagesBase64: string[] = [];
+  for (const ep of params.extraPhotos) {
+    extraImagesBase64.push(await fileToBase64(ep.file));
+  }
 
-  // Build JSON payload
+  // Build full JSON payload with images included
   const payload = {
+    _webhook_target: "oli-vistoria",
     rental_id: params.rentalId,
     contract_id: params.contractId || null,
     contract_number: params.contractNumber || null,
@@ -56,24 +76,11 @@ export async function submitInspectionToWebhook(params: {
     notes: params.formData.notes || null,
     checklist: params.formData.checklist,
     source: "lovable_frontend",
+    images,
+    extra_images: extraImagesBase64.length > 0 ? extraImagesBase64 : null,
   };
 
-  formData.append("payload", JSON.stringify(payload));
-
-  // Append mandatory photo files
-  for (const slot of INSPECTION_PHOTO_SLOTS) {
-    const state = params.photos[slot.id];
-    if (state?.file) {
-      formData.append(slot.id, state.file, `${slot.id}.${state.file.name.split(".").pop() || "jpg"}`);
-    }
-  }
-
-  // Append extra photos
-  params.extraPhotos.forEach((ep, idx) => {
-    formData.append(`extra_images`, ep.file, `extra_${idx}.${ep.file.name.split(".").pop() || "jpg"}`);
-  });
-
-  // Send via edge function
+  // Send as JSON via edge function
   const { data: session } = await supabase.auth.getSession();
   const token = session?.session?.access_token;
 
@@ -83,10 +90,11 @@ export async function submitInspectionToWebhook(params: {
   const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
     method: "POST",
     headers: {
+      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       apikey: anonKey,
     },
-    body: formData,
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
