@@ -111,6 +111,7 @@ export async function submitInspectionToWebhook(params: {
 
   // Mantém campos individuais (compatibilidade com workflows existentes)
   for (const [key, value] of Object.entries(payload)) {
+    if (key === "inspection_id") continue;
     form.append(key, typeof value === "string" ? value : JSON.stringify(value));
   }
 
