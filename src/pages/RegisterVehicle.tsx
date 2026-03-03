@@ -28,7 +28,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType, validatePhoto } from "@/lib/vehicleService";
-import { INSPECTION_PHOTO_SLOTS } from "@/lib/inspectionTypes";
 import carBgPattern from "@/assets/car-bg-pattern.png";
 
 const vehicleTypeOptions = [
@@ -347,69 +346,15 @@ export default function RegisterVehicle() {
           photos: photoUrls,
         };
 
-        // Build multipart/form-data with real photo files
-        const form = new FormData();
-        form.append("_webhook_target", "validarcarro");
-        form.append("payload", JSON.stringify(webhookPayload));
-
-        // Append each field individually for n8n compatibility
-        for (const [key, value] of Object.entries(webhookPayload)) {
-          if (key === "photos") continue; // photos sent as files below
-          form.append(key, typeof value === "string" ? value : JSON.stringify(value));
-        }
-
-        // Append photo URLs as JSON array
-        form.append("photo_urls", JSON.stringify(photoUrls));
-
-        // Append actual photo files (generic keys)
-        const uploadedPhotoFiles = photos.map((photo) => photo.file);
-        const getExt = (file: File) => file.name.split(".").pop()?.toLowerCase() || "jpg";
-
-        uploadedPhotoFiles.forEach((file, idx) => {
-          form.append(`photo_${idx}`, file, `photo_${idx}.${getExt(file)}`);
-        });
-
-        // Append semantic binary keys expected by n8n workflow
-        // Fallback: if user sent fewer photos than required keys, reuse the first photo
-        if (uploadedPhotoFiles.length > 0) {
-          INSPECTION_PHOTO_SLOTS.forEach((slot, idx) => {
-            const sourceFile = uploadedPhotoFiles[idx] ?? uploadedPhotoFiles[0];
-            form.append(slot.id, sourceFile, `${slot.id}.${getExt(sourceFile)}`);
-          });
-        }
-
         // DEBUG logs
         console.log("=== WEBHOOK PAYLOAD ===", webhookPayload);
-        for (const [k, v] of form.entries()) {
-          console.log(k, v instanceof File ? `[File ${v.name} ${v.size}b]` : String(v).slice(0, 200));
-        }
 
-        const { data: session } = await supabase.auth.getSession();
-        const token = session?.session?.access_token;
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
-          method: "POST",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            apikey: anonKey,
-          },
-          body: form,
-        });
-
-        let webhookData: any = null;
-        let webhookError: any = null;
-
-        if (!response.ok) {
-          webhookError = { message: `HTTP ${response.status}`, details: await response.text() };
-        } else {
-          try {
-            webhookData = await response.json();
-          } catch {
-            webhookData = null;
+        const { data: webhookData, error: webhookError } = await supabase.functions.invoke(
+          "webhook-proxy",
+          {
+            body: webhookPayload,
           }
-        }
+        );
 
         console.log("=== WEBHOOK RESPONSE ===", { data: webhookData, error: webhookError });
 
