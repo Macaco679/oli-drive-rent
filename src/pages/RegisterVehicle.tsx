@@ -346,15 +346,58 @@ export default function RegisterVehicle() {
           photos: photoUrls,
         };
 
+        // Build multipart/form-data with real photo files
+        const form = new FormData();
+        form.append("_webhook_target", "validarcarro");
+        form.append("payload", JSON.stringify(webhookPayload));
+
+        // Append each field individually for n8n compatibility
+        for (const [key, value] of Object.entries(webhookPayload)) {
+          if (key === "photos") continue; // photos sent as files below
+          form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+        }
+
+        // Append photo URLs as JSON array
+        form.append("photo_urls", JSON.stringify(photoUrls));
+
+        // Append actual photo files
+        photos.forEach((photo, idx) => {
+          const ext = photo.file.name.split(".").pop()?.toLowerCase() || "jpg";
+          form.append(`photo_${idx}`, photo.file, `photo_${idx}.${ext}`);
+        });
+
         // DEBUG logs
         console.log("=== WEBHOOK PAYLOAD ===", webhookPayload);
+        for (const [k, v] of form.entries()) {
+          console.log(k, v instanceof File ? `[File ${v.name} ${v.size}b]` : String(v).slice(0, 200));
+        }
 
-        const { data: webhookData, error: webhookError } = await supabase.functions.invoke(
-          "webhook-proxy",
-          {
-            body: webhookPayload,
+        const { data: session } = await supabase.auth.getSession();
+        const token = session?.session?.access_token;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            apikey: anonKey,
+          },
+          body: form,
+        });
+
+        let webhookData: any = null;
+        let webhookError: any = null;
+
+        if (!response.ok) {
+          webhookError = { message: `HTTP ${response.status}`, details: await response.text() };
+        } else {
+          try {
+            webhookData = await response.json();
+          } catch {
+            webhookData = null;
           }
-        );
+        }
 
         console.log("=== WEBHOOK RESPONSE ===", { data: webhookData, error: webhookError });
 
