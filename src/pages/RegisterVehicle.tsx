@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType, validatePhoto } from "@/lib/vehicleService";
+import { INSPECTION_PHOTO_SLOTS } from "@/lib/inspectionTypes";
 import carBgPattern from "@/assets/car-bg-pattern.png";
 
 const vehicleTypeOptions = [
@@ -360,11 +361,22 @@ export default function RegisterVehicle() {
         // Append photo URLs as JSON array
         form.append("photo_urls", JSON.stringify(photoUrls));
 
-        // Append actual photo files
-        photos.forEach((photo, idx) => {
-          const ext = photo.file.name.split(".").pop()?.toLowerCase() || "jpg";
-          form.append(`photo_${idx}`, photo.file, `photo_${idx}.${ext}`);
+        // Append actual photo files (generic keys)
+        const uploadedPhotoFiles = photos.map((photo) => photo.file);
+        const getExt = (file: File) => file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+        uploadedPhotoFiles.forEach((file, idx) => {
+          form.append(`photo_${idx}`, file, `photo_${idx}.${getExt(file)}`);
         });
+
+        // Append semantic binary keys expected by n8n workflow
+        // Fallback: if user sent fewer photos than required keys, reuse the first photo
+        if (uploadedPhotoFiles.length > 0) {
+          INSPECTION_PHOTO_SLOTS.forEach((slot, idx) => {
+            const sourceFile = uploadedPhotoFiles[idx] ?? uploadedPhotoFiles[0];
+            form.append(slot.id, sourceFile, `${slot.id}.${getExt(sourceFile)}`);
+          });
+        }
 
         // DEBUG logs
         console.log("=== WEBHOOK PAYLOAD ===", webhookPayload);
