@@ -146,6 +146,7 @@ export default function VehicleInspection() {
     const existing = await getInspectionByRental(rentalId, stepConfig.inspectionKind);
     if (existing && existing.inspection.inspection_stage === inspectionStep) {
       setExistingInspection(existing);
+      setWebhookInspectionId(existing.inspection.id);
     }
 
     setLoading(false);
