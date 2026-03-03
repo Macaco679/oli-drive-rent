@@ -36,11 +36,21 @@ export async function submitInspectionToWebhook(params: {
   vehiclePlate?: string;
   vehicleModel?: string;
   vehicleBrand?: string;
+  vehicleYear?: number;
+  vehicleColor?: string;
   formData: InspectionFormData;
   photos: Record<string, PhotoState>;
   extraPhotos: Array<{ file: File; preview: string }>;
 }): Promise<WebhookResponse> {
   const inspectionId = getOrCreateInspectionId(params.rentalId, params.inspectionStep);
+
+  // ── Fetch owner & renter profiles for enrichment ──
+  const [ownerRes, renterRes] = await Promise.all([
+    supabase.from("oli_profiles").select("full_name, cpf, rg, email, phone, whatsapp_phone, birth_date, nationality, marital_status, profession").eq("id", params.ownerId).maybeSingle(),
+    supabase.from("oli_profiles").select("full_name, cpf, rg, email, phone, whatsapp_phone, birth_date, nationality, marital_status, profession").eq("id", params.renterId).maybeSingle(),
+  ]);
+  const ownerProfile = ownerRes.data;
+  const renterProfile = renterRes.data;
 
   const form = new FormData();
 
@@ -67,11 +77,37 @@ export async function submitInspectionToWebhook(params: {
   form.append("vehicle_plate", params.vehiclePlate || "");
   form.append("vehicle_model", params.vehicleModel || "");
   form.append("vehicle_brand", params.vehicleBrand || "");
+  form.append("vehicle_year", String(params.vehicleYear || ""));
+  form.append("vehicle_color", params.vehicleColor || "");
   form.append("clean", String(params.formData.is_clean));
   form.append("has_visible_damage", String(params.formData.has_visible_damage));
   form.append("damage_notes", params.formData.damage_notes || "");
   form.append("notes", params.formData.notes || "");
   form.append("source", "lovable_frontend");
+
+  // ── Owner profile data ──
+  form.append("owner_name", ownerProfile?.full_name || "");
+  form.append("owner_cpf", ownerProfile?.cpf || "");
+  form.append("owner_rg", ownerProfile?.rg || "");
+  form.append("owner_email", ownerProfile?.email || "");
+  form.append("owner_phone", ownerProfile?.phone || "");
+  form.append("owner_whatsapp", ownerProfile?.whatsapp_phone || "");
+  form.append("owner_birth_date", ownerProfile?.birth_date || "");
+  form.append("owner_nationality", ownerProfile?.nationality || "");
+  form.append("owner_marital_status", ownerProfile?.marital_status || "");
+  form.append("owner_profession", ownerProfile?.profession || "");
+
+  // ── Renter profile data ──
+  form.append("renter_name", renterProfile?.full_name || "");
+  form.append("renter_cpf", renterProfile?.cpf || "");
+  form.append("renter_rg", renterProfile?.rg || "");
+  form.append("renter_email", renterProfile?.email || "");
+  form.append("renter_phone", renterProfile?.phone || "");
+  form.append("renter_whatsapp", renterProfile?.whatsapp_phone || "");
+  form.append("renter_birth_date", renterProfile?.birth_date || "");
+  form.append("renter_nationality", renterProfile?.nationality || "");
+  form.append("renter_marital_status", renterProfile?.marital_status || "");
+  form.append("renter_profession", renterProfile?.profession || "");
 
   // ── File fields (exact keys) ──
   for (const slot of INSPECTION_PHOTO_SLOTS) {
