@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { createVehicle, uploadVehiclePhoto, VehicleFormData, VehicleType, validatePhoto } from "@/lib/vehicleService";
+import { INSPECTION_PHOTO_SLOTS } from "@/lib/inspectionTypes";
 import carBgPattern from "@/assets/car-bg-pattern.png";
 
 const vehicleTypeOptions = [
