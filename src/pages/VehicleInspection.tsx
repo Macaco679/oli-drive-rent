@@ -59,6 +59,7 @@ export default function VehicleInspection() {
   const [renter, setRenter] = useState<OliProfile | null>(null);
   const [contract, setContract] = useState<RentalContract | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [webhookInspectionId, setWebhookInspectionId] = useState<string | null>(null);
   const [existingInspection, setExistingInspection] = useState<{ inspection: Inspection; photos: InspectionPhoto[] } | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
