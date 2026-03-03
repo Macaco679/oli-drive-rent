@@ -24,6 +24,7 @@ function getOrCreateInspectionId(rentalId: string, step: InspectionStep): string
 }
 
 export async function submitInspectionToWebhook(params: {
+  inspectionId?: string;
   rentalId: string;
   contractId?: string;
   contractNumber?: string;
@@ -42,7 +43,7 @@ export async function submitInspectionToWebhook(params: {
   photos: Record<string, PhotoState>;
   extraPhotos: Array<{ file: File; preview: string }>;
 }): Promise<WebhookResponse> {
-  const inspectionId = getOrCreateInspectionId(params.rentalId, params.inspectionStep);
+  const inspectionId = params.inspectionId || getOrCreateInspectionId(params.rentalId, params.inspectionStep);
 
   // ── Fetch owner & renter profiles for enrichment ──
   const [ownerRes, renterRes] = await Promise.all([

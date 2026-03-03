@@ -59,6 +59,7 @@ export default function VehicleInspection() {
   const [renter, setRenter] = useState<OliProfile | null>(null);
   const [contract, setContract] = useState<RentalContract | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [webhookInspectionId, setWebhookInspectionId] = useState<string | null>(null);
   const [existingInspection, setExistingInspection] = useState<{ inspection: Inspection; photos: InspectionPhoto[] } | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -145,6 +146,7 @@ export default function VehicleInspection() {
     const existing = await getInspectionByRental(rentalId, stepConfig.inspectionKind);
     if (existing && existing.inspection.inspection_stage === inspectionStep) {
       setExistingInspection(existing);
+      setWebhookInspectionId(existing.inspection.id);
     }
 
     setLoading(false);
@@ -246,10 +248,41 @@ export default function VehicleInspection() {
       setSubmitProgress(45);
       setSubmitStatus("validating");
 
+      let inspectionIdForWebhook = webhookInspectionId;
+      if (!inspectionIdForWebhook) {
+        const { data: draftInspection, error: draftError } = await supabase
+          .from("oli_inspections")
+          .insert({
+            rental_id: rental.id,
+            vehicle_id: rental.vehicle_id,
+            performed_by: userId,
+            inspection_kind: stepConfig.inspectionKind,
+            inspection_stage: inspectionStep,
+            actor_role: stepConfig.performedByRole,
+            side: "front",
+            notes: formData.notes || null,
+            status: "pending_validation",
+            required_photos_count: totalRequired,
+          })
+          .select("id")
+          .single();
+
+        if (draftError || !draftInspection) {
+          toast.error("Não foi possível criar a vistoria no Supabase.");
+          setSubmitStatus("error");
+          setSubmitProgress(0);
+          return;
+        }
+
+        inspectionIdForWebhook = draftInspection.id;
+        setWebhookInspectionId(draftInspection.id);
+      }
+
       // Send to webhook with real files
       let webhookResponse: WebhookResponse;
       try {
         webhookResponse = await submitInspectionToWebhook({
+          inspectionId: inspectionIdForWebhook,
           rentalId: rental.id,
           contractId: contract?.id,
           contractNumber: contract?.contract_number || undefined,
@@ -269,19 +302,25 @@ export default function VehicleInspection() {
           extraPhotos,
         });
       } catch {
-        // Webhook failed - save as draft
-        toast.warning("Não foi possível enviar para validação. Salvando como rascunho.");
+        // Webhook failed - keep inspection as pending_validation
         await createInspection({
+          inspectionId: inspectionIdForWebhook,
           rentalId: rental.id,
           vehicleId: rental.vehicle_id,
           performedBy: userId,
           kind: stepConfig.inspectionKind,
+          inspectionStage: inspectionStep,
+          actorRole: stepConfig.performedByRole,
           photos: Object.entries(uploadedUrls).map(([id, url], idx) => ({
-            photoTypeId: id, url, hasDamage: photos[id].hasDamage, sortOrder: idx,
+            photoTypeId: id,
+            url,
+            hasDamage: photos[id].hasDamage,
+            sortOrder: idx,
           })),
           notes: formData.notes,
           status: "pending_validation",
         });
+        toast.warning("Não foi possível enviar para validação. Salvando como pendente.");
         setSubmitStatus("error");
         setSubmitProgress(0);
         return;
@@ -333,19 +372,44 @@ export default function VehicleInspection() {
             return updated;
           });
         }
+
+        await createInspection({
+          inspectionId: inspectionIdForWebhook,
+          rentalId: rental.id,
+          vehicleId: rental.vehicle_id,
+          performedBy: userId,
+          kind: stepConfig.inspectionKind,
+          inspectionStage: inspectionStep,
+          actorRole: stepConfig.performedByRole,
+          photos: Object.entries(uploadedUrls).map(([id, url], idx) => ({
+            photoTypeId: id,
+            url,
+            hasDamage: photos[id].hasDamage,
+            sortOrder: idx,
+          })),
+          notes: formData.notes,
+          status: "rejected",
+          validatedByAi: true,
+          validationSummary: webhookResponse.message || "Fotos rejeitadas pela IA",
+          photoValidations: webhookResponse.photo_analysis,
+        });
+
         setSubmitStatus("rejected");
         setSubmitProgress(0);
         toast.error(webhookResponse.message || "Algumas fotos foram rejeitadas pela IA.");
         return;
       }
 
-      // Success - save inspection
+      // Success - update existing inspection
       setSubmitProgress(90);
       const inspection = await createInspection({
+        inspectionId: inspectionIdForWebhook,
         rentalId: rental.id,
         vehicleId: rental.vehicle_id,
         performedBy: userId,
         kind: stepConfig.inspectionKind,
+        inspectionStage: inspectionStep,
+        actorRole: stepConfig.performedByRole,
         photos: Object.entries(uploadedUrls).map(([id, url], idx) => ({
           photoTypeId: id, url, hasDamage: photos[id].hasDamage, sortOrder: idx,
         })),
