@@ -188,10 +188,13 @@ export async function validateInspectionPhotosViaAI(params: {
 
 // Create inspection record with all photos (after AI validation)
 export async function createInspection(params: {
+  inspectionId?: string;
   rentalId: string;
   vehicleId: string;
   performedBy: string;
   kind: "pickup" | "dropoff";
+  inspectionStage?: string;
+  actorRole?: "owner" | "renter";
   photos: Array<{ photoTypeId: string; url: string; hasDamage?: boolean; sortOrder?: number }>;
   notes?: string;
   status?: InspectionStatus;
@@ -206,33 +209,86 @@ export async function createInspection(params: {
     damage_detected?: boolean;
   }>;
 }): Promise<Inspection | null> {
-  const { rentalId, vehicleId, performedBy, kind, photos, notes, status, validatedByAi, validationSummary, photoValidations } = params;
+  const {
+    inspectionId,
+    rentalId,
+    vehicleId,
+    performedBy,
+    kind,
+    inspectionStage,
+    actorRole,
+    photos,
+    notes,
+    status,
+    validatedByAi,
+    validationSummary,
+    photoValidations,
+  } = params;
 
   const inspectionStatus = status || "draft";
 
-  const { data: inspection, error: inspError } = await supabase
-    .from("oli_inspections")
-    .insert({
-      rental_id: rentalId,
-      vehicle_id: vehicleId,
-      performed_by: performedBy,
-      inspection_kind: kind,
-      side: "front",
-      notes: notes || null,
-      status: inspectionStatus,
-      required_photos_count: INSPECTION_PHOTO_TYPES.length,
-      validated_by_ai: validatedByAi || false,
-      validated_at: validatedByAi ? new Date().toISOString() : null,
-      validation_summary: validationSummary || null,
-      completed_at: inspectionStatus === "completed" ? new Date().toISOString() : null,
-    })
-    .select()
-    .single();
+  let inspection: { id: string } | null = null;
 
-  if (inspError || !inspection) {
-    console.error("Erro ao criar vistoria:", inspError);
-    return null;
+  if (inspectionId) {
+    const { data: updatedInspection, error: updateError } = await supabase
+      .from("oli_inspections")
+      .update({
+        rental_id: rentalId,
+        vehicle_id: vehicleId,
+        performed_by: performedBy,
+        inspection_kind: kind,
+        side: "front",
+        notes: notes || null,
+        status: inspectionStatus,
+        inspection_stage: inspectionStage || null,
+        actor_role: actorRole || null,
+        required_photos_count: photos.length,
+        validated_by_ai: validatedByAi || false,
+        validated_at: validatedByAi ? new Date().toISOString() : null,
+        validation_summary: validationSummary || null,
+        completed_at: inspectionStatus === "completed" ? new Date().toISOString() : null,
+      })
+      .eq("id", inspectionId)
+      .select("id")
+      .single();
+
+    if (updateError || !updatedInspection) {
+      console.error("Erro ao atualizar vistoria:", updateError);
+      return null;
+    }
+
+    inspection = updatedInspection;
+  } else {
+    const { data: createdInspection, error: inspError } = await supabase
+      .from("oli_inspections")
+      .insert({
+        rental_id: rentalId,
+        vehicle_id: vehicleId,
+        performed_by: performedBy,
+        inspection_kind: kind,
+        side: "front",
+        notes: notes || null,
+        status: inspectionStatus,
+        inspection_stage: inspectionStage || null,
+        actor_role: actorRole || null,
+        required_photos_count: photos.length,
+        validated_by_ai: validatedByAi || false,
+        validated_at: validatedByAi ? new Date().toISOString() : null,
+        validation_summary: validationSummary || null,
+        completed_at: inspectionStatus === "completed" ? new Date().toISOString() : null,
+      })
+      .select("id")
+      .single();
+
+    if (inspError || !createdInspection) {
+      console.error("Erro ao criar vistoria:", inspError);
+      return null;
+    }
+
+    inspection = createdInspection;
   }
+
+  await supabase.from("oli_inspection_photos").delete().eq("inspection_id", inspection.id);
 
   // Build photo records with validation data
   const photoRecords = photos.map((p, idx) => {
