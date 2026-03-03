@@ -99,7 +99,7 @@ export async function submitInspectionToWebhook(params: {
   };
 
   // Redundância obrigatória
-  form.append("payload", JSON.stringify(payload));
+  form.append("payload", JSON.stringify({ ...payload, inspection_id: inspectionId }));
   form.append("inspection_id", inspectionId);
 
   // Mantém campos individuais (compatibilidade com workflows existentes)
