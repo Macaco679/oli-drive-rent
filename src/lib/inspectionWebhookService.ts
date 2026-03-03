@@ -9,16 +9,18 @@ import {
 
 /**
  * Sends inspection data and photos to the oli-vistoria webhook via multipart/form-data.
- * The real image files are sent as form fields so n8n receives the binary data.
+ * Each photo is sent as a real file field with the exact slot key.
  */
-async function fileToBase64(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+
+// Persistent inspection_id per rental+step (generated once, reused on retries)
+const inspectionIdCache = new Map<string, string>();
+
+function getOrCreateInspectionId(rentalId: string, step: InspectionStep): string {
+  const cacheKey = `${rentalId}__${step}`;
+  if (!inspectionIdCache.has(cacheKey)) {
+    inspectionIdCache.set(cacheKey, crypto.randomUUID());
   }
-  return `data:${file.type || "image/jpeg"};base64,${btoa(binary)}`;
+  return inspectionIdCache.get(cacheKey)!;
 }
 
 export async function submitInspectionToWebhook(params: {
@@ -38,49 +40,53 @@ export async function submitInspectionToWebhook(params: {
   photos: Record<string, PhotoState>;
   extraPhotos: Array<{ file: File; preview: string }>;
 }): Promise<WebhookResponse> {
-  // Convert all photos to base64
-  const images: Record<string, string> = {};
+  const inspectionId = getOrCreateInspectionId(params.rentalId, params.inspectionStep);
+
+  const form = new FormData();
+
+  // Routing field for the proxy
+  form.append("_webhook_target", "oli-vistoria");
+
+  // ── Text fields (mandatory) ──
+  form.append("inspection_id", inspectionId);
+  form.append("rental_id", params.rentalId);
+  form.append("vehicle_id", params.vehicleId);
+  form.append("contract_id", params.contractId || "");
+  form.append("contract_number", params.contractNumber || "");
+  form.append("owner_id", params.ownerId);
+  form.append("renter_id", params.renterId);
+  form.append("performed_by_user_id", params.performedByUserId);
+  form.append("actor_role", params.performedByRole);
+  form.append("inspection_step", params.inspectionStep);
+  form.append("mileage", params.formData.mileage);
+  form.append("fuel_level", params.formData.fuel_level);
+  form.append("checklist", JSON.stringify(params.formData.checklist));
+
+  // Extra optional text fields
+  form.append("performed_at", new Date().toISOString());
+  form.append("vehicle_plate", params.vehiclePlate || "");
+  form.append("vehicle_model", params.vehicleModel || "");
+  form.append("vehicle_brand", params.vehicleBrand || "");
+  form.append("clean", String(params.formData.is_clean));
+  form.append("has_visible_damage", String(params.formData.has_visible_damage));
+  form.append("damage_notes", params.formData.damage_notes || "");
+  form.append("notes", params.formData.notes || "");
+  form.append("source", "lovable_frontend");
+
+  // ── File fields (exact keys) ──
   for (const slot of INSPECTION_PHOTO_SLOTS) {
     const state = params.photos[slot.id];
     if (state?.file) {
-      images[slot.id] = await fileToBase64(state.file);
+      form.append(slot.id, state.file, `${slot.id}.${getExtension(state.file)}`);
     }
   }
 
-  const extraImagesBase64: string[] = [];
-  for (const ep of params.extraPhotos) {
-    extraImagesBase64.push(await fileToBase64(ep.file));
-  }
+  // Extra photos
+  params.extraPhotos.forEach((ep, idx) => {
+    form.append(`extra_photo_${idx}`, ep.file, `extra_${idx}.${getExtension(ep.file)}`);
+  });
 
-  // Build full JSON payload with images included
-  const payload = {
-    _webhook_target: "oli-vistoria",
-    rental_id: params.rentalId,
-    contract_id: params.contractId || null,
-    contract_number: params.contractNumber || null,
-    vehicle_id: params.vehicleId,
-    owner_id: params.ownerId,
-    renter_id: params.renterId,
-    inspection_step: params.inspectionStep,
-    performed_by_role: params.performedByRole,
-    performed_by_user_id: params.performedByUserId,
-    performed_at: new Date().toISOString(),
-    vehicle_plate: params.vehiclePlate || null,
-    vehicle_model: params.vehicleModel || null,
-    vehicle_brand: params.vehicleBrand || null,
-    mileage: params.formData.mileage,
-    fuel_level: params.formData.fuel_level,
-    clean: params.formData.is_clean,
-    has_visible_damage: params.formData.has_visible_damage,
-    damage_notes: params.formData.damage_notes || null,
-    notes: params.formData.notes || null,
-    checklist: params.formData.checklist,
-    source: "lovable_frontend",
-    images,
-    extra_images: extraImagesBase64.length > 0 ? extraImagesBase64 : null,
-  };
-
-  // Send as JSON via edge function
+  // ── Send via edge function proxy ──
   const { data: session } = await supabase.auth.getSession();
   const token = session?.session?.access_token;
 
@@ -90,11 +96,11 @@ export async function submitInspectionToWebhook(params: {
   const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      // Do NOT set Content-Type – the browser sets it with the boundary automatically
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       apikey: anonKey,
     },
-    body: JSON.stringify(payload),
+    body: form,
   });
 
   if (!response.ok) {
@@ -105,7 +111,7 @@ export async function submitInspectionToWebhook(params: {
 
   let result = await response.json();
 
-  // Normalize n8n response
+  // Normalize n8n response – may be array or have nested output
   if (Array.isArray(result)) result = result[0];
   if (result?.output && typeof result.output === "string") {
     try {
@@ -115,18 +121,30 @@ export async function submitInspectionToWebhook(params: {
     }
   }
 
+  // Use lovable_payload if present
+  const lp = result?.lovable_payload || result;
+
   return {
-    ok: result?.ok ?? true,
-    inspection_id: result?.inspection_id,
-    inspection_step: result?.inspection_step,
-    status: result?.status,
-    ai_status: result?.ai_status,
-    approved: result?.approved ?? true,
-    message: result?.message,
-    failed_photos: result?.failed_photos || [],
-    photo_analysis: result?.photo_analysis || [],
-    next_step: result?.next_step,
-    reservation_status: result?.reservation_status,
-    contract_status: result?.contract_status,
+    ok: lp?.ok ?? true,
+    inspection_id: lp?.inspection_id || inspectionId,
+    inspection_step: lp?.inspection_step,
+    status: lp?.status,
+    ai_status: lp?.ai_status,
+    approved: lp?.status === "approved" || (lp?.approved ?? true),
+    message: lp?.message,
+    failed_photos: lp?.needs_reupload || lp?.failed_photos || [],
+    photo_analysis: lp?.photo_analysis || [],
+    next_step: lp?.next_step,
+    reservation_status: lp?.reservation_status,
+    contract_status: lp?.contract_status,
   };
+}
+
+function getExtension(file: File): string {
+  const name = file.name || "";
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext && ["jpg", "jpeg", "png", "webp"].includes(ext)) return ext;
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
 }

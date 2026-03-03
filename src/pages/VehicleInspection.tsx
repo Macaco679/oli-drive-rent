@@ -289,8 +289,34 @@ export default function VehicleInspection() {
 
       // Handle webhook response
       if (webhookResponse.approved === false) {
-        // Update rejected photo states
-        if (webhookResponse.photo_analysis?.length) {
+        // Mark photos that need reupload as rejected
+        const needsReupload = webhookResponse.failed_photos || [];
+        if (needsReupload.length > 0) {
+          setPhotos((prev) => {
+            const updated = { ...prev };
+            // First apply photo_analysis details if available
+            webhookResponse.photo_analysis?.forEach((r) => {
+              if (updated[r.photo_type]) {
+                updated[r.photo_type] = {
+                  ...updated[r.photo_type],
+                  validationStatus: r.status,
+                  validationReason: r.reason || null,
+                };
+              }
+            });
+            // Then mark needs_reupload photos as rejected (if not already)
+            needsReupload.forEach((photoKey) => {
+              if (updated[photoKey] && updated[photoKey].validationStatus !== "rejected") {
+                updated[photoKey] = {
+                  ...updated[photoKey],
+                  validationStatus: "rejected",
+                  validationReason: "Foto precisa ser reenviada",
+                };
+              }
+            });
+            return updated;
+          });
+        } else if (webhookResponse.photo_analysis?.length) {
           setPhotos((prev) => {
             const updated = { ...prev };
             webhookResponse.photo_analysis!.forEach((r) => {
