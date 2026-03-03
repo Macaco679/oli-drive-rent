@@ -171,7 +171,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     return null;
   };
 
-  const [showTimeline, setShowTimeline] = useState(false);
+  
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
@@ -218,25 +218,15 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
             )}
           </div>
 
-          {/* Collapsible timeline */}
+          {/* Timeline with first 4 steps visible */}
           {(isApproved || isActive) && (
-            <div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowTimeline(!showTimeline); }}
-                className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
-              >
-                {showTimeline ? "Ocultar etapas" : "Ver etapas"}
-                <ChevronRight className={`w-3 h-3 transition-transform ${showTimeline ? "rotate-90" : ""}`} />
-              </button>
-              {showTimeline && (
-                <div className="mt-2 border border-border rounded-lg p-3 bg-secondary/30">
-                  <InspectionTimeline
-                    contract={contract}
-                    inspections={inspections}
-                    rentalStatus={rental.status}
-                  />
-                </div>
-              )}
+            <div className="border border-border rounded-lg p-3 bg-secondary/30">
+              <InspectionTimeline
+                contract={contract}
+                inspections={inspections}
+                rentalStatus={rental.status}
+                initialVisible={4}
+              />
             </div>
           )}
 

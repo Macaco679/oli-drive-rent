@@ -161,6 +161,7 @@ export type Database = {
           metadata: Json | null
           photo_type: string | null
           sort_order: number | null
+          updated_at: string
           uploaded_by: string | null
           validation_confidence: number | null
           validation_reason: string | null
@@ -178,6 +179,7 @@ export type Database = {
           metadata?: Json | null
           photo_type?: string | null
           sort_order?: number | null
+          updated_at?: string
           uploaded_by?: string | null
           validation_confidence?: number | null
           validation_reason?: string | null
@@ -195,6 +197,7 @@ export type Database = {
           metadata?: Json | null
           photo_type?: string | null
           sort_order?: number | null
+          updated_at?: string
           uploaded_by?: string | null
           validation_confidence?: number | null
           validation_reason?: string | null
