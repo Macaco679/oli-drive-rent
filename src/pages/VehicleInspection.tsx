@@ -52,6 +52,9 @@ export default function VehicleInspection() {
   const inspectionStep: InspectionStep = stepParam || (kindParam === "dropoff" ? "renter_return_inspection" : "owner_initial_inspection");
   const stepConfig = INSPECTION_STEPS_CONFIG[inspectionStep];
 
+  const getInspectionStorageKey = (rentalIdValue: string, stepValue: InspectionStep, performedByUserIdValue: string) =>
+    `oli_inspection_id_${rentalIdValue}_${stepValue}_${performedByUserIdValue}`;
+
   const [loading, setLoading] = useState(true);
   const [rental, setRental] = useState<OliRental | null>(null);
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
@@ -130,6 +133,12 @@ export default function VehicleInspection() {
 
     setRental(rentalData as OliRental);
 
+    const storageKey = getInspectionStorageKey(rentalData.id, inspectionStep, user.id);
+    const storedInspectionId = localStorage.getItem(storageKey);
+    if (storedInspectionId) {
+      setWebhookInspectionId(storedInspectionId);
+    }
+
     const [vehicleData, ownerData, renterData, contractData] = await Promise.all([
       getVehicleById(rentalData.vehicle_id),
       getProfileById(rentalData.owner_id),
@@ -147,6 +156,7 @@ export default function VehicleInspection() {
     if (existing && existing.inspection.inspection_stage === inspectionStep) {
       setExistingInspection(existing);
       setWebhookInspectionId(existing.inspection.id);
+      localStorage.setItem(storageKey, existing.inspection.id);
     }
 
     setLoading(false);
