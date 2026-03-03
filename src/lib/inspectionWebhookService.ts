@@ -134,6 +134,15 @@ export async function submitInspectionToWebhook(params: {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+  console.log("inspection_id", inspectionId);
+  for (const [k, v] of form.entries()) {
+    if (v instanceof File) {
+      console.log(k, `[File ${v.name}]`);
+    } else {
+      console.log(k, v);
+    }
+  }
+
   const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
     method: "POST",
     headers: {
