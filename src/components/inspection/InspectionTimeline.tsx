@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, Clock, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullTimelineStep, TimelineStepStatus } from "@/lib/inspectionTypes";
@@ -28,13 +29,6 @@ const lineColors: Record<TimelineStepStatus, string> = {
   analyzing: "bg-blue-500/40",
   rejected: "bg-destructive/40",
 };
-
-interface InspectionTimelineProps {
-  contract: RentalContract | null;
-  inspections: InspectionRecord[];
-  rentalStatus: string;
-  className?: string;
-}
 
 function getInspectionStepStatus(
   stage: string,
@@ -70,72 +64,42 @@ export function buildFullTimeline(
   const renterReturnDone = renterReturn === "done";
   const ownerFinal = getInspectionStepStatus("owner_final_inspection", inspections);
 
-  // Payment status
   const paymentDone = hasPaid;
   const paymentStatus: TimelineStepStatus = paymentDone ? "done" : ownerInitialDone ? "current" : "pending";
 
   return [
-    {
-      key: "approved",
-      label: "Pedido aprovado",
-      status: rentalStatus !== "pending_approval" ? "done" : "current",
-    },
-    {
-      key: "contract_sent",
-      label: "Contrato enviado",
-      status: contractCreated ? "done" : rentalStatus === "approved" ? "current" : "pending",
-    },
-    {
-      key: "renter_signed",
-      label: "Contrato locatário",
-      status: renterSigned ? "done" : contractCreated ? "current" : "pending",
-    },
-    {
-      key: "owner_signed",
-      label: "Contrato locador",
-      status: ownerSigned ? "done" : renterSigned ? "current" : "pending",
-    },
-    {
-      key: "contract_done",
-      label: "Contrato assinado",
-      status: bothSigned ? "done" : "pending",
-    },
-    {
-      key: "owner_initial",
-      label: "Vistoria locador",
-      status: bothSigned ? ownerInitial : "pending",
-    },
-    {
-      key: "payment",
-      label: "Pagamento",
-      status: bothSigned ? paymentStatus : "pending",
-    },
-    {
-      key: "renter_pickup",
-      label: "Vistoria locatário retirada",
-      status: paymentDone ? renterPickup : "pending",
-    },
-    {
-      key: "renter_return",
-      label: "Vistoria locatário devolução",
-      status: renterPickupDone ? renterReturn : "pending",
-    },
-    {
-      key: "owner_final",
-      label: "Vistoria locador final",
-      status: renterReturnDone ? ownerFinal : "pending",
-    },
+    { key: "approved", label: "Pedido aprovado", status: rentalStatus !== "pending_approval" ? "done" : "current" },
+    { key: "contract_sent", label: "Contrato enviado", status: contractCreated ? "done" : rentalStatus === "approved" ? "current" : "pending" },
+    { key: "renter_signed", label: "Contrato locatário", status: renterSigned ? "done" : contractCreated ? "current" : "pending" },
+    { key: "owner_signed", label: "Contrato locador", status: ownerSigned ? "done" : renterSigned ? "current" : "pending" },
+    { key: "contract_done", label: "Contrato assinado", status: bothSigned ? "done" : "pending" },
+    { key: "owner_initial", label: "Vistoria locador", status: bothSigned ? ownerInitial : "pending" },
+    { key: "payment", label: "Pagamento", status: bothSigned ? paymentStatus : "pending" },
+    { key: "renter_pickup", label: "Vistoria locatário retirada", status: paymentDone ? renterPickup : "pending" },
+    { key: "renter_return", label: "Vistoria locatário devolução", status: renterPickupDone ? renterReturn : "pending" },
+    { key: "owner_final", label: "Vistoria locador final", status: renterReturnDone ? ownerFinal : "pending" },
   ];
 }
 
-export function InspectionTimeline({ contract, inspections, rentalStatus, className }: InspectionTimelineProps) {
-  const steps = buildFullTimeline(contract, inspections, rentalStatus, false);
+interface InspectionTimelineProps {
+  contract: RentalContract | null;
+  inspections: InspectionRecord[];
+  rentalStatus: string;
+  className?: string;
+  initialVisible?: number;
+}
+
+export function InspectionTimeline({ contract, inspections, rentalStatus, className, initialVisible = 10 }: InspectionTimelineProps) {
+  const allSteps = buildFullTimeline(contract, inspections, rentalStatus, false);
+  const [expanded, setExpanded] = useState(false);
+  const visibleSteps = initialVisible >= allSteps.length || expanded ? allSteps : allSteps.slice(0, initialVisible);
+  const hasMore = initialVisible < allSteps.length && !expanded;
 
   return (
     <div className={cn("space-y-0", className)}>
-      {steps.map((step, i) => {
+      {visibleSteps.map((step, i) => {
         const Icon = statusIcons[step.status];
-        const isLast = i === steps.length - 1;
+        const isLast = i === visibleSteps.length - 1 && !hasMore;
 
         return (
           <div key={step.key} className="flex gap-2">
@@ -167,6 +131,22 @@ export function InspectionTimeline({ contract, inspections, rentalStatus, classN
           </div>
         );
       })}
+      {hasMore && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          className="text-xs text-primary font-medium hover:underline ml-7 pt-1"
+        >
+          Ver mais etapas
+        </button>
+      )}
+      {expanded && initialVisible < allSteps.length && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+          className="text-xs text-primary font-medium hover:underline ml-7 pt-1"
+        >
+          Ver menos
+        </button>
+      )}
     </div>
   );
 }
