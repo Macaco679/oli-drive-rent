@@ -12,19 +12,8 @@ import {
  * Each photo is sent as a real file field with the exact slot key.
  */
 
-// Persistent inspection_id per rental+step (generated once, reused on retries)
-const inspectionIdCache = new Map<string, string>();
-
-function getOrCreateInspectionId(rentalId: string, step: InspectionStep): string {
-  const cacheKey = `${rentalId}__${step}`;
-  if (!inspectionIdCache.has(cacheKey)) {
-    inspectionIdCache.set(cacheKey, crypto.randomUUID());
-  }
-  return inspectionIdCache.get(cacheKey)!;
-}
-
 export async function submitInspectionToWebhook(params: {
-  inspectionId?: string;
+  inspectionId: string;
   rentalId: string;
   contractId?: string;
   contractNumber?: string;
@@ -43,7 +32,11 @@ export async function submitInspectionToWebhook(params: {
   photos: Record<string, PhotoState>;
   extraPhotos: Array<{ file: File; preview: string }>;
 }): Promise<WebhookResponse> {
-  const inspectionId = params.inspectionId || getOrCreateInspectionId(params.rentalId, params.inspectionStep);
+  const inspectionId = (params.inspectionId || "").trim();
+
+  if (!inspectionId) {
+    throw new Error("inspection_id obrigatório para envio da vistoria");
+  }
 
   // ── Fetch owner & renter profiles for enrichment ──
   const [ownerRes, renterRes] = await Promise.all([
@@ -106,7 +99,7 @@ export async function submitInspectionToWebhook(params: {
   };
 
   // Redundância obrigatória
-  form.append("payload", JSON.stringify(payload));
+  form.append("payload", JSON.stringify({ ...payload, inspection_id: inspectionId }));
   form.append("inspection_id", inspectionId);
 
   // Mantém campos individuais (compatibilidade com workflows existentes)

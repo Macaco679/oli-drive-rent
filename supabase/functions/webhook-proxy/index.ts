@@ -39,6 +39,8 @@ serve(async (req) => {
       // Reconstruct FormData with fresh File objects to avoid Deno forwarding issues
       const outgoing = new FormData();
       const fieldNames: string[] = [];
+      let payloadObj: Record<string, unknown> | null = null;
+      let inspectionId: string | null = null;
 
       for (const [key, value] of incomingForm.entries()) {
         if (key === "_webhook_target") continue; // skip routing field
@@ -50,13 +52,56 @@ serve(async (req) => {
           outgoing.append(key, newFile, value.name);
           fieldNames.push(`${key} (File: ${value.name}, ${newFile.size} bytes, ${value.type})`);
         } else {
-          outgoing.append(key, value);
-          const valStr = typeof value === "string" ? value.slice(0, 150) : String(value);
-          fieldNames.push(`${key}: ${valStr}`);
+          const stringValue = String(value);
+
+          if (key === "inspection_id" && stringValue.trim()) {
+            inspectionId = stringValue.trim();
+          }
+
+          if (key === "payload") {
+            try {
+              const parsed = JSON.parse(stringValue);
+              if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                payloadObj = parsed as Record<string, unknown>;
+                if (typeof payloadObj.inspection_id === "string" && payloadObj.inspection_id.trim()) {
+                  inspectionId = payloadObj.inspection_id.trim();
+                }
+              }
+            } catch {
+              // keep as string if not valid JSON
+            }
+          }
+
+          outgoing.append(key, stringValue);
+          fieldNames.push(`${key}: ${stringValue.slice(0, 150)}`);
         }
       }
 
+      // Keep inspection_id redundant in BOTH places (payload + standalone field)
+      if (payloadObj && !payloadObj.inspection_id && inspectionId) {
+        payloadObj.inspection_id = inspectionId;
+        outgoing.delete("payload");
+        outgoing.append("payload", JSON.stringify(payloadObj));
+      }
+
+      if (!inspectionId && payloadObj?.inspection_id && typeof payloadObj.inspection_id === "string") {
+        inspectionId = payloadObj.inspection_id.trim();
+      }
+
+      if (inspectionId && !incomingForm.get("inspection_id")) {
+        outgoing.append("inspection_id", inspectionId);
+        fieldNames.push(`inspection_id: ${inspectionId}`);
+      }
+
+      if (!inspectionId) {
+        return new Response(
+          JSON.stringify({ error: "inspection_id ausente no multipart/form-data" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       console.log(`=== WEBHOOK PROXY (multipart) → ${targetKey} ===`);
+      console.log("inspection_id:", inspectionId);
       console.log(`Fields (${fieldNames.length}):`, fieldNames.join(" | "));
 
       const n8nResponse = await fetch(targetUrl, {
