@@ -52,6 +52,9 @@ export default function VehicleInspection() {
   const inspectionStep: InspectionStep = stepParam || (kindParam === "dropoff" ? "renter_return_inspection" : "owner_initial_inspection");
   const stepConfig = INSPECTION_STEPS_CONFIG[inspectionStep];
 
+  const getInspectionStorageKey = (rentalIdValue: string, stepValue: InspectionStep, performedByUserIdValue: string) =>
+    `oli_inspection_id_${rentalIdValue}_${stepValue}_${performedByUserIdValue}`;
+
   const [loading, setLoading] = useState(true);
   const [rental, setRental] = useState<OliRental | null>(null);
   const [vehicle, setVehicle] = useState<OliVehicle | null>(null);
@@ -130,6 +133,12 @@ export default function VehicleInspection() {
 
     setRental(rentalData as OliRental);
 
+    const storageKey = getInspectionStorageKey(rentalData.id, inspectionStep, user.id);
+    const storedInspectionId = localStorage.getItem(storageKey);
+    if (storedInspectionId) {
+      setWebhookInspectionId(storedInspectionId);
+    }
+
     const [vehicleData, ownerData, renterData, contractData] = await Promise.all([
       getVehicleById(rentalData.vehicle_id),
       getProfileById(rentalData.owner_id),
@@ -147,6 +156,7 @@ export default function VehicleInspection() {
     if (existing && existing.inspection.inspection_stage === inspectionStep) {
       setExistingInspection(existing);
       setWebhookInspectionId(existing.inspection.id);
+      localStorage.setItem(storageKey, existing.inspection.id);
     }
 
     setLoading(false);
@@ -219,36 +229,13 @@ export default function VehicleInspection() {
       return;
     }
 
+    const storageKey = getInspectionStorageKey(rental.id, inspectionStep, userId);
+    let inspectionIdForWebhook = webhookInspectionId || localStorage.getItem(storageKey);
+
     setSubmitStatus("uploading");
     setSubmitProgress(10);
 
     try {
-      // Upload photos to storage first
-      const uploadedUrls: Record<string, string> = {};
-      const slots = INSPECTION_PHOTO_SLOTS;
-      for (let i = 0; i < slots.length; i++) {
-        const slot = slots[i];
-        const state = photos[slot.id];
-        if (!state.file) continue;
-        setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: true } }));
-        const url = await uploadInspectionPhoto(userId, rental.id, slot.id, state.file);
-        if (url) {
-          uploadedUrls[slot.id] = url;
-          setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: false, uploaded: true, url } }));
-        } else {
-          setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: false } }));
-          toast.error(`Erro ao enviar foto: ${slot.label}`);
-          setSubmitStatus("error");
-          setSubmitProgress(0);
-          return;
-        }
-        setSubmitProgress(10 + Math.round((i / slots.length) * 30));
-      }
-
-      setSubmitProgress(45);
-      setSubmitStatus("validating");
-
-      let inspectionIdForWebhook = webhookInspectionId;
       if (!inspectionIdForWebhook) {
         const { data: draftInspection, error: draftError } = await supabase
           .from("oli_inspections")
@@ -276,7 +263,36 @@ export default function VehicleInspection() {
 
         inspectionIdForWebhook = draftInspection.id;
         setWebhookInspectionId(draftInspection.id);
+        localStorage.setItem(storageKey, draftInspection.id);
+      } else {
+        setWebhookInspectionId(inspectionIdForWebhook);
+        localStorage.setItem(storageKey, inspectionIdForWebhook);
       }
+
+      // Upload photos to storage first
+      const uploadedUrls: Record<string, string> = {};
+      const slots = INSPECTION_PHOTO_SLOTS;
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        const state = photos[slot.id];
+        if (!state.file) continue;
+        setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: true } }));
+        const url = await uploadInspectionPhoto(userId, rental.id, slot.id, state.file);
+        if (url) {
+          uploadedUrls[slot.id] = url;
+          setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: false, uploaded: true, url } }));
+        } else {
+          setPhotos((prev) => ({ ...prev, [slot.id]: { ...prev[slot.id], uploading: false } }));
+          toast.error(`Erro ao enviar foto: ${slot.label}`);
+          setSubmitStatus("error");
+          setSubmitProgress(0);
+          return;
+        }
+        setSubmitProgress(10 + Math.round((i / slots.length) * 30));
+      }
+
+      setSubmitProgress(45);
+      setSubmitStatus("validating");
 
       // Send to webhook with real files
       let webhookResponse: WebhookResponse;

@@ -58,57 +58,62 @@ export async function submitInspectionToWebhook(params: {
   // Routing field for the proxy
   form.append("_webhook_target", "oli-vistoria");
 
-  // ── Text fields (mandatory) ──
+  const payload = {
+    inspection_id: inspectionId,
+    rental_id: params.rentalId,
+    vehicle_id: params.vehicleId,
+    contract_id: params.contractId || "",
+    contract_number: params.contractNumber || "",
+    owner_id: params.ownerId,
+    renter_id: params.renterId,
+    performed_by_user_id: params.performedByUserId,
+    actor_role: params.performedByRole,
+    inspection_step: params.inspectionStep,
+    mileage: params.formData.mileage,
+    fuel_level: params.formData.fuel_level,
+    checklist: params.formData.checklist,
+    performed_at: new Date().toISOString(),
+    vehicle_plate: params.vehiclePlate || "",
+    vehicle_model: params.vehicleModel || "",
+    vehicle_brand: params.vehicleBrand || "",
+    vehicle_year: String(params.vehicleYear || ""),
+    vehicle_color: params.vehicleColor || "",
+    clean: params.formData.is_clean,
+    has_visible_damage: params.formData.has_visible_damage,
+    damage_notes: params.formData.damage_notes || "",
+    notes: params.formData.notes || "",
+    source: "lovable_frontend",
+    owner_name: ownerProfile?.full_name || "",
+    owner_cpf: ownerProfile?.cpf || "",
+    owner_rg: ownerProfile?.rg || "",
+    owner_email: ownerProfile?.email || "",
+    owner_phone: ownerProfile?.phone || "",
+    owner_whatsapp: ownerProfile?.whatsapp_phone || "",
+    owner_birth_date: ownerProfile?.birth_date || "",
+    owner_nationality: ownerProfile?.nationality || "",
+    owner_marital_status: ownerProfile?.marital_status || "",
+    owner_profession: ownerProfile?.profession || "",
+    renter_name: renterProfile?.full_name || "",
+    renter_cpf: renterProfile?.cpf || "",
+    renter_rg: renterProfile?.rg || "",
+    renter_email: renterProfile?.email || "",
+    renter_phone: renterProfile?.phone || "",
+    renter_whatsapp: renterProfile?.whatsapp_phone || "",
+    renter_birth_date: renterProfile?.birth_date || "",
+    renter_nationality: renterProfile?.nationality || "",
+    renter_marital_status: renterProfile?.marital_status || "",
+    renter_profession: renterProfile?.profession || "",
+  };
+
+  // Redundância obrigatória
+  form.append("payload", JSON.stringify(payload));
   form.append("inspection_id", inspectionId);
-  form.append("rental_id", params.rentalId);
-  form.append("vehicle_id", params.vehicleId);
-  form.append("contract_id", params.contractId || "");
-  form.append("contract_number", params.contractNumber || "");
-  form.append("owner_id", params.ownerId);
-  form.append("renter_id", params.renterId);
-  form.append("performed_by_user_id", params.performedByUserId);
-  form.append("actor_role", params.performedByRole);
-  form.append("inspection_step", params.inspectionStep);
-  form.append("mileage", params.formData.mileage);
-  form.append("fuel_level", params.formData.fuel_level);
-  form.append("checklist", JSON.stringify(params.formData.checklist));
 
-  // Extra optional text fields
-  form.append("performed_at", new Date().toISOString());
-  form.append("vehicle_plate", params.vehiclePlate || "");
-  form.append("vehicle_model", params.vehicleModel || "");
-  form.append("vehicle_brand", params.vehicleBrand || "");
-  form.append("vehicle_year", String(params.vehicleYear || ""));
-  form.append("vehicle_color", params.vehicleColor || "");
-  form.append("clean", String(params.formData.is_clean));
-  form.append("has_visible_damage", String(params.formData.has_visible_damage));
-  form.append("damage_notes", params.formData.damage_notes || "");
-  form.append("notes", params.formData.notes || "");
-  form.append("source", "lovable_frontend");
-
-  // ── Owner profile data ──
-  form.append("owner_name", ownerProfile?.full_name || "");
-  form.append("owner_cpf", ownerProfile?.cpf || "");
-  form.append("owner_rg", ownerProfile?.rg || "");
-  form.append("owner_email", ownerProfile?.email || "");
-  form.append("owner_phone", ownerProfile?.phone || "");
-  form.append("owner_whatsapp", ownerProfile?.whatsapp_phone || "");
-  form.append("owner_birth_date", ownerProfile?.birth_date || "");
-  form.append("owner_nationality", ownerProfile?.nationality || "");
-  form.append("owner_marital_status", ownerProfile?.marital_status || "");
-  form.append("owner_profession", ownerProfile?.profession || "");
-
-  // ── Renter profile data ──
-  form.append("renter_name", renterProfile?.full_name || "");
-  form.append("renter_cpf", renterProfile?.cpf || "");
-  form.append("renter_rg", renterProfile?.rg || "");
-  form.append("renter_email", renterProfile?.email || "");
-  form.append("renter_phone", renterProfile?.phone || "");
-  form.append("renter_whatsapp", renterProfile?.whatsapp_phone || "");
-  form.append("renter_birth_date", renterProfile?.birth_date || "");
-  form.append("renter_nationality", renterProfile?.nationality || "");
-  form.append("renter_marital_status", renterProfile?.marital_status || "");
-  form.append("renter_profession", renterProfile?.profession || "");
+  // Mantém campos individuais (compatibilidade com workflows existentes)
+  for (const [key, value] of Object.entries(payload)) {
+    if (key === "inspection_id") continue;
+    form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+  }
 
   // ── File fields (exact keys) ──
   for (const slot of INSPECTION_PHOTO_SLOTS) {
@@ -129,6 +134,15 @@ export async function submitInspectionToWebhook(params: {
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  console.log("inspection_id", inspectionId);
+  for (const [k, v] of form.entries()) {
+    if (v instanceof File) {
+      console.log(k, `[File ${v.name}]`);
+    } else {
+      console.log(k, v);
+    }
+  }
 
   const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
     method: "POST",
