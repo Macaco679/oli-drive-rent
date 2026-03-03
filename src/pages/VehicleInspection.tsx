@@ -262,6 +262,8 @@ export default function VehicleInspection() {
           vehiclePlate: vehicle.plate || undefined,
           vehicleModel: vehicle.model || undefined,
           vehicleBrand: vehicle.brand || undefined,
+          vehicleYear: vehicle.year || undefined,
+          vehicleColor: vehicle.color || undefined,
           formData,
           photos,
           extraPhotos,
