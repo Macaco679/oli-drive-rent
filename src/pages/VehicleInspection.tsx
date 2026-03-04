@@ -172,7 +172,7 @@ export default function VehicleInspection() {
         ...prev[slotId],
         file, preview,
         uploaded: false, url: null,
-        validationStatus: "pending", validationReason: null,
+        validationStatus: "pending", validationReason: null, validationHint: null,
       },
     }));
   };
