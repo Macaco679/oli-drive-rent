@@ -495,9 +495,15 @@ export default function VehicleInspection() {
         notes: formData.notes,
         status: "validated",
         validatedByAi: true,
-        validationSummary: webhookResponse.message || "Aprovada pela IA",
-        photoValidations: webhookResponse.photo_analysis,
+        validationSummary: parsed.message || "Aprovada pela IA",
+        photoValidations: parsed.photoResults,
       });
+
+      // Save webhook payload
+      await supabase
+        .from("oli_inspections")
+        .update({ webhook_payload: parsed as any })
+        .eq("id", inspectionIdForWebhook);
 
       setSubmitProgress(100);
       setSubmitStatus("success");
