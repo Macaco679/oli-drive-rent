@@ -218,6 +218,80 @@ export default function VehicleInspection() {
     return true;
   };
 
+  // Parse n8n webhook response into a normalized format
+  const parseWebhookResponse = (raw: WebhookResponse) => {
+    let resp = raw as any;
+    if (Array.isArray(resp)) resp = resp[0];
+
+    const isApproved = resp.ok === true || resp.status === "approved" || resp.approved === true;
+
+    const photoResults: Array<{
+      photo_type: string;
+      label?: string;
+      status: "approved" | "rejected";
+      reason?: string | null;
+      hint?: string;
+      confidence?: number;
+    }> = [];
+
+    if (resp.photos && Array.isArray(resp.photos)) {
+      resp.photos.forEach((p: any) => {
+        photoResults.push({
+          photo_type: p.photo_type, label: p.label, status: p.status,
+          reason: p.reason, hint: p.hint, confidence: p.confidence || 0,
+        });
+      });
+    } else if (resp.needs_reupload && Array.isArray(resp.needs_reupload)) {
+      resp.needs_reupload.forEach((p: any) => {
+        photoResults.push({
+          photo_type: p.photo_type, label: p.label, status: "rejected",
+          reason: p.reason, hint: p.hint,
+        });
+      });
+    } else if (resp.photo_analysis && Array.isArray(resp.photo_analysis)) {
+      resp.photo_analysis.forEach((p: any) => {
+        photoResults.push({ photo_type: p.photo_type, status: p.status, reason: p.reason, confidence: p.confidence });
+      });
+    }
+
+    if (resp.failed_photos && Array.isArray(resp.failed_photos) && photoResults.length === 0) {
+      resp.failed_photos.forEach((key: string) => {
+        photoResults.push({ photo_type: key, status: "rejected", reason: "Foto precisa ser reenviada" });
+      });
+    }
+
+    return { ...resp, approved: isApproved, photoResults };
+  };
+
+  const applyPhotoValidationResults = (photoResults: Array<{
+    photo_type: string; status: "approved" | "rejected"; reason?: string | null; hint?: string;
+  }>) => {
+    setPhotos((prev) => {
+      const updated = { ...prev };
+      photoResults.forEach((r) => {
+        if (updated[r.photo_type]) {
+          if (r.status === "rejected") {
+            updated[r.photo_type] = {
+              ...updated[r.photo_type],
+              file: null, uploaded: false, url: null,
+              validationStatus: "rejected",
+              validationReason: r.reason || "Foto precisa ser reenviada",
+              validationHint: r.hint || null,
+            };
+          } else {
+            updated[r.photo_type] = {
+              ...updated[r.photo_type],
+              validationStatus: "approved",
+              validationReason: null,
+              validationHint: null,
+            };
+          }
+        }
+      });
+      return updated;
+    });
+  };
+
   // Submit
   const handleSubmit = async () => {
     if (!rental || !userId || !vehicle) return;
