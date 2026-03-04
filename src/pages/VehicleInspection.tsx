@@ -625,7 +625,7 @@ export default function VehicleInspection() {
         />
 
         {/* Failed photos summary */}
-        <InspectionFailedPhotos photos={photos} />
+        <InspectionFailedPhotos photos={photos} onReuploadClick={handleReuploadClick} />
 
         {/* Form fields */}
         <div className="mb-8">
