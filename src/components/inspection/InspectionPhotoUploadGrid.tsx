@@ -124,7 +124,7 @@ interface PhotoSlotCardProps {
 }
 
 function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRemove, disabled }: PhotoSlotCardProps) {
-  const inputId = `photo-slot-${slot.id}`;
+  const inputId = `photo-input-${slot.id}`;
   const isRejected = state.validationStatus === "rejected";
   const isApproved = state.validationStatus === "approved";
 
