@@ -195,6 +195,12 @@ function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRem
             <span>{state.validationReason}</span>
           </div>
         )}
+        {isRejected && state.validationHint && (
+          <div className="bg-amber-500/10 rounded p-1.5 text-[11px] text-amber-700 flex items-start gap-1">
+            <span className="flex-shrink-0">💡</span>
+            <span className="italic">{state.validationHint}</span>
+          </div>
+        )}
 
         <input
           type="file"
