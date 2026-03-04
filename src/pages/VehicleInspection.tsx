@@ -344,49 +344,13 @@ export default function VehicleInspection() {
 
       setSubmitProgress(80);
 
-      // Handle webhook response
-      if (webhookResponse.approved === false) {
-        // Mark photos that need reupload as rejected
-        const needsReupload = webhookResponse.failed_photos || [];
-        if (needsReupload.length > 0) {
-          setPhotos((prev) => {
-            const updated = { ...prev };
-            // First apply photo_analysis details if available
-            webhookResponse.photo_analysis?.forEach((r) => {
-              if (updated[r.photo_type]) {
-                updated[r.photo_type] = {
-                  ...updated[r.photo_type],
-                  validationStatus: r.status,
-                  validationReason: r.reason || null,
-                };
-              }
-            });
-            // Then mark needs_reupload photos as rejected (if not already)
-            needsReupload.forEach((photoKey) => {
-              if (updated[photoKey] && updated[photoKey].validationStatus !== "rejected") {
-                updated[photoKey] = {
-                  ...updated[photoKey],
-                  validationStatus: "rejected",
-                  validationReason: "Foto precisa ser reenviada",
-                };
-              }
-            });
-            return updated;
-          });
-        } else if (webhookResponse.photo_analysis?.length) {
-          setPhotos((prev) => {
-            const updated = { ...prev };
-            webhookResponse.photo_analysis!.forEach((r) => {
-              if (updated[r.photo_type]) {
-                updated[r.photo_type] = {
-                  ...updated[r.photo_type],
-                  validationStatus: r.status,
-                  validationReason: r.reason || null,
-                };
-              }
-            });
-            return updated;
-          });
+      // Handle webhook response - parse the n8n format
+      const parsed = parseWebhookResponse(webhookResponse);
+
+      if (!parsed.approved) {
+        // Apply photo validation results to state
+        if (parsed.photoResults.length > 0) {
+          applyPhotoValidationResults(parsed.photoResults);
         }
 
         await createInspection({
@@ -406,13 +370,19 @@ export default function VehicleInspection() {
           notes: formData.notes,
           status: "rejected",
           validatedByAi: true,
-          validationSummary: webhookResponse.message || "Fotos rejeitadas pela IA",
-          photoValidations: webhookResponse.photo_analysis,
+          validationSummary: parsed.message || parsed.title || "Fotos rejeitadas pela IA",
+          photoValidations: parsed.photoResults,
         });
+
+        // Save full webhook payload
+        await supabase
+          .from("oli_inspections")
+          .update({ webhook_payload: parsed as any })
+          .eq("id", inspectionIdForWebhook);
 
         setSubmitStatus("rejected");
         setSubmitProgress(0);
-        toast.error(webhookResponse.message || "Algumas fotos foram rejeitadas pela IA.");
+        toast.error(parsed.message || parsed.title || "Algumas fotos foram rejeitadas pela IA.");
         return;
       }
 
