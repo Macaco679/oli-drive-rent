@@ -168,16 +168,33 @@ export async function submitInspectionToWebhook(params: {
   // Use lovable_payload if present
   const lp = result?.lovable_payload || result;
 
+  // Determine approval from the response
+  const isApproved = lp?.ok === true || lp?.status === "approved" || lp?.approved === true;
+
+  // Build photo results from available fields
+  const photoResults = lp?.photos || lp?.photo_analysis || [];
+  const needsReupload = lp?.needs_reupload || [];
+  const failedPhotoKeys = needsReupload.length > 0
+    ? needsReupload.map((p: any) => typeof p === "string" ? p : p.photo_type)
+    : (lp?.failed_photos || []);
+
   return {
-    ok: lp?.ok ?? true,
+    ok: lp?.ok ?? isApproved,
+    screen: lp?.screen,
+    status: lp?.status,
+    title: lp?.title,
     inspection_id: lp?.inspection_id || inspectionId,
     inspection_step: lp?.inspection_step,
-    status: lp?.status,
-    ai_status: lp?.ai_status,
-    approved: lp?.status === "approved" || (lp?.approved ?? true),
+    inspection_kind: lp?.inspection_kind,
+    actor_role: lp?.actor_role,
+    approved: isApproved,
     message: lp?.message,
-    failed_photos: lp?.needs_reupload || lp?.failed_photos || [],
-    photo_analysis: lp?.photo_analysis || [],
+    summary: lp?.summary,
+    needs_reupload: needsReupload,
+    needs_reupload_by_type: lp?.needs_reupload_by_type,
+    photos: photoResults,
+    failed_photos: failedPhotoKeys,
+    photo_analysis: photoResults,
     next_step: lp?.next_step,
     reservation_status: lp?.reservation_status,
     contract_status: lp?.contract_status,
