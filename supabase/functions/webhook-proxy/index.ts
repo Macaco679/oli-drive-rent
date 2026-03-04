@@ -93,7 +93,9 @@ serve(async (req) => {
         fieldNames.push(`inspection_id: ${inspectionId}`);
       }
 
-      if (!inspectionId) {
+      // Only require inspection_id for inspection-related webhooks
+      const inspectionTargets = ["oli-vistoria", "oli-vistoria-validar"];
+      if (!inspectionId && inspectionTargets.includes(targetKey || "")) {
         return new Response(
           JSON.stringify({ error: "inspection_id ausente no multipart/form-data" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
