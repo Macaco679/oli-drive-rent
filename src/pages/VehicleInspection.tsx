@@ -721,6 +721,11 @@ export default function VehicleInspection() {
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {submitStatus === "validating" ? "Validando..." : "Enviando..."}
               </>
+            ) : hasRejected ? (
+              <>
+                <ShieldCheck className="w-5 h-5" />
+                Reenviar Vistoria
+              </>
             ) : (
               <>
                 <ShieldCheck className="w-5 h-5" />
