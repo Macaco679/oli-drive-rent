@@ -187,6 +187,7 @@ export default function VehicleInspection() {
       [slotId]: {
         file: null, preview: null, uploading: false, uploaded: false,
         url: null, hasDamage: false, validationStatus: "pending", validationReason: null,
+        validationHint: null,
       },
     }));
   };
