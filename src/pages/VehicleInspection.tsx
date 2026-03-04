@@ -84,6 +84,7 @@ export default function VehicleInspection() {
       initial[slot.id] = {
         file: null, preview: null, uploading: false, uploaded: false,
         url: null, hasDamage: false, validationStatus: "pending", validationReason: null,
+        validationHint: null,
       };
     });
     return initial;
