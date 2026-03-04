@@ -130,6 +130,7 @@ function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRem
 
   return (
     <Card
+      id={`photo-slot-${slot.id}`}
       className={`overflow-hidden transition-all ${
         isRejected ? "border-destructive" : isApproved ? "border-primary" : state.file ? "border-primary/50" : ""
       }`}
