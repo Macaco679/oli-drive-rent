@@ -315,7 +315,11 @@ export default function RegisterVehicle() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-        const webhookPayload = {
+        // Build multipart/form-data with binary photos
+        const formData = new FormData();
+        formData.append("_webhook_target", "validarcarro");
+
+        const webhookPayload: Record<string, unknown> = {
           vehicle_id: vehicle.id,
           vehicle_type: values.vehicle_type,
           title: values.title,
@@ -346,15 +350,55 @@ export default function RegisterVehicle() {
           photos: photoUrls,
         };
 
-        // DEBUG logs
-        console.log("=== WEBHOOK PAYLOAD ===", webhookPayload);
+        formData.append("payload", JSON.stringify(webhookPayload));
 
-        const { data: webhookData, error: webhookError } = await supabase.functions.invoke(
-          "webhook-proxy",
-          {
-            body: webhookPayload,
+        // Append each field individually for n8n compatibility
+        for (const [key, value] of Object.entries(webhookPayload)) {
+          if (key === "photos") continue; // photos sent as files below
+          formData.append(key, typeof value === "string" ? value : JSON.stringify(value));
+        }
+
+        // Append photos as binary files
+        photos.forEach((photo, idx) => {
+          const ext = photo.file.name.split(".").pop()?.toLowerCase() || "jpg";
+          formData.append(`photo_${idx}`, photo.file, `photo_${idx}.${ext}`);
+        });
+
+        // DEBUG logs
+        console.log("=== WEBHOOK PAYLOAD (multipart) ===", webhookPayload);
+        for (const [k, v] of formData.entries()) {
+          if (v instanceof File) {
+            console.log(k, `[File ${v.name}, ${v.size} bytes]`);
+          } else {
+            console.log(k, typeof v === "string" ? v.slice(0, 150) : v);
           }
-        );
+        }
+
+        // Send via fetch (not supabase.functions.invoke) to support multipart
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/webhook-proxy`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            apikey: anonKey,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+
+        const responseText = await response.text();
+        let webhookData: any = null;
+        let webhookError: any = null;
+
+        if (response.ok) {
+          try { webhookData = JSON.parse(responseText); } catch { webhookData = responseText; }
+        } else {
+          webhookError = responseText;
+        }
 
         console.log("=== WEBHOOK RESPONSE ===", { data: webhookData, error: webhookError });
 
