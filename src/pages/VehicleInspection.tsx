@@ -644,7 +644,7 @@ export default function VehicleInspection() {
         <InspectionStatusCard
           status={submitStatus}
           progress={submitProgress}
-          failedCount={Object.values(photos).filter((p) => p.validationStatus === "rejected").length}
+          failedCount={rejectedCount}
         />
 
         {/* Failed photos summary */}
