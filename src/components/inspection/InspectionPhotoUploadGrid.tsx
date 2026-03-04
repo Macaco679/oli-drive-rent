@@ -206,7 +206,6 @@ function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRem
           type="file"
           id={inputId}
           accept="image/jpeg,image/png,image/webp"
-          capture="environment"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) onFileSelect(file);
