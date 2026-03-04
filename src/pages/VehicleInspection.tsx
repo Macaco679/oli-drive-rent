@@ -210,6 +210,7 @@ export default function VehicleInspection() {
   const totalRequired = INSPECTION_PHOTO_SLOTS.length;
   const allPhotosReady = completedPhotos === totalRequired;
   const hasRejected = Object.values(photos).some((p) => p.validationStatus === "rejected");
+  const rejectedCount = Object.values(photos).filter((p) => p.validationStatus === "rejected").length;
 
   const canSubmit = () => {
     if (!allPhotosReady) return false;
@@ -218,6 +219,22 @@ export default function VehicleInspection() {
     if (formData.has_visible_damage && !formData.damage_notes.trim()) return false;
     if (submitStatus === "uploading" || submitStatus === "validating") return false;
     return true;
+  };
+
+  // Trigger file input for a specific photo slot (for re-upload from failed list)
+  const handleReuploadClick = (slotId: string) => {
+    // Reset the photo state so the slot shows as empty in the grid
+    handleRemovePhoto(slotId);
+    // Scroll to the photo grid slot
+    const el = document.getElementById(`photo-slot-${slotId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Trigger the file input click after scrolling
+      setTimeout(() => {
+        const input = el.querySelector('input[type="file"]') as HTMLInputElement;
+        if (input) input.click();
+      }, 400);
+    }
   };
 
   // Parse n8n webhook response into a normalized format
