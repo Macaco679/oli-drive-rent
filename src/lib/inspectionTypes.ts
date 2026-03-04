@@ -124,6 +124,7 @@ export interface PhotoState {
   hasDamage: boolean;
   validationStatus: PhotoValidationStatus;
   validationReason: string | null;
+  validationHint?: string | null;
 }
 
 export interface WebhookPhotoResult {
