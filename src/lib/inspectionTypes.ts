@@ -124,25 +124,51 @@ export interface PhotoState {
   hasDamage: boolean;
   validationStatus: PhotoValidationStatus;
   validationReason: string | null;
+  validationHint?: string | null;
+}
+
+export interface WebhookPhotoResult {
+  photo_type: string;
+  label?: string;
+  status: "approved" | "rejected";
+  reason?: string | null;
+  hint?: string;
+  confidence?: number;
+  detected_photo_type?: string | null;
+  odometer_reading?: string | null;
+  detected_plate?: string | null;
+  dashboard_lit?: boolean | null;
+  labels?: string[];
+  damage_detected?: boolean;
 }
 
 export interface WebhookResponse {
   ok: boolean;
-  inspection_id?: string;
-  inspection_step?: string;
+  screen?: string;
   status?: string;
+  title?: string;
+  message?: string;
+  inspection_id?: string;
+  rental_id?: string;
+  vehicle_id?: string;
+  inspection_kind?: string;
+  inspection_step?: string;
+  actor_role?: string;
   ai_status?: string;
   approved?: boolean;
-  message?: string;
+  summary?: {
+    total_required?: number;
+    total_approved?: number;
+    total_rejected?: number;
+    total_missing?: number;
+    can_continue?: boolean;
+  };
+  needs_reupload?: WebhookPhotoResult[];
+  needs_reupload_by_type?: Record<string, WebhookPhotoResult>;
+  photos?: WebhookPhotoResult[];
+  /** Legacy fields */
   failed_photos?: string[];
-  photo_analysis?: Array<{
-    photo_type: string;
-    status: "approved" | "rejected";
-    reason?: string;
-    confidence?: number;
-    labels?: string[];
-    damage_detected?: boolean;
-  }>;
+  photo_analysis?: WebhookPhotoResult[];
   next_step?: string;
   reservation_status?: string;
   contract_status?: string;

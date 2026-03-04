@@ -300,7 +300,7 @@ export async function createInspection(params: {
       has_damage: validationData?.damage_detected ?? p.hasDamage ?? false,
       photo_type: p.photoTypeId,
       sort_order: p.sortOrder ?? idx,
-      validation_status: validationData?.status || "pending",
+      validation_status: (validationData?.status || "pending") as "pending" | "approved" | "rejected" | "missing" | "error",
       validation_reason: validationData?.reason || null,
       validation_confidence: validationData?.confidence || null,
       ai_labels: validationData?.labels ? JSON.stringify(validationData.labels) : null,

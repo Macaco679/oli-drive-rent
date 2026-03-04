@@ -165,7 +165,7 @@ export type Database = {
           uploaded_by: string | null
           validation_confidence: number | null
           validation_reason: string | null
-          validation_status: string
+          validation_status: Database["public"]["Enums"]["inspection_photo_status"]
         }
         Insert: {
           ai_damage_detected?: boolean
@@ -183,7 +183,7 @@ export type Database = {
           uploaded_by?: string | null
           validation_confidence?: number | null
           validation_reason?: string | null
-          validation_status?: string
+          validation_status?: Database["public"]["Enums"]["inspection_photo_status"]
         }
         Update: {
           ai_damage_detected?: boolean
@@ -201,7 +201,7 @@ export type Database = {
           uploaded_by?: string | null
           validation_confidence?: number | null
           validation_reason?: string | null
-          validation_status?: string
+          validation_status?: Database["public"]["Enums"]["inspection_photo_status"]
         }
         Relationships: [
           {
@@ -944,6 +944,12 @@ export type Database = {
       }
     }
     Enums: {
+      inspection_photo_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "missing"
+        | "error"
       oli_contract_status:
         | "pending"
         | "signed"
@@ -1114,6 +1120,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      inspection_photo_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "missing",
+        "error",
+      ],
       oli_contract_status: [
         "pending",
         "signed",

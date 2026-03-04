@@ -84,6 +84,7 @@ export default function VehicleInspection() {
       initial[slot.id] = {
         file: null, preview: null, uploading: false, uploaded: false,
         url: null, hasDamage: false, validationStatus: "pending", validationReason: null,
+        validationHint: null,
       };
     });
     return initial;
@@ -171,7 +172,7 @@ export default function VehicleInspection() {
         ...prev[slotId],
         file, preview,
         uploaded: false, url: null,
-        validationStatus: "pending", validationReason: null,
+        validationStatus: "pending", validationReason: null, validationHint: null,
       },
     }));
   };
@@ -186,6 +187,7 @@ export default function VehicleInspection() {
       [slotId]: {
         file: null, preview: null, uploading: false, uploaded: false,
         url: null, hasDamage: false, validationStatus: "pending", validationReason: null,
+        validationHint: null,
       },
     }));
   };
@@ -208,6 +210,7 @@ export default function VehicleInspection() {
   const totalRequired = INSPECTION_PHOTO_SLOTS.length;
   const allPhotosReady = completedPhotos === totalRequired;
   const hasRejected = Object.values(photos).some((p) => p.validationStatus === "rejected");
+  const rejectedCount = Object.values(photos).filter((p) => p.validationStatus === "rejected").length;
 
   const canSubmit = () => {
     if (!allPhotosReady) return false;
@@ -216,6 +219,96 @@ export default function VehicleInspection() {
     if (formData.has_visible_damage && !formData.damage_notes.trim()) return false;
     if (submitStatus === "uploading" || submitStatus === "validating") return false;
     return true;
+  };
+
+  // Trigger file input for a specific photo slot (for re-upload from failed list)
+  const handleReuploadClick = (slotId: string) => {
+    // Reset the photo state so the slot shows as empty in the grid
+    handleRemovePhoto(slotId);
+    // Scroll to the photo grid slot
+    const el = document.getElementById(`photo-slot-${slotId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Trigger the file input click after scrolling
+      setTimeout(() => {
+        const input = el.querySelector('input[type="file"]') as HTMLInputElement;
+        if (input) input.click();
+      }, 400);
+    }
+  };
+
+  // Parse n8n webhook response into a normalized format
+  const parseWebhookResponse = (raw: WebhookResponse) => {
+    let resp = raw as any;
+    if (Array.isArray(resp)) resp = resp[0];
+
+    const isApproved = resp.ok === true || resp.status === "approved" || resp.approved === true;
+
+    const photoResults: Array<{
+      photo_type: string;
+      label?: string;
+      status: "approved" | "rejected";
+      reason?: string | null;
+      hint?: string;
+      confidence?: number;
+    }> = [];
+
+    if (resp.photos && Array.isArray(resp.photos)) {
+      resp.photos.forEach((p: any) => {
+        photoResults.push({
+          photo_type: p.photo_type, label: p.label, status: p.status,
+          reason: p.reason, hint: p.hint, confidence: p.confidence || 0,
+        });
+      });
+    } else if (resp.needs_reupload && Array.isArray(resp.needs_reupload)) {
+      resp.needs_reupload.forEach((p: any) => {
+        photoResults.push({
+          photo_type: p.photo_type, label: p.label, status: "rejected",
+          reason: p.reason, hint: p.hint,
+        });
+      });
+    } else if (resp.photo_analysis && Array.isArray(resp.photo_analysis)) {
+      resp.photo_analysis.forEach((p: any) => {
+        photoResults.push({ photo_type: p.photo_type, status: p.status, reason: p.reason, confidence: p.confidence });
+      });
+    }
+
+    if (resp.failed_photos && Array.isArray(resp.failed_photos) && photoResults.length === 0) {
+      resp.failed_photos.forEach((key: string) => {
+        photoResults.push({ photo_type: key, status: "rejected", reason: "Foto precisa ser reenviada" });
+      });
+    }
+
+    return { ...resp, approved: isApproved, photoResults };
+  };
+
+  const applyPhotoValidationResults = (photoResults: Array<{
+    photo_type: string; status: "approved" | "rejected"; reason?: string | null; hint?: string;
+  }>) => {
+    setPhotos((prev) => {
+      const updated = { ...prev };
+      photoResults.forEach((r) => {
+        if (updated[r.photo_type]) {
+          if (r.status === "rejected") {
+            updated[r.photo_type] = {
+              ...updated[r.photo_type],
+              file: null, uploaded: false, url: null,
+              validationStatus: "rejected",
+              validationReason: r.reason || "Foto precisa ser reenviada",
+              validationHint: r.hint || null,
+            };
+          } else {
+            updated[r.photo_type] = {
+              ...updated[r.photo_type],
+              validationStatus: "approved",
+              validationReason: null,
+              validationHint: null,
+            };
+          }
+        }
+      });
+      return updated;
+    });
   };
 
   // Submit
@@ -344,49 +437,13 @@ export default function VehicleInspection() {
 
       setSubmitProgress(80);
 
-      // Handle webhook response
-      if (webhookResponse.approved === false) {
-        // Mark photos that need reupload as rejected
-        const needsReupload = webhookResponse.failed_photos || [];
-        if (needsReupload.length > 0) {
-          setPhotos((prev) => {
-            const updated = { ...prev };
-            // First apply photo_analysis details if available
-            webhookResponse.photo_analysis?.forEach((r) => {
-              if (updated[r.photo_type]) {
-                updated[r.photo_type] = {
-                  ...updated[r.photo_type],
-                  validationStatus: r.status,
-                  validationReason: r.reason || null,
-                };
-              }
-            });
-            // Then mark needs_reupload photos as rejected (if not already)
-            needsReupload.forEach((photoKey) => {
-              if (updated[photoKey] && updated[photoKey].validationStatus !== "rejected") {
-                updated[photoKey] = {
-                  ...updated[photoKey],
-                  validationStatus: "rejected",
-                  validationReason: "Foto precisa ser reenviada",
-                };
-              }
-            });
-            return updated;
-          });
-        } else if (webhookResponse.photo_analysis?.length) {
-          setPhotos((prev) => {
-            const updated = { ...prev };
-            webhookResponse.photo_analysis!.forEach((r) => {
-              if (updated[r.photo_type]) {
-                updated[r.photo_type] = {
-                  ...updated[r.photo_type],
-                  validationStatus: r.status,
-                  validationReason: r.reason || null,
-                };
-              }
-            });
-            return updated;
-          });
+      // Handle webhook response - parse the n8n format
+      const parsed = parseWebhookResponse(webhookResponse);
+
+      if (!parsed.approved) {
+        // Apply photo validation results to state
+        if (parsed.photoResults.length > 0) {
+          applyPhotoValidationResults(parsed.photoResults);
         }
 
         await createInspection({
@@ -406,13 +463,19 @@ export default function VehicleInspection() {
           notes: formData.notes,
           status: "rejected",
           validatedByAi: true,
-          validationSummary: webhookResponse.message || "Fotos rejeitadas pela IA",
-          photoValidations: webhookResponse.photo_analysis,
+          validationSummary: parsed.message || parsed.title || "Fotos rejeitadas pela IA",
+          photoValidations: parsed.photoResults,
         });
+
+        // Save full webhook payload
+        await supabase
+          .from("oli_inspections")
+          .update({ webhook_payload: parsed as any })
+          .eq("id", inspectionIdForWebhook);
 
         setSubmitStatus("rejected");
         setSubmitProgress(0);
-        toast.error(webhookResponse.message || "Algumas fotos foram rejeitadas pela IA.");
+        toast.error(parsed.message || parsed.title || "Algumas fotos foram rejeitadas pela IA.");
         return;
       }
 
@@ -432,9 +495,15 @@ export default function VehicleInspection() {
         notes: formData.notes,
         status: "validated",
         validatedByAi: true,
-        validationSummary: webhookResponse.message || "Aprovada pela IA",
-        photoValidations: webhookResponse.photo_analysis,
+        validationSummary: parsed.message || "Aprovada pela IA",
+        photoValidations: parsed.photoResults,
       });
+
+      // Save webhook payload
+      await supabase
+        .from("oli_inspections")
+        .update({ webhook_payload: parsed as any })
+        .eq("id", inspectionIdForWebhook);
 
       setSubmitProgress(100);
       setSubmitStatus("success");
@@ -575,11 +644,11 @@ export default function VehicleInspection() {
         <InspectionStatusCard
           status={submitStatus}
           progress={submitProgress}
-          failedCount={Object.values(photos).filter((p) => p.validationStatus === "rejected").length}
+          failedCount={rejectedCount}
         />
 
         {/* Failed photos summary */}
-        <InspectionFailedPhotos photos={photos} />
+        <InspectionFailedPhotos photos={photos} onReuploadClick={handleReuploadClick} />
 
         {/* Form fields */}
         <div className="mb-8">
@@ -651,6 +720,11 @@ export default function VehicleInspection() {
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {submitStatus === "validating" ? "Validando..." : "Enviando..."}
+              </>
+            ) : hasRejected ? (
+              <>
+                <ShieldCheck className="w-5 h-5" />
+                Reenviar Vistoria
               </>
             ) : (
               <>

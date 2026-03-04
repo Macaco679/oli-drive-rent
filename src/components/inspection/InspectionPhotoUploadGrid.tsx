@@ -130,6 +130,7 @@ function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRem
 
   return (
     <Card
+      id={`photo-slot-${slot.id}`}
       className={`overflow-hidden transition-all ${
         isRejected ? "border-destructive" : isApproved ? "border-primary" : state.file ? "border-primary/50" : ""
       }`}
@@ -192,6 +193,12 @@ function PhotoSlotCard({ slot, state, index, onFileSelect, onToggleDamage, onRem
           <div className="bg-destructive/10 rounded p-1.5 text-[11px] text-destructive flex items-start gap-1">
             <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
             <span>{state.validationReason}</span>
+          </div>
+        )}
+        {isRejected && state.validationHint && (
+          <div className="bg-amber-500/10 rounded p-1.5 text-[11px] text-amber-700 flex items-start gap-1">
+            <span className="flex-shrink-0">💡</span>
+            <span className="italic">{state.validationHint}</span>
           </div>
         )}
 
