@@ -20,6 +20,7 @@ export interface OliProfile {
   signature_url: string | null;
   created_at: string;
   updated_at: string;
+  score: number | null;
 }
 
 export interface OliVehicle {
