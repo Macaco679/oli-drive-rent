@@ -461,6 +461,7 @@ export type Database = {
           profession: string | null
           rg: string | null
           role: Database["public"]["Enums"]["oli_user_role"]
+          score: number | null
           signature_url: string | null
           street: string | null
           updated_at: string
@@ -487,6 +488,7 @@ export type Database = {
           profession?: string | null
           rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
+          score?: number | null
           signature_url?: string | null
           street?: string | null
           updated_at?: string
@@ -513,6 +515,7 @@ export type Database = {
           profession?: string | null
           rg?: string | null
           role?: Database["public"]["Enums"]["oli_user_role"]
+          score?: number | null
           signature_url?: string | null
           street?: string | null
           updated_at?: string
