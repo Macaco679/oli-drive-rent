@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +60,21 @@ const formatCVV = (value: string): string => {
   return value.replace(/\D/g, "").slice(0, 4);
 };
 
+const formatCPF = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "").slice(0, 11);
+  if (cleaned.length <= 3) return cleaned;
+  if (cleaned.length <= 6) return `${cleaned.slice(0, 3)}.${cleaned.slice(3)}`;
+  if (cleaned.length <= 9) return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6)}`;
+  return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6, 9)}-${cleaned.slice(9)}`;
+};
+
+const formatPhone = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "").slice(0, 11);
+  if (cleaned.length <= 2) return cleaned;
+  if (cleaned.length <= 7) return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
+  return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+};
+
 export function CardPaymentModal({ 
   open, 
   onOpenChange, 
@@ -71,35 +86,59 @@ export function CardPaymentModal({
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Form state
+  // Client info
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientCPF, setClientCPF] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+
+  // Card form state
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
   const [installments, setInstallments] = useState("1");
 
+  // Load profile data when modal opens
+  useEffect(() => {
+    if (open) {
+      loadProfile();
+    }
+  }, [open]);
+
+  const loadProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from("oli_profiles")
+      .select("full_name, email, cpf, phone, whatsapp_phone")
+      .eq("id", user.id)
+      .single();
+    if (profile) {
+      setClientName(profile.full_name || "");
+      setClientEmail(profile.email || user.email || "");
+      setClientCPF(profile.cpf || "");
+      setClientPhone(profile.whatsapp_phone || profile.phone || "");
+      setCardName(profile.full_name?.toUpperCase() || "");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rental) return;
 
-    // Basic validation
     const cleanCardNumber = cardNumber.replace(/\s/g, "");
-    if (cleanCardNumber.length < 16) {
-      toast.error("Número do cartão inválido");
-      return;
-    }
-    if (!cardName.trim()) {
-      toast.error("Nome do titular é obrigatório");
-      return;
-    }
-    if (expiry.length < 5) {
-      toast.error("Data de validade inválida");
-      return;
-    }
-    if (cvv.length < 3) {
-      toast.error("CVV inválido");
-      return;
-    }
+    const cleanCPF = clientCPF.replace(/\D/g, "");
+    const cleanPhone = clientPhone.replace(/\D/g, "");
+
+    if (!clientName.trim()) { toast.error("Nome do cliente é obrigatório"); return; }
+    if (!clientEmail.trim()) { toast.error("Email é obrigatório"); return; }
+    if (cleanCPF.length < 11) { toast.error("CPF inválido"); return; }
+    if (cleanPhone.length < 10) { toast.error("Celular inválido"); return; }
+    if (cleanCardNumber.length < 16) { toast.error("Número do cartão inválido"); return; }
+    if (!cardName.trim()) { toast.error("Nome do titular é obrigatório"); return; }
+    if (expiry.length < 5) { toast.error("Data de validade inválida"); return; }
+    if (cvv.length < 3) { toast.error("CVV inválido"); return; }
 
     setLoading(true);
     setErrorMsg(null);
@@ -109,33 +148,43 @@ export function CardPaymentModal({
       if (!user) throw new Error("Usuário não autenticado");
 
       const [expiryMonth, expiryYear] = expiry.split("/");
+      const amount = rental.total_price || 0;
+      const numInstallments = parseInt(installments);
+      const installmentValue = amount / numInstallments;
 
-      // Send to webhook via edge function
       const { data, error } = await supabase.functions.invoke("webhook-proxy", {
         body: {
           _webhook_target: "oli-pagamento-cartao",
-          rental_id: rental.id,
-          user_id: user.id,
-          amount: rental.total_price || 0,
-          vehicle_id: rental.vehicle_id,
-          vehicle_title: rental.vehicle?.title || "",
-          payment_method: "credit_card",
-          card: {
+          cliente: {
+            nome: clientName,
+            email: clientEmail,
+            cpf: cleanCPF,
+            celular: cleanPhone,
+          },
+          total: amount,
+          billingType: "CREDIT_CARD",
+          valor_parcela: installmentValue,
+          cartao: {
+            holderName: cardName,
             number: cleanCardNumber,
-            holder_name: cardName,
-            expiry_month: expiryMonth,
-            expiry_year: `20${expiryYear}`,
+            expiryMonth: expiryMonth,
+            expiryYear: `20${expiryYear}`,
             cvv: cvv,
           },
-          installments: parseInt(installments),
+          veiculo: {
+            placa: rental.vehicle?.plate || "",
+          },
+          parcelas: numInstallments,
+          valor_parcela_formatado: formatCurrency(installmentValue),
+          creditCard: true,
+          rental_id: rental.id,
+          user_id: user.id,
         },
       });
 
       if (error) throw error;
-
       console.log("Card webhook response:", data);
 
-      // Check response for success/failure
       if (data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "approved" || data?.success === true) {
         setSuccess(true);
         toast.success("Pagamento aprovado!");
@@ -144,7 +193,6 @@ export function CardPaymentModal({
         setErrorMsg(data?.message || data?.error || "Pagamento recusado. Verifique os dados do cartão.");
         toast.error(data?.message || "Pagamento recusado");
       } else {
-        // If response doesn't have a clear status, treat as success (webhook processed)
         setSuccess(true);
         toast.success("Pagamento processado!");
         onPaymentComplete?.();
@@ -186,7 +234,7 @@ export function CardPaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             {onBack && !success && (
@@ -234,7 +282,56 @@ export function CardPaymentModal({
 
             <Separator />
 
-            {/* Card Number */}
+            {/* Client Info Section */}
+            <p className="text-sm font-medium text-muted-foreground">Dados do Cliente</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="clientName">Nome Completo</Label>
+                <Input
+                  id="clientName"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="clientEmail">Email</Label>
+                <Input
+                  id="clientEmail"
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clientCPF">CPF</Label>
+                <Input
+                  id="clientCPF"
+                  placeholder="000.000.000-00"
+                  value={clientCPF}
+                  onChange={(e) => setClientCPF(formatCPF(e.target.value))}
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clientPhone">Celular</Label>
+                <Input
+                  id="clientPhone"
+                  placeholder="(00) 00000-0000"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(formatPhone(e.target.value))}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Card Info Section */}
+            <p className="text-sm font-medium text-muted-foreground">Dados do Cartão</p>
+
             <div className="space-y-2">
               <Label htmlFor="cardNumber">Número do Cartão</Label>
               <Input
@@ -246,7 +343,6 @@ export function CardPaymentModal({
               />
             </div>
 
-            {/* Card Holder Name */}
             <div className="space-y-2">
               <Label htmlFor="cardName">Nome do Titular</Label>
               <Input
@@ -258,7 +354,6 @@ export function CardPaymentModal({
               />
             </div>
 
-            {/* Expiry and CVV */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="expiry">Validade</Label>
@@ -283,7 +378,6 @@ export function CardPaymentModal({
               </div>
             </div>
 
-            {/* Installments */}
             <div className="space-y-2">
               <Label htmlFor="installments">Parcelas</Label>
               <Select value={installments} onValueChange={setInstallments} disabled={loading}>
