@@ -23,7 +23,8 @@ import {
   Loader2, 
   CheckCircle2,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from "lucide-react";
 import { OliRental, OliVehicle } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,14 +42,12 @@ const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
-// Format card number with spaces
 const formatCardNumber = (value: string): string => {
   const cleaned = value.replace(/\D/g, "").slice(0, 16);
   const groups = cleaned.match(/.{1,4}/g);
   return groups ? groups.join(" ") : cleaned;
 };
 
-// Format expiry date
 const formatExpiry = (value: string): string => {
   const cleaned = value.replace(/\D/g, "").slice(0, 4);
   if (cleaned.length >= 2) {
@@ -57,7 +56,6 @@ const formatExpiry = (value: string): string => {
   return cleaned;
 };
 
-// Format CVV
 const formatCVV = (value: string): string => {
   return value.replace(/\D/g, "").slice(0, 4);
 };
@@ -71,6 +69,7 @@ export function CardPaymentModal({
 }: CardPaymentModalProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Form state
   const [cardNumber, setCardNumber] = useState("");
@@ -103,43 +102,57 @@ export function CardPaymentModal({
     }
 
     setLoading(true);
+    setErrorMsg(null);
     
     try {
-      // Simulate payment processing (in production, integrate with payment gateway)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create payment record in database
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("Usuário não autenticado");
 
-      const { error: paymentError } = await supabase
-        .from("oli_payments")
-        .insert({
+      const [expiryMonth, expiryYear] = expiry.split("/");
+
+      // Send to webhook via edge function
+      const { data, error } = await supabase.functions.invoke("webhook-proxy", {
+        body: {
+          _webhook_target: "oli-pagamento-cartao",
           rental_id: rental.id,
           user_id: user.id,
-          payment_type: "rental",
-          amount: rental.total_price,
-          method: "credit_card",
-          status: "paid",
-          external_reference: `card_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-        });
+          amount: rental.total_price || 0,
+          vehicle_id: rental.vehicle_id,
+          vehicle_title: rental.vehicle?.title || "",
+          payment_method: "credit_card",
+          card: {
+            number: cleanCardNumber,
+            holder_name: cardName,
+            expiry_month: expiryMonth,
+            expiry_year: `20${expiryYear}`,
+            cvv: cvv,
+          },
+          installments: parseInt(installments),
+        },
+      });
 
-      if (paymentError) throw paymentError;
+      if (error) throw error;
 
-      // Update rental status to active
-      const { error: rentalError } = await supabase
-        .from("oli_rentals")
-        .update({ status: "active" })
-        .eq("id", rental.id);
+      console.log("Card webhook response:", data);
 
-      if (rentalError) throw rentalError;
-
-      setSuccess(true);
-      toast.success("Pagamento aprovado!");
-      onPaymentComplete?.();
+      // Check response for success/failure
+      if (data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "approved" || data?.success === true) {
+        setSuccess(true);
+        toast.success("Pagamento aprovado!");
+        onPaymentComplete?.();
+      } else if (data?.status === "failed" || data?.status === "DECLINED" || data?.success === false) {
+        setErrorMsg(data?.message || data?.error || "Pagamento recusado. Verifique os dados do cartão.");
+        toast.error(data?.message || "Pagamento recusado");
+      } else {
+        // If response doesn't have a clear status, treat as success (webhook processed)
+        setSuccess(true);
+        toast.success("Pagamento processado!");
+        onPaymentComplete?.();
+      }
     } catch (error) {
       console.error("Error processing payment:", error);
       toast.error("Erro ao processar pagamento. Tente novamente.");
+      setErrorMsg("Erro ao processar pagamento. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -147,6 +160,7 @@ export function CardPaymentModal({
 
   const handleClose = () => {
     setSuccess(false);
+    setErrorMsg(null);
     setCardNumber("");
     setCardName("");
     setExpiry("");
@@ -159,7 +173,6 @@ export function CardPaymentModal({
 
   const amount = rental.total_price || 0;
 
-  // Generate installment options
   const installmentOptions = [];
   for (let i = 1; i <= 12; i++) {
     const installmentValue = amount / i;
@@ -210,6 +223,14 @@ export function CardPaymentModal({
               <p className="text-sm text-muted-foreground">Total a pagar</p>
               <p className="text-2xl font-bold text-primary">{formatCurrency(amount)}</p>
             </div>
+
+            {/* Error message */}
+            {errorMsg && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             <Separator />
 
@@ -283,13 +304,6 @@ export function CardPaymentModal({
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3">
               <Lock className="w-4 h-4 flex-shrink-0" />
               <span>Seus dados estão protegidos com criptografia de ponta a ponta</span>
-            </div>
-
-            {/* Dev mode notice */}
-            <div className="pt-2 border-t border-dashed border-border">
-              <p className="text-xs text-muted-foreground text-center">
-                🧪 Modo de desenvolvimento - O pagamento será simulado
-              </p>
             </div>
           </form>
         )}
