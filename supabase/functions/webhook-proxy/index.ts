@@ -99,7 +99,7 @@ serve(async (req) => {
       }
 
       // Only require inspection_id for inspection-related webhooks
-      const inspectionTargets = ["oli-vistoria", "oli-vistoria-validar"];
+      const inspectionTargets = ["oli-vistoria", "oli-vistoria-validar", "oli-vistoria-locatario-retirada", "oli-vistoria-locatario-devolucao", "oli-vistoria-locador-final"];
       if (!inspectionId && inspectionTargets.includes(targetKey || "")) {
         return new Response(
           JSON.stringify({ error: "inspection_id ausente no multipart/form-data" }),
