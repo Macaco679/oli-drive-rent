@@ -13,8 +13,8 @@ const ALLOWED_URLS: Record<string, string> = {
   "oli-vistoria-validar": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-validar",
   "oli-vistoria": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria",
   "oli-asaas-criar-cobranca": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-asaas-criar-cobranca",
-  "oli-pagamento-pix": "https://n8n.srv1153225.hstgr.cloud/webhook/oli/sp/asaas/events",
-  "oli-pagamento-cartao": "https://n8n.srv1153225.hstgr.cloud/webhook/oli/sp/pagamento/status",
+  "oli-pagamento-pix": "https://n8n.srv1153225.hstgr.cloud/webhook/oli/sp/pagar",
+  "oli-pagamento-cartao": "https://n8n.srv1153225.hstgr.cloud/webhook/cartaodecredito-OLI",
 };
 
 serve(async (req) => {
