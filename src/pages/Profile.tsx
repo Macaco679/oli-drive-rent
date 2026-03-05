@@ -157,6 +157,18 @@ export default function Profile() {
                   )}
                 </div>
               </div>
+              {profile.score != null && (
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold border-4 ${
+                    profile.score >= 700 ? "border-emerald-500 text-emerald-600" :
+                    profile.score >= 400 ? "border-amber-500 text-amber-600" :
+                    "border-red-500 text-red-600"
+                  }`}>
+                    {profile.score}
+                  </div>
+                  <span className="text-xs text-muted-foreground font-medium">Score</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.oli_profiles ADD COLUMN score integer NULL DEFAULT NULL;
