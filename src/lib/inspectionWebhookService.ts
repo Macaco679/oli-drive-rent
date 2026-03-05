@@ -48,8 +48,15 @@ export async function submitInspectionToWebhook(params: {
 
   const form = new FormData();
 
-  // Routing field for the proxy
-  form.append("_webhook_target", "oli-vistoria");
+  // Pick the correct webhook target based on inspection step
+  const STEP_WEBHOOK_MAP: Record<string, string> = {
+    owner_initial_inspection: "oli-vistoria",
+    renter_pickup_inspection: "oli-vistoria-locatario-retirada",
+    renter_return_inspection: "oli-vistoria-locatario-devolucao",
+    owner_final_inspection: "oli-vistoria-locador-final",
+  };
+  const webhookTarget = STEP_WEBHOOK_MAP[params.inspectionStep] || "oli-vistoria";
+  form.append("_webhook_target", webhookTarget);
 
   const payload = {
     inspection_id: inspectionId,

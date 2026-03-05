@@ -15,6 +15,9 @@ const ALLOWED_URLS: Record<string, string> = {
   "oli-asaas-criar-cobranca": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-asaas-criar-cobranca",
   "oli-pagamento-pix": "https://n8n.srv1153225.hstgr.cloud/webhook/oli/sp/pagar",
   "oli-pagamento-cartao": "https://n8n.srv1153225.hstgr.cloud/webhook/oli/sp/pagar",
+  "oli-vistoria-locatario-retirada": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locatário-retirada",
+  "oli-vistoria-locatario-devolucao": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locatário-devolucao",
+  "oli-vistoria-locador-final": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locador-final",
 };
 
 serve(async (req) => {
@@ -96,7 +99,7 @@ serve(async (req) => {
       }
 
       // Only require inspection_id for inspection-related webhooks
-      const inspectionTargets = ["oli-vistoria", "oli-vistoria-validar"];
+      const inspectionTargets = ["oli-vistoria", "oli-vistoria-validar", "oli-vistoria-locatario-retirada", "oli-vistoria-locatario-devolucao", "oli-vistoria-locador-final"];
       if (!inspectionId && inspectionTargets.includes(targetKey || "")) {
         return new Response(
           JSON.stringify({ error: "inspection_id ausente no multipart/form-data" }),
