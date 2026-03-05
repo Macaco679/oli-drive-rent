@@ -20,14 +20,8 @@ import {
   RefreshCw,
   ArrowLeft
 } from "lucide-react";
-import { 
-  PixPaymentData, 
-  createPixPayment, 
-  copyPixCode,
-  simulatePixPaymentConfirmation,
-  getPixPaymentByRentalId
-} from "@/lib/pixPaymentService";
 import { OliRental, OliVehicle } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface PixPaymentModalProps {
@@ -38,12 +32,30 @@ interface PixPaymentModalProps {
   onBack?: () => void;
 }
 
+interface PixWebhookResponse {
+  success?: boolean;
+  pix_code?: string;
+  pix_copy_paste?: string;
+  qr_code_base64?: string;
+  qr_code?: string;
+  payment_id?: string;
+  provider_payment_id?: string;
+  expires_at?: string;
+  status?: string;
+  amount?: number;
+  error?: string;
+  [key: string]: unknown;
+}
+
 export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete, onBack }: PixPaymentModalProps) {
   const [loading, setLoading] = useState(true);
-  const [payment, setPayment] = useState<PixPaymentData | null>(null);
+  const [pixCode, setPixCode] = useState<string | null>(null);
+  const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid" | "expired" | "error">("pending");
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [confirming, setConfirming] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [webhookResponse, setWebhookResponse] = useState<PixWebhookResponse | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -51,89 +63,92 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
       initializePayment();
     }
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [open, rental]);
 
   useEffect(() => {
-    if (payment && payment.status === "pending") {
-      // Start countdown timer
+    if (expiresAt && paymentStatus === "pending") {
       timerRef.current = setInterval(() => {
-        const expires = new Date(payment.expires_at).getTime();
+        const expires = new Date(expiresAt).getTime();
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((expires - now) / 1000));
         setTimeLeft(remaining);
-        
         if (remaining === 0) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-          }
+          if (timerRef.current) clearInterval(timerRef.current);
+          setPaymentStatus("expired");
         }
       }, 1000);
     }
-    
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [payment]);
+  }, [expiresAt, paymentStatus]);
 
   const initializePayment = async () => {
     if (!rental) return;
     setLoading(true);
+    setPaymentStatus("pending");
 
     try {
-      // Check for existing pending payment
-      const existing = getPixPaymentByRentalId(rental.id);
-      if (existing && existing.status === "pending") {
-        setPayment(existing);
-      } else {
-        // Create new payment
-        const newPayment = await createPixPayment(rental);
-        setPayment(newPayment);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        setPaymentStatus("error");
+        setLoading(false);
+        return;
+      }
+
+      // Send to webhook via edge function
+      const { data, error } = await supabase.functions.invoke("webhook-proxy", {
+        body: {
+          _webhook_target: "oli-pagamento-pix",
+          rental_id: rental.id,
+          user_id: user.id,
+          amount: rental.total_price || 0,
+          vehicle_id: rental.vehicle_id,
+          vehicle_title: rental.vehicle?.title || "",
+          payment_method: "pix",
+        },
+      });
+
+      if (error) throw error;
+
+      console.log("PIX webhook response:", data);
+      setWebhookResponse(data);
+
+      // Extract PIX data from response - adapt to whatever the webhook returns
+      const code = data?.pix_copy_paste || data?.pix_code || data?.encodedImage || data?.payload || null;
+      const qr = data?.qr_code_base64 || data?.qr_code || data?.encodedImage || null;
+      const expiry = data?.expires_at || data?.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+      setPixCode(code);
+      setQrCodeBase64(qr);
+      setExpiresAt(expiry);
+
+      // Check if payment was already confirmed in the response
+      if (data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "RECEIVED") {
+        setPaymentStatus("paid");
+        onPaymentComplete?.();
       }
     } catch (error) {
       console.error("Error creating PIX payment:", error);
       toast.error("Erro ao gerar pagamento PIX");
+      setPaymentStatus("error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCopyCode = async () => {
-    if (!payment) return;
-    
-    const success = await copyPixCode(payment.pix_code);
-    if (success) {
+    if (!pixCode) return;
+    try {
+      await navigator.clipboard.writeText(pixCode);
       setCopied(true);
       toast.success("Código PIX copiado!");
       setTimeout(() => setCopied(false), 3000);
-    } else {
+    } catch {
       toast.error("Erro ao copiar código");
-    }
-  };
-
-  const handleSimulatePayment = async () => {
-    if (!payment) return;
-    
-    setConfirming(true);
-    try {
-      const success = await simulatePixPaymentConfirmation(payment.id);
-      if (success) {
-        setPayment({ ...payment, status: "paid", paid_at: new Date().toISOString() });
-        toast.success("Pagamento confirmado!");
-        onPaymentComplete?.();
-      } else {
-        toast.error("Erro ao confirmar pagamento");
-      }
-    } catch (error) {
-      console.error("Error confirming payment:", error);
-      toast.error("Erro ao confirmar pagamento");
-    } finally {
-      setConfirming(false);
     }
   };
 
@@ -149,8 +164,10 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
 
   if (!rental) return null;
 
-  const isPaid = payment?.status === "paid";
-  const isExpired = timeLeft === 0 && payment?.status === "pending";
+  const isPaid = paymentStatus === "paid";
+  const isExpired = paymentStatus === "expired";
+  const isError = paymentStatus === "error";
+  const amount = rental.total_price || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,8 +187,9 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Gerando cobrança PIX...</p>
           </div>
         ) : isPaid ? (
           <div className="text-center py-8 space-y-4">
@@ -185,7 +203,7 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
               </p>
             </div>
             <Badge variant="default" className="text-lg px-4 py-2">
-              {formatCurrency(payment?.amount || 0)}
+              {formatCurrency(amount)}
             </Badge>
           </div>
         ) : isExpired ? (
@@ -204,86 +222,94 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
               Gerar Novo Código
             </Button>
           </div>
-        ) : payment ? (
+        ) : isError ? (
+          <div className="text-center py-8 space-y-4">
+            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-destructive">Erro ao gerar PIX</h3>
+              <p className="text-muted-foreground mt-2">
+                Não foi possível gerar a cobrança. Tente novamente.
+              </p>
+            </div>
+            <Button onClick={initializePayment} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Tentar Novamente
+            </Button>
+          </div>
+        ) : (
           <div className="space-y-6">
             {/* Amount */}
             <div className="text-center">
               <p className="text-muted-foreground text-sm">Valor a pagar</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(payment.amount)}</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(amount)}</p>
             </div>
 
             {/* Timer */}
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
-              <Timer className="w-4 h-4" />
-              <span className="text-sm">Expira em: </span>
-              <Badge variant="outline" className="font-mono">
-                {formatTime(timeLeft)}
-              </Badge>
-            </div>
+            {expiresAt && (
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Timer className="w-4 h-4" />
+                <span className="text-sm">Expira em: </span>
+                <Badge variant="outline" className="font-mono">
+                  {formatTime(timeLeft)}
+                </Badge>
+              </div>
+            )}
 
             <Separator />
 
             {/* QR Code */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="bg-white p-4 rounded-xl shadow-inner">
-                <img 
-                  src={payment.qr_code_base64} 
-                  alt="QR Code PIX" 
-                  className="w-48 h-48"
-                />
+            {qrCodeBase64 && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-white p-4 rounded-xl shadow-inner">
+                  <img 
+                    src={qrCodeBase64.startsWith("data:") ? qrCodeBase64 : `data:image/png;base64,${qrCodeBase64}`} 
+                    alt="QR Code PIX" 
+                    className="w-48 h-48"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Escaneie o QR Code com o app do seu banco
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Escaneie o QR Code com o app do seu banco
-              </p>
-            </div>
+            )}
 
-            <Separator />
+            {qrCodeBase64 && pixCode && <Separator />}
 
             {/* PIX Copy/Paste */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Ou copie o código PIX:</p>
-              <div className="flex gap-2">
-                <div className="flex-1 bg-secondary rounded-lg p-3 font-mono text-xs break-all max-h-20 overflow-y-auto">
-                  {payment.pix_code}
+            {pixCode && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Ou copie o código PIX:</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-secondary rounded-lg p-3 font-mono text-xs break-all max-h-20 overflow-y-auto">
+                    {pixCode}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={handleCopyCode}
+                    className="flex-shrink-0"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={handleCopyCode}
-                  className="flex-shrink-0"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-primary" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
               </div>
-            </div>
+            )}
 
-            {/* Simulation button (dev only) */}
-            <div className="pt-2 border-t border-dashed border-border">
-              <p className="text-xs text-muted-foreground text-center mb-2">
-                🧪 Modo de desenvolvimento
-              </p>
-              <Button 
-                variant="outline" 
-                className="w-full gap-2"
-                onClick={handleSimulatePayment}
-                disabled={confirming}
-              >
-                {confirming ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4" />
-                )}
-                Simular Pagamento Recebido
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            Erro ao gerar pagamento. Tente novamente.
+            {/* Show raw response if no QR/code was extracted */}
+            {!qrCodeBase64 && !pixCode && webhookResponse && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Resposta do servidor:</p>
+                <div className="bg-secondary rounded-lg p-3 font-mono text-xs break-all max-h-40 overflow-y-auto">
+                  {JSON.stringify(webhookResponse, null, 2)}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
