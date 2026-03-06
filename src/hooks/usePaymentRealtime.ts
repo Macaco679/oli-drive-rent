@@ -11,7 +11,7 @@ export function usePaymentRealtime(rentalId: string | undefined) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
   const [loading, setLoading] = useState(true);
 
-  const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed";
+  const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed" || paymentStatus === "received";
 
   const fetchPaymentStatus = useCallback(async () => {
     if (!rentalId) {

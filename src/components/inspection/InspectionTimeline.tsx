@@ -52,6 +52,7 @@ function mapPaymentToTimeline(
   switch (paymentStatus) {
     case "paid":
     case "confirmed":
+    case "received":
       return "done";
     case "pending":
       return "current";
