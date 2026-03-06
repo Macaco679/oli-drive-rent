@@ -107,12 +107,13 @@ interface InspectionTimelineProps {
   inspections: InspectionRecord[];
   rentalStatus: string;
   hasPaid?: boolean;
+  paymentStatus?: PaymentStatus;
   className?: string;
   initialVisible?: number;
 }
 
-export function InspectionTimeline({ contract, inspections, rentalStatus, hasPaid = false, className, initialVisible = 10 }: InspectionTimelineProps) {
-  const allSteps = buildFullTimeline(contract, inspections, rentalStatus, hasPaid);
+export function InspectionTimeline({ contract, inspections, rentalStatus, hasPaid = false, paymentStatus, className, initialVisible = 10 }: InspectionTimelineProps) {
+  const allSteps = buildFullTimeline(contract, inspections, rentalStatus, hasPaid, paymentStatus);
   const [expanded, setExpanded] = useState(false);
   const visibleSteps = initialVisible >= allSteps.length || expanded ? allSteps : allSteps.slice(0, initialVisible);
   const hasMore = initialVisible < allSteps.length && !expanded;
