@@ -360,7 +360,7 @@ export type Database = {
         Row: {
           amount: number
           bank_slip_url: string | null
-          billing_type: string | null
+          billingType: string | null
           created_at: string
           due_date: string | null
           external_reference: string | null
@@ -368,11 +368,11 @@ export type Database = {
           invoice_url: string | null
           method: string | null
           payment_link: string | null
-          payment_type: Database["public"]["Enums"]["oli_payment_type"]
+          payment_type: string
           pix_copy_paste: string | null
           pix_qr_code: string | null
           provider: string | null
-          provider_customer_id: string | null
+          provider_customer_id: string
           provider_payment_id: string | null
           rental_id: string
           status: Database["public"]["Enums"]["oli_payment_status"]
@@ -384,7 +384,7 @@ export type Database = {
         Insert: {
           amount: number
           bank_slip_url?: string | null
-          billing_type?: string | null
+          billingType?: string | null
           created_at?: string
           due_date?: string | null
           external_reference?: string | null
@@ -392,11 +392,11 @@ export type Database = {
           invoice_url?: string | null
           method?: string | null
           payment_link?: string | null
-          payment_type: Database["public"]["Enums"]["oli_payment_type"]
+          payment_type: string
           pix_copy_paste?: string | null
           pix_qr_code?: string | null
           provider?: string | null
-          provider_customer_id?: string | null
+          provider_customer_id: string
           provider_payment_id?: string | null
           rental_id: string
           status?: Database["public"]["Enums"]["oli_payment_status"]
@@ -408,7 +408,7 @@ export type Database = {
         Update: {
           amount?: number
           bank_slip_url?: string | null
-          billing_type?: string | null
+          billingType?: string | null
           created_at?: string
           due_date?: string | null
           external_reference?: string | null
@@ -416,11 +416,11 @@ export type Database = {
           invoice_url?: string | null
           method?: string | null
           payment_link?: string | null
-          payment_type?: Database["public"]["Enums"]["oli_payment_type"]
+          payment_type?: string
           pix_copy_paste?: string | null
           pix_qr_code?: string | null
           provider?: string | null
-          provider_customer_id?: string | null
+          provider_customer_id?: string
           provider_payment_id?: string | null
           rental_id?: string
           status?: Database["public"]["Enums"]["oli_payment_status"]

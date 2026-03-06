@@ -11,6 +11,7 @@ import { RentalContract } from "@/lib/contractService";
 import { deriveContractStage, getContractStageLabel } from "@/components/contracts/ContractTimeline";
 import { useContractRealtime } from "@/hooks/useContractRealtime";
 import { useInspectionRealtime } from "@/hooks/useInspectionRealtime";
+import { usePaymentRealtime } from "@/hooks/usePaymentRealtime";
 import { InspectionTimeline } from "@/components/inspection/InspectionTimeline";
 
 interface RentalCardRenterProps {
@@ -32,6 +33,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const { contract } = useContractRealtime(rental.id);
   const { inspections } = useInspectionRealtime(rental.id);
+  const { hasPaid } = usePaymentRealtime(rental.id);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -225,6 +227,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 contract={contract}
                 inspections={inspections}
                 rentalStatus={rental.status}
+                hasPaid={hasPaid}
                 initialVisible={4}
               />
             </div>
