@@ -1,0 +1,1 @@
+UPDATE public.oli_payments SET status = 'received' WHERE status::text = 'receveid';
