@@ -228,6 +228,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 inspections={inspections}
                 rentalStatus={rental.status}
                 hasPaid={hasPaid}
+                paymentStatus={paymentStatus}
                 initialVisible={4}
               />
             </div>
