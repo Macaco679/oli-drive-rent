@@ -968,7 +968,12 @@ export type Database = {
       oli_inspection_side: "front" | "back" | "left" | "right" | "interior"
       oli_license_status: "pending" | "approved" | "rejected"
       oli_message_type: "text" | "system"
-      oli_payment_status: "pending" | "paid" | "failed" | "refunded"
+      oli_payment_status:
+        | "pending"
+        | "paid"
+        | "failed"
+        | "refunded"
+        | "confirmed"
       oli_payment_type: "rental" | "deposit" | "fine"
       oli_rental_status:
         | "pending_approval"
@@ -1146,7 +1151,13 @@ export const Constants = {
       oli_inspection_side: ["front", "back", "left", "right", "interior"],
       oli_license_status: ["pending", "approved", "rejected"],
       oli_message_type: ["text", "system"],
-      oli_payment_status: ["pending", "paid", "failed", "refunded"],
+      oli_payment_status: [
+        "pending",
+        "paid",
+        "failed",
+        "refunded",
+        "confirmed",
+      ],
       oli_payment_type: ["rental", "deposit", "fine"],
       oli_rental_status: [
         "pending_approval",

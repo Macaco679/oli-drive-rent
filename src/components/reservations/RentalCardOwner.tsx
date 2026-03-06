@@ -32,7 +32,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const { contract } = useContractRealtime(rental.id);
   const { inspections } = useInspectionRealtime(rental.id);
-  const { hasPaid } = usePaymentRealtime(rental.id);
+  const { hasPaid, paymentStatus } = usePaymentRealtime(rental.id);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -210,6 +210,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
                 inspections={inspections}
                 rentalStatus={rental.status}
                 hasPaid={hasPaid}
+                paymentStatus={paymentStatus}
                 initialVisible={4}
               />
             </div>
