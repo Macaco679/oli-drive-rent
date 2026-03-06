@@ -974,6 +974,8 @@ export type Database = {
         | "failed"
         | "refunded"
         | "confirmed"
+        | "received"
+        | "receveid"
       oli_payment_type: "rental" | "deposit" | "fine"
       oli_rental_status:
         | "pending_approval"
@@ -1157,6 +1159,8 @@ export const Constants = {
         "failed",
         "refunded",
         "confirmed",
+        "received",
+        "receveid",
       ],
       oli_payment_type: ["rental", "deposit", "fine"],
       oli_rental_status: [
