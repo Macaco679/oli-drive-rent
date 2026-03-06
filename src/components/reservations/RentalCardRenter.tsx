@@ -11,6 +11,7 @@ import { RentalContract } from "@/lib/contractService";
 import { deriveContractStage, getContractStageLabel } from "@/components/contracts/ContractTimeline";
 import { useContractRealtime } from "@/hooks/useContractRealtime";
 import { useInspectionRealtime } from "@/hooks/useInspectionRealtime";
+import { usePaymentRealtime } from "@/hooks/usePaymentRealtime";
 import { InspectionTimeline } from "@/components/inspection/InspectionTimeline";
 
 interface RentalCardRenterProps {
