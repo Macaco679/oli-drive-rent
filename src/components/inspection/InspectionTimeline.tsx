@@ -75,9 +75,9 @@ export function buildFullTimeline(
     { key: "contract_done", label: "Contrato assinado", status: bothSigned ? "done" : "pending" },
     { key: "owner_initial", label: "Vistoria locador", status: bothSigned ? ownerInitial : "pending" },
     { key: "payment", label: "Pagamento", status: bothSigned ? paymentStatus : "pending" },
-    { key: "renter_pickup", label: "Vistoria locatário retirada", status: paymentDone ? renterPickup : "pending" },
-    { key: "renter_return", label: "Vistoria locatário devolução", status: renterPickupDone ? renterReturn : "pending" },
-    { key: "owner_final", label: "Vistoria locador final", status: renterReturnDone ? ownerFinal : "pending" },
+    { key: "renter_pickup", label: "Vistoria locatário retirada", status: paymentDone ? (renterPickup === "pending" ? "current" : renterPickup) : "pending" },
+    { key: "renter_return", label: "Vistoria locatário devolução", status: renterPickupDone ? (renterReturn === "pending" ? "current" : renterReturn) : "pending" },
+    { key: "owner_final", label: "Vistoria locador final", status: renterReturnDone ? (ownerFinal === "pending" ? "current" : ownerFinal) : "pending" },
   ];
 }
 

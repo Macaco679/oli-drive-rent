@@ -128,12 +128,13 @@ export async function simulatePixPaymentConfirmation(paymentId: string): Promise
     .from("oli_payments")
     .insert({
       rental_id: payment.rental_id,
-      user_id: (await supabase.auth.getUser()).data.user?.id,
+      user_id: (await supabase.auth.getUser()).data.user?.id ?? "",
       payment_type: "rental",
       amount: payment.amount,
       method: "pix",
       status: "paid",
       external_reference: paymentId,
+      provider_customer_id: "",
     });
 
   if (paymentError) {
