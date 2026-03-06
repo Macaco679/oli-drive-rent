@@ -209,6 +209,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
                 contract={contract}
                 inspections={inspections}
                 rentalStatus={rental.status}
+                hasPaid={hasPaid}
                 initialVisible={4}
               />
             </div>
