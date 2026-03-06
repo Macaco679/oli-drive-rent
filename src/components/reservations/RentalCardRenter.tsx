@@ -33,7 +33,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const { contract } = useContractRealtime(rental.id);
   const { inspections } = useInspectionRealtime(rental.id);
-  const { hasPaid } = usePaymentRealtime(rental.id);
+  const { hasPaid, paymentStatus } = usePaymentRealtime(rental.id);
   const navigate = useNavigate();
 
   useEffect(() => {
