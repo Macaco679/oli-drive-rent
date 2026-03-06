@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type PaymentStatus = "pending" | "paid" | "confirmed" | "failed" | "refunded" | null;
+export type PaymentStatus = "pending" | "paid" | "confirmed" | "received" | "failed" | "refunded" | null;
 
 /**
  * Hook that fetches the latest payment status for a rental,
@@ -11,7 +11,7 @@ export function usePaymentRealtime(rentalId: string | undefined) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
   const [loading, setLoading] = useState(true);
 
-  const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed";
+  const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed" || paymentStatus === "received";
 
   const fetchPaymentStatus = useCallback(async () => {
     if (!rentalId) {

@@ -1,62 +1,79 @@
 
+# Corrigir Webhook da CNH para usar o Proxy (evitar CORS)
 
-## Problem
+## Problema Identificado
 
-The `oli_payment_status` enum in the database only has: `pending`, `paid`, `failed`, `refunded`, `confirmed`. But Asaas sends `received` (and a typo `receveid`) for PIX payments. These values are not in the enum, so they either fail to insert or get ignored by the frontend code.
+- O cadastro de veiculo ja funciona corretamente: envia dados via `webhook-proxy` para o n8n (`/webhook/validarcarro`), espera a resposta, e atualiza o status do veiculo (aprovado/reprovado). Os screenshots confirmam que esta funcionando.
+- A verificacao de CNH tem um problema: ela chama o n8n **diretamente** pelo browser (`fetch("https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck")`), o que pode ser bloqueado por CORS no navegador. Precisa ser roteada pelo mesmo `webhook-proxy` que ja funciona para veiculos.
 
-The screenshot shows `received` and `receveid` as values in the dropdown -- these are likely stored as raw text or the enum was manually extended. The frontend `PaymentStatus` type doesn't include `received`, so those payments are treated as "no payment" and the timeline stays locked.
+## Alteracoes Necessarias
 
-## Plan
+### 1. Adicionar rota `cnhcheck` no webhook-proxy
 
-### 1. Add `received` to the database enum
+**Arquivo:** `supabase/functions/webhook-proxy/index.ts`
 
-Run a migration to add `received` to `oli_payment_status`:
+Adicionar `"cnhcheck"` ao mapa `ALLOWED_URLS`:
 
-```sql
-ALTER TYPE public.oli_payment_status ADD VALUE IF NOT EXISTS 'received';
+```text
+ALLOWED_URLS = {
+  "validarcarro": "https://n8n.srv1153225.hstgr.cloud/webhook/validarcarro",
+  "oli-contrato": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-contrato",
+  "cnhcheck": "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",   // NOVO
+};
 ```
 
-This covers the Asaas PIX "received" status. The `receveid` typo in existing data should be fixed with a data update (UPDATE query).
+### 2. Atualizar DriverLicenseForm.tsx para usar o proxy
 
-### 2. Fix existing typo data
+**Arquivo:** `src/pages/DriverLicenseForm.tsx`
 
-Use the insert tool to fix the `receveid` typo:
+Substituir o `fetch` direto (linhas ~196-215) por `supabase.functions.invoke("webhook-proxy")`, passando `_webhook_target: "cnhcheck"` no body. Isso garante que a requisicao vai pelo servidor (edge function), evitando bloqueio de CORS.
 
-```sql
-UPDATE public.oli_payments SET status = 'received' WHERE status::text = 'receveid';
-```
-
-### 3. Update `usePaymentRealtime.ts`
-
-Add `received` to the `PaymentStatus` type and to the `hasPaid` check:
-
+Antes:
 ```typescript
-export type PaymentStatus = "pending" | "paid" | "confirmed" | "received" | "failed" | "refunded" | null;
-
-const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed" || paymentStatus === "received";
+const webhookResponse = await fetch(
+  "https://n8n.srv1153225.hstgr.cloud/webhook/cnhcheck",
+  { method: "POST", headers: {...}, body: JSON.stringify({...}) }
+);
 ```
 
-### 4. Update `InspectionTimeline.tsx`
-
-Add `received` to the `mapPaymentToTimeline` switch so it maps to `"done"` (green):
-
+Depois:
 ```typescript
-case "paid":
-case "confirmed":
-case "received":
-  return "done";
+const { data: webhookData, error: webhookError } = await supabase.functions.invoke(
+  "webhook-proxy",
+  {
+    body: {
+      _webhook_target: "cnhcheck",
+      user_id: user.id,
+      full_name: fullName,
+      license_number: licenseNumber,
+      category,
+      cpf,
+      codigo_seguranca: codigoSeguranca,
+      nome_mae: nomeMae,
+      front_image_url: frontUrl,
+      back_image_url: backUrl,
+      selfie_image_url: selfieUrl,
+    },
+  }
+);
 ```
 
-### 5. Verify the next step unlocks
+Adaptar o parsing da resposta para usar `webhookData` (que ja vem como objeto/JSON do `supabase.functions.invoke`) em vez de `response.text()`.
 
-The existing logic already promotes the next step (`renter_pickup`) to `"current"` when `paymentDone` is `true`. With `received` now included in `hasPaid`, this will work automatically.
+### 3. Resumo do que nao muda
 
-## Summary of changes
+- A UI de timer/progresso da CNH ja existe e continua funcionando
+- A UI de timer/progresso do veiculo ja existe e continua funcionando
+- A logica de aprovado/reprovado e atualizacao no banco ja existe em ambos os fluxos
+- O envio de email de notificacao ja existe em ambos os fluxos
+- Nenhuma outra pagina sera alterada
 
-| File / Resource | Change |
-|---|---|
-| DB migration | Add `received` to `oli_payment_status` enum |
-| DB data fix | Fix `receveid` typo to `received` |
-| `usePaymentRealtime.ts` | Add `received` to type and `hasPaid` logic |
-| `InspectionTimeline.tsx` | Add `received` to green/done mapping |
+### Detalhes Tecnicos
 
+| Item | Veiculo (ja funciona) | CNH (sera corrigido) |
+|---|---|---|
+| Proxy | webhook-proxy | webhook-proxy (novo) |
+| Target n8n | /webhook/validarcarro | /webhook/cnhcheck |
+| Timeout | 90s via AbortController | 90s (mantido) |
+| Resposta | Sincrona do n8n | Sincrona do n8n |
+| Status update | oli_vehicles.status | oli_driver_licenses.status |
