@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Clock, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullTimelineStep, TimelineStepStatus } from "@/lib/inspectionTypes";
+import { PaymentStatus } from "@/hooks/usePaymentRealtime";
 import { RentalContract } from "@/lib/contractService";
 import { deriveContractStage } from "@/components/contracts/ContractTimeline";
 import { InspectionRecord } from "@/hooks/useInspectionRealtime";

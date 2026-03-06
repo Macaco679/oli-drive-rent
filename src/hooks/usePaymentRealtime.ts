@@ -1,28 +1,36 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type PaymentStatus = "pending" | "paid" | "confirmed" | "failed" | "refunded" | null;
+
 /**
- * Hook that checks if a rental has a paid payment record in oli_payments,
+ * Hook that fetches the latest payment status for a rental,
  * with realtime subscription for instant updates.
  */
 export function usePaymentRealtime(rentalId: string | undefined) {
-  const [hasPaid, setHasPaid] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
   const [loading, setLoading] = useState(true);
+
+  const hasPaid = paymentStatus === "paid" || paymentStatus === "confirmed";
 
   const fetchPaymentStatus = useCallback(async () => {
     if (!rentalId) {
-      setHasPaid(false);
+      setPaymentStatus(null);
       setLoading(false);
       return;
     }
     const { data } = await supabase
       .from("oli_payments")
-      .select("id")
+      .select("status")
       .eq("rental_id", rentalId)
-      .eq("status", "paid")
+      .order("created_at", { ascending: false })
       .limit(1);
 
-    setHasPaid(!!data && data.length > 0);
+    if (data && data.length > 0) {
+      setPaymentStatus(data[0].status as PaymentStatus);
+    } else {
+      setPaymentStatus(null);
+    }
     setLoading(false);
   }, [rentalId]);
 
@@ -54,5 +62,5 @@ export function usePaymentRealtime(rentalId: string | undefined) {
     };
   }, [rentalId, fetchPaymentStatus]);
 
-  return { hasPaid, loading };
+  return { paymentStatus, hasPaid, loading };
 }
