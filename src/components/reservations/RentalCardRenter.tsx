@@ -130,7 +130,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     }
 
     // Owner initial done but not paid yet → show pay button
-    if (bothSigned && ownerInitialDone && !hasPaid && !renterPickupDone) {
+    if (bothSigned && ownerInitialDone && !paymentConfirmed && !renterPickupDone) {
       return (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
