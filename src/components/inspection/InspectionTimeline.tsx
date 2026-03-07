@@ -83,8 +83,6 @@ export function buildFullTimeline(
   const ownerInitialDone = ownerInitial === "done";
   const renterPickup = getInspectionStepStatus("renter_pickup_inspection", inspections);
   const renterPickupDone = renterPickup === "done";
-  const renterReturn = getInspectionStepStatus("renter_return_inspection", inspections);
-  const renterReturnDone = renterReturn === "done";
   const ownerFinal = getInspectionStepStatus("owner_final_inspection", inspections);
 
   const paymentDone = hasPaid;
@@ -99,8 +97,7 @@ export function buildFullTimeline(
     { key: "owner_initial", label: "Vistoria locador", status: bothSigned ? ownerInitial : "pending" },
     { key: "payment", label: "Pagamento", status: bothSigned ? paymentStepStatus : "pending" },
     { key: "renter_pickup", label: "Vistoria locatário retirada", status: paymentDone ? (renterPickup === "pending" ? "current" : renterPickup) : "pending" },
-    { key: "renter_return", label: "Vistoria locatário devolução", status: renterPickupDone ? (renterReturn === "pending" ? "current" : renterReturn) : "pending" },
-    { key: "owner_final", label: "Vistoria locador final", status: renterReturnDone ? (ownerFinal === "pending" ? "current" : ownerFinal) : "pending" },
+    { key: "owner_final", label: "Vistoria locador final", status: renterPickupDone ? (ownerFinal === "pending" ? "current" : ownerFinal) : "pending" },
   ];
 }
 
