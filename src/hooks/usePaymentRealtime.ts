@@ -27,7 +27,8 @@ export function usePaymentRealtime(rentalId: string | undefined) {
       .limit(1);
 
     if (data && data.length > 0) {
-      setPaymentStatus(data[0].status as PaymentStatus);
+      const rawStatus = String(data[0].status ?? "").toLowerCase().trim();
+      setPaymentStatus((rawStatus || null) as PaymentStatus);
     } else {
       setPaymentStatus(null);
     }
