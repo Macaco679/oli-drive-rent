@@ -117,8 +117,22 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       );
     }
 
-    // After owner initial inspection → renter pays
-    if (bothSigned && ownerInitialDone && !renterPickupDone) {
+    // After payment confirmed → renter starts pickup inspection
+    if (bothSigned && ownerInitialDone && hasPaid && !renterPickupDone) {
+      return (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
+            <FileText className="w-4 h-4 mr-2" />Contrato
+          </Button>
+          <Button size="sm" onClick={() => navigate(`/reservations/${rental.id}/inspection?step=renter_pickup_inspection`)} className="gap-2">
+            <ClipboardCheck className="w-4 h-4" />Iniciar Vistoria de Retirada
+          </Button>
+        </div>
+      );
+    }
+
+    // Owner initial done but not paid yet → show pay button
+    if (bothSigned && ownerInitialDone && !hasPaid && !renterPickupDone) {
       return (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
