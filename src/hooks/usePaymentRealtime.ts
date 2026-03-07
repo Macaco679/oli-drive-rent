@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type PaymentStatus = "pending" | "paid" | "confirmed" | "received" | "failed" | "refunded" | null;
+export type PaymentStatus = "pending" | "paid" | "confirmed" | "received" | "receveid" | "failed" | "refunded" | null;
 
 /**
  * Hook that fetches the latest payment status for a rental,
