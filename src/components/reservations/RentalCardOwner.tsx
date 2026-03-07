@@ -122,7 +122,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
       );
     }
 
-    if (renterReturnDone && !ownerFinalDone) {
+    if (renterPickupDone && !ownerFinalDone) {
       return (
         <Button size="sm" onClick={(e) => handleInspectionClick(e, "owner_final_inspection")} className="gap-2">
           <ClipboardCheck className="w-4 h-4" />Vistoria Final
