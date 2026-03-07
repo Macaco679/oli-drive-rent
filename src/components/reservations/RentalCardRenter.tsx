@@ -62,9 +62,6 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const renterPickupDone = inspections.some(
     (i) => i.inspection_stage === "renter_pickup_inspection" && (i.status === "validated" || i.status === "completed")
   );
-  const renterReturnDone = inspections.some(
-    (i) => i.inspection_stage === "renter_return_inspection" && (i.status === "validated" || i.status === "completed")
-  );
   const paymentConfirmed = hasPaid || ["paid", "confirmed", "received", "receveid"].includes((paymentStatus ?? "") as string);
 
   const getContractBadge = () => {

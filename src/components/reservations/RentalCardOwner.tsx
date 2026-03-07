@@ -60,8 +60,8 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
   const ownerFinalDone = inspections.some(
     (i) => i.inspection_stage === "owner_final_inspection" && (i.status === "validated" || i.status === "completed")
   );
-  const renterReturnDone = inspections.some(
-    (i) => i.inspection_stage === "renter_return_inspection" && (i.status === "validated" || i.status === "completed")
+  const renterPickupDone = inspections.some(
+    (i) => i.inspection_stage === "renter_pickup_inspection" && (i.status === "validated" || i.status === "completed")
   );
 
   const handleContractClick = (e: React.MouseEvent) => {
