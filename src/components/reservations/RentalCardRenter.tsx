@@ -65,6 +65,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const renterReturnDone = inspections.some(
     (i) => i.inspection_stage === "renter_return_inspection" && (i.status === "validated" || i.status === "completed")
   );
+  const paymentConfirmed = hasPaid || ["paid", "confirmed", "received", "receveid"].includes((paymentStatus ?? "") as string);
 
   const getContractBadge = () => {
     if (!contract) return null;
@@ -118,7 +119,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     }
 
     // After payment confirmed → renter starts pickup inspection
-    if (bothSigned && ownerInitialDone && hasPaid && !renterPickupDone) {
+    if (bothSigned && ownerInitialDone && paymentConfirmed && !renterPickupDone) {
       return (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
@@ -132,7 +133,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     }
 
     // Owner initial done but not paid yet → show pay button
-    if (bothSigned && ownerInitialDone && !hasPaid && !renterPickupDone) {
+    if (bothSigned && ownerInitialDone && !paymentConfirmed && !renterPickupDone) {
       return (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onViewContract?.(contract)}>
