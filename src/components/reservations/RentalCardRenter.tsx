@@ -62,9 +62,6 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const renterPickupDone = inspections.some(
     (i) => i.inspection_stage === "renter_pickup_inspection" && (i.status === "validated" || i.status === "completed")
   );
-  const renterReturnDone = inspections.some(
-    (i) => i.inspection_stage === "renter_return_inspection" && (i.status === "validated" || i.status === "completed")
-  );
   const paymentConfirmed = hasPaid || ["paid", "confirmed", "received", "receveid"].includes((paymentStatus ?? "") as string);
 
   const getContractBadge = () => {
@@ -146,24 +143,11 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       );
     }
 
-    // After payment → renter does pickup inspection
-    if (renterPickupDone && !renterReturnDone) {
-      return (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate(`/reservations/${rental.id}/inspection?step=renter_return_inspection`)}
-          className="gap-2"
-        >
-          <ClipboardCheck className="w-4 h-4" />Vistoria de Devolução
-        </Button>
-      );
-    }
-
-    if (renterReturnDone) {
+    // After pickup inspection done → waiting for owner final
+    if (renterPickupDone) {
       return (
         <span className="text-primary text-sm flex items-center gap-2">
-          <Check className="w-4 h-4" />Devolução registrada
+          <Check className="w-4 h-4" />Retirada registrada — aguardando vistoria final
         </span>
       );
     }
