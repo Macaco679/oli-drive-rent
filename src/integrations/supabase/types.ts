@@ -451,6 +451,7 @@ export type Database = {
             | null
           driver_license_verified_at: string | null
           email: string | null
+          face_recognition_url: string | null
           full_name: string | null
           id: string
           marital_status: string | null
@@ -478,6 +479,7 @@ export type Database = {
             | null
           driver_license_verified_at?: string | null
           email?: string | null
+          face_recognition_url?: string | null
           full_name?: string | null
           id: string
           marital_status?: string | null
@@ -505,6 +507,7 @@ export type Database = {
             | null
           driver_license_verified_at?: string | null
           email?: string | null
+          face_recognition_url?: string | null
           full_name?: string | null
           id?: string
           marital_status?: string | null

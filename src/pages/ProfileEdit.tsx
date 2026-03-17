@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { getCurrentUser, getProfile, updateProfile, OliProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { getMissingFields } from "@/hooks/useProfileCompletion";
-import { SignatureField } from "@/components/profile/SignatureField";
+import { FaceRecognitionField } from "@/components/profile/FaceRecognitionField";
 import { MapPin } from "lucide-react";
 
 // Validation schema
@@ -654,11 +654,11 @@ export default function ProfileEdit() {
               </CardContent>
             </Card>
 
-            <SignatureField
-              currentSignature={profile?.signature_url || null}
-              onSignatureChange={(url) => {
+            <FaceRecognitionField
+              currentFaceUrl={(profile as any)?.face_recognition_url || null}
+              onFaceChange={(url) => {
                 if (profile) {
-                  setProfile({ ...profile, signature_url: url });
+                  setProfile({ ...profile, face_recognition_url: url } as any);
                 }
               }}
             />
