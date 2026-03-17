@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { getCurrentUser, getProfile, updateProfile, OliProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { getMissingFields } from "@/hooks/useProfileCompletion";
-import { SignatureField } from "@/components/profile/SignatureField";
+import { FaceRecognitionField } from "@/components/profile/FaceRecognitionField";
 import { MapPin } from "lucide-react";
 
 // Validation schema
