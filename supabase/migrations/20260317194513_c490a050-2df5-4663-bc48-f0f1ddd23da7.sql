@@ -1,0 +1,1 @@
+ALTER TABLE public.oli_profiles ADD COLUMN face_recognition_url text NULL;
