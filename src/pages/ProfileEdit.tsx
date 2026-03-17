@@ -654,11 +654,11 @@ export default function ProfileEdit() {
               </CardContent>
             </Card>
 
-            <SignatureField
-              currentSignature={profile?.signature_url || null}
-              onSignatureChange={(url) => {
+            <FaceRecognitionField
+              currentFaceUrl={(profile as any)?.face_recognition_url || null}
+              onFaceChange={(url) => {
                 if (profile) {
-                  setProfile({ ...profile, signature_url: url });
+                  setProfile({ ...profile, face_recognition_url: url } as any);
                 }
               }}
             />
