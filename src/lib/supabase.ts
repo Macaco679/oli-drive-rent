@@ -18,6 +18,13 @@ export interface OliProfile {
   whatsapp_phone: string | null;
   role: "renter" | "owner" | "both";
   signature_url: string | null;
+  face_recognition_url?: string | null;
+  face_validation_status?: string | null;
+  face_validation_score?: number | null;
+  face_validation_provider?: string | null;
+  face_validation_requested_at?: string | null;
+  face_validation_validated_at?: string | null;
+  face_validation_reference_id?: string | null;
   created_at: string;
   updated_at: string;
   score: number | null;
