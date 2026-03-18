@@ -465,11 +465,11 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               Selfie cadastrada para validação de identidade
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 gap-2" onClick={startCamera}>
+              <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
                 <RefreshCw className="w-4 h-4" />
                 Refazer selfie
               </Button>
-              <Button variant="destructive" size="icon" onClick={handleDelete} disabled={saving}>
+              <Button type="button" variant="destructive" size="icon" onClick={handleDelete} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               </Button>
             </div>
@@ -484,8 +484,8 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <p>Evite boné, máscara e fundo muito escuro.</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={handleCancel}>Cancelar</Button>
-              <Button className="flex-1 gap-2" onClick={capturePhoto}>
+              <Button type="button" variant="outline" className="flex-1" onClick={handleCancel}>Cancelar</Button>
+              <Button type="button" className="flex-1 gap-2" onClick={capturePhoto}>
                 <Camera className="w-4 h-4" />
                 Capturar selfie
               </Button>
@@ -503,10 +503,10 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               </AlertDescription>
             </Alert>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { setCapturedImage(null); startCamera(); }}>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => { setCapturedImage(null); startCamera(); }}>
                 Refazer
               </Button>
-              <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+              <Button type="button" className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                 Enviar para validação
               </Button>
@@ -518,7 +518,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <ScanFace className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground text-sm">Nenhuma selfie enviada para validação facial</p>
             </div>
-            <Button variant="outline" className="w-full gap-2" onClick={startCamera}>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={startCamera}>
               <Camera className="w-4 h-4" />
               Iniciar validação facial
             </Button>
