@@ -257,9 +257,32 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         formData.append("payload", JSON.stringify(faceRequestPayload));
         formData.append("_webhook_target", "oli-face-validation");
 
-        const { data: webhookData, error: webhookError } = await supabase.functions.invoke("webhook-proxy", {
-          body: formData,
-        });
+        const webhookUrl = "https://n8n.srv1153225.hstgr.cloud/webhook/oli-face-validation";
+
+        let webhookData: unknown = null;
+        let webhookError: unknown = null;
+
+        try {
+          const directResponse = await fetch(webhookUrl, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!directResponse.ok) {
+            throw new Error(`HTTP ${directResponse.status}`);
+          }
+
+          webhookData = await directResponse.json().catch(() => null);
+        } catch (directErr) {
+          console.warn("Webhook direto do n8n falhou, tentando proxy Supabase:", directErr);
+
+          const fallback = await supabase.functions.invoke("webhook-proxy", {
+            body: formData,
+          });
+
+          webhookData = fallback.data;
+          webhookError = fallback.error;
+        }
 
         if (webhookError) {
           console.warn("Webhook de validação facial falhou (não crítico):", webhookError);
