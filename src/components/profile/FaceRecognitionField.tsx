@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Camera, CheckCircle2, Clock3, Loader2, RefreshCw, ScanFace, ShieldCheck, Trash2, Upload, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser } from "@/lib/supabase";
@@ -110,6 +110,32 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         }
         setCapturing(false);
   };
+
+  useEffect(() => {
+        if (!capturing || !videoRef.current || !streamRef.current) return;
+
+        const videoElement = videoRef.current;
+        videoElement.srcObject = streamRef.current;
+
+        void videoElement.play().catch((error) => {
+                console.warn("Camera playback error:", error);
+        });
+
+        return () => {
+                if (videoElement.srcObject) {
+                        videoElement.srcObject = null;
+                }
+        };
+  }, [capturing]);
+
+  useEffect(() => {
+        return () => {
+                if (streamRef.current) {
+                        streamRef.current.getTracks().forEach((track) => track.stop());
+                        streamRef.current = null;
+                }
+        };
+  }, []);
 
   const startCamera = async () => {
         if (!isCameraAvailable()) {
