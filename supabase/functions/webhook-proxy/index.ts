@@ -18,7 +18,6 @@ const ALLOWED_URLS: Record<string, string> = {
   "oli-vistoria-locatario-retirada": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locatário-retirada",
   "oli-vistoria-locatario-devolucao": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locatário-devolucao",
   "oli-vistoria-locador-final": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-vistoria-locador-final",
-  "oli-face-validation": "https://n8n.srv1153225.hstgr.cloud/webhook/oli-face-validation",
 };
 
 serve(async (req) => {

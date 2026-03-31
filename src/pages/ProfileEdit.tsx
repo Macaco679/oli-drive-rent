@@ -656,26 +656,9 @@ export default function ProfileEdit() {
 
             <FaceRecognitionField
               currentFaceUrl={(profile as any)?.face_recognition_url || null}
-              validation={{
-                status: (profile as any)?.face_validation_status || null,
-                score: (profile as any)?.face_validation_score ?? null,
-                provider: (profile as any)?.face_validation_provider || null,
-                requestedAt: (profile as any)?.face_validation_requested_at || null,
-                validatedAt: (profile as any)?.face_validation_validated_at || null,
-                referenceId: (profile as any)?.face_validation_reference_id || null,
-              }}
-              onFaceChange={({ url, status, score, provider, requestedAt, validatedAt, referenceId }) => {
+              onFaceChange={(url) => {
                 if (profile) {
-                  setProfile({
-                    ...profile,
-                    face_recognition_url: url,
-                    face_validation_status: status ?? null,
-                    face_validation_score: score ?? null,
-                    face_validation_provider: provider ?? null,
-                    face_validation_requested_at: requestedAt ?? null,
-                    face_validation_validated_at: validatedAt ?? null,
-                    face_validation_reference_id: referenceId ?? null,
-                  } as any);
+                  setProfile({ ...profile, face_recognition_url: url } as any);
                 }
               }}
             />

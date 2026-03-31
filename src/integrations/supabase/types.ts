@@ -452,13 +452,6 @@ export type Database = {
           driver_license_verified_at: string | null
           email: string | null
           face_recognition_url: string | null
-          face_validation_payload: Json | null
-          face_validation_provider: string | null
-          face_validation_reference_id: string | null
-          face_validation_requested_at: string | null
-          face_validation_score: number | null
-          face_validation_status: string | null
-          face_validation_validated_at: string | null
           full_name: string | null
           id: string
           marital_status: string | null
@@ -487,13 +480,6 @@ export type Database = {
           driver_license_verified_at?: string | null
           email?: string | null
           face_recognition_url?: string | null
-          face_validation_payload?: Json | null
-          face_validation_provider?: string | null
-          face_validation_reference_id?: string | null
-          face_validation_requested_at?: string | null
-          face_validation_score?: number | null
-          face_validation_status?: string | null
-          face_validation_validated_at?: string | null
           full_name?: string | null
           id: string
           marital_status?: string | null
@@ -522,13 +508,6 @@ export type Database = {
           driver_license_verified_at?: string | null
           email?: string | null
           face_recognition_url?: string | null
-          face_validation_payload?: Json | null
-          face_validation_provider?: string | null
-          face_validation_reference_id?: string | null
-          face_validation_requested_at?: string | null
-          face_validation_score?: number | null
-          face_validation_status?: string | null
-          face_validation_validated_at?: string | null
           full_name?: string | null
           id?: string
           marital_status?: string | null
