@@ -426,7 +426,7 @@ export const getMyRentalsAsRenter = async (renterId: string): Promise<OliRental[
     return [];
   }
 
-  return (data || []) as OliRental[];
+  return (data || []) as unknown as OliRental[];
 };
 
 export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]> => {
