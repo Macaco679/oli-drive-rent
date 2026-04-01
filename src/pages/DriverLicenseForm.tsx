@@ -303,7 +303,8 @@ export default function DriverLicenseForm() {
       return;
     }
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from("oli_rentals")
       .update({
         driver_license_id: params.driver_license_id ?? rentalContext.driver_license_id,
