@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,17 +30,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMissingFields } from "@/hooks/useProfileCompletion";
 import { FaceRecognitionField } from "@/components/profile/FaceRecognitionField";
 import { MapPin } from "lucide-react";
+import { lookupAddressByPostalCode, sanitizePostalCode } from "@/lib/addressService";
 
 // Validation schema
 const formSchema = z.object({
   full_name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido"),
+  cpf: z.string().min(11, "CPF deve ter 11 dÃ­gitos").max(14, "CPF invÃ¡lido"),
   rg: z.string().optional(),
   nationality: z.string().optional(),
   marital_status: z.string().optional(),
   profession: z.string().optional(),
-  birth_date: z.string().min(1, "Data de nascimento é obrigatória"),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").max(15, "Telefone inválido"),
+  birth_date: z.string().min(1, "Data de nascimento Ã© obrigatÃ³ria"),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dÃ­gitos").max(15, "Telefone invÃ¡lido"),
   whatsapp_phone: z.string().optional(),
   // Address fields
   street: z.string().optional(),
@@ -59,8 +60,8 @@ const maritalStatusOptions = [
   { value: "solteiro", label: "Solteiro(a)" },
   { value: "casado", label: "Casado(a)" },
   { value: "divorciado", label: "Divorciado(a)" },
-  { value: "viuvo", label: "Viúvo(a)" },
-  { value: "uniao_estavel", label: "União Estável" },
+  { value: "viuvo", label: "ViÃºvo(a)" },
+  { value: "uniao_estavel", label: "UniÃ£o EstÃ¡vel" },
 ];
 
 // CPF formatting
@@ -98,6 +99,7 @@ export default function ProfileEdit() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<OliProfile | null>(null);
   const [email, setEmail] = useState<string>("");
+  const [searchingPostalCode, setSearchingPostalCode] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -175,6 +177,29 @@ export default function ProfileEdit() {
     }
   };
 
+  const handlePostalCodeLookup = async (value: string) => {
+    const postalCode = sanitizePostalCode(value);
+    if (postalCode.length !== 8) {
+      return;
+    }
+
+    try {
+      setSearchingPostalCode(true);
+      const address = await lookupAddressByPostalCode(postalCode);
+      form.setValue("street", address.street, { shouldDirty: true });
+      form.setValue("neighborhood", address.neighborhood, { shouldDirty: true });
+      form.setValue("city", address.city, { shouldDirty: true });
+      form.setValue("state", address.state, { shouldDirty: true });
+
+      if (!form.getValues("complement")) {
+        form.setValue("complement", address.complement, { shouldDirty: true });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel consultar o CEP.");
+    } finally {
+      setSearchingPostalCode(false);
+    }
+  };
   const onSubmit = async (data: FormData) => {
     if (!profile) return;
 
@@ -291,7 +316,7 @@ export default function ProfileEdit() {
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar veículos.
+              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar veÃ­culos.
               <br />
               <span className="text-sm">
                 Campos faltando: {missingFields.join(", ")}
@@ -304,7 +329,7 @@ export default function ProfileEdit() {
           <Alert className="mb-6 border-primary/50 bg-primary/5 text-primary">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil completo!</strong> Você pode alugar veículos normalmente.
+              <strong>Perfil completo!</strong> VocÃª pode alugar veÃ­culos normalmente.
             </AlertDescription>
           </Alert>
         )}
@@ -316,7 +341,7 @@ export default function ProfileEdit() {
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg">E-mail</CardTitle>
                 <CardDescription>
-                  O e-mail não pode ser alterado
+                  O e-mail nÃ£o pode ser alterado
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -456,7 +481,7 @@ export default function ProfileEdit() {
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Profissão</FormLabel>
+                      <FormLabel>ProfissÃ£o</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Motorista de aplicativo" {...field} />
                       </FormControl>
@@ -537,10 +562,10 @@ export default function ProfileEdit() {
                     <span className="text-primary font-bold">3</span>
                   </div>
                   <MapPin className="w-5 h-5 text-primary" />
-                  Endereço
+                  EndereÃ§o
                 </CardTitle>
                 <CardDescription>
-                  Necessário para geração do contrato de locação
+                  NecessÃ¡rio para geraÃ§Ã£o do contrato de locaÃ§Ã£o
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -564,7 +589,7 @@ export default function ProfileEdit() {
                     name="number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Número</FormLabel>
+                        <FormLabel>NÃºmero</FormLabel>
                         <FormControl>
                           <Input placeholder="123" {...field} />
                         </FormControl>
@@ -610,7 +635,7 @@ export default function ProfileEdit() {
                       <FormItem>
                         <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <Input placeholder="São Paulo" {...field} />
+                          <Input placeholder="SÃ£o Paulo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -678,7 +703,7 @@ export default function ProfileEdit() {
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Salvar Alterações
+                  Salvar AlteraÃ§Ãµes
                 </>
               )}
             </Button>
@@ -688,3 +713,4 @@ export default function ProfileEdit() {
     </div>
   );
 }
+

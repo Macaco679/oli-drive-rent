@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+﻿import { supabase } from "@/integrations/supabase/client";
 
 export interface DriverLicenseRecord {
   id?: string;
@@ -7,6 +7,9 @@ export interface DriverLicenseRecord {
   license_number: string;
   category: string;
   expires_at: string;
+  cpf?: number | null;
+  codigo_seguranca?: number | null;
+  nome_mae?: string | null;
   status: "pending" | "approved" | "rejected";
   front_path: string | null;
   back_path: string | null;
@@ -19,7 +22,7 @@ export interface DriverLicenseRecord {
 }
 
 /**
- * Busca a CNH do usuário atual
+ * Busca a CNH do usuÃ¡rio atual
  */
 export async function getDriverLicense(userId: string): Promise<DriverLicenseRecord | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +37,14 @@ export async function getDriverLicense(userId: string): Promise<DriverLicenseRec
     return null;
   }
 
-  return data as DriverLicenseRecord | null;
+  if (!data) return null;
+
+  const mappedData = {
+    ...(data as Record<string, unknown>),
+    codigo_seguranca: (data as Record<string, unknown>)["codigo_seguranÃ§a"] ?? null,
+  };
+
+  return mappedData as DriverLicenseRecord;
 }
 
 /**
@@ -73,7 +83,7 @@ export async function uploadLicenseImage(
 }
 
 /**
- * Obtém URL assinada para visualizar imagem privada
+ * ObtÃ©m URL assinada para visualizar imagem privada
  */
 export async function getSignedImageUrl(path: string): Promise<string | null> {
   if (!path) return null;
@@ -120,7 +130,7 @@ export async function saveDriverLicense(
     ...(data.back_path && { back_path: data.back_path }),
     ...(data.selfie_path !== undefined && { selfie_path: data.selfie_path }),
     ...(data.cpf !== undefined && { cpf: data.cpf ? Number(data.cpf.replace(/\D/g, "")) : null }),
-    ...(data.codigo_seguranca !== undefined && { "codigo_segurança": data.codigo_seguranca ? Number(data.codigo_seguranca.replace(/\D/g, "")) : null }),
+    ...(data.codigo_seguranca !== undefined && { "codigo_seguranÃ§a": data.codigo_seguranca ? Number(data.codigo_seguranca.replace(/\D/g, "")) : null }),
     ...(data.nome_mae !== undefined && { nome_mae: data.nome_mae }),
   };
 
@@ -136,7 +146,12 @@ export async function saveDriverLicense(
     return null;
   }
 
-  return result as DriverLicenseRecord;
+  const mappedResult = {
+    ...(result as Record<string, unknown>),
+    codigo_seguranca: (result as Record<string, unknown>)["codigo_seguranÃ§a"] ?? null,
+  };
+
+  return mappedResult as DriverLicenseRecord;
 }
 
 /**
@@ -181,7 +196,7 @@ export async function submitDriverLicense(
 
     if (files.selfie) {
       selfiePath = await uploadLicenseImage(userId, files.selfie, "selfie");
-      // Selfie é opcional, não retorna erro
+      // Selfie Ã© opcional, nÃ£o retorna erro
     }
 
     // 2. Salvar dados na tabela
@@ -208,3 +223,5 @@ export async function submitDriverLicense(
     return { success: false, error: "Erro inesperado ao enviar CNH" };
   }
 }
+
+

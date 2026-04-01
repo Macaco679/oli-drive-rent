@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,28 +32,46 @@ import {
   VehicleFormData,
   VehiclePhoto,
 } from "@/lib/vehicleService";
+import { formatPostalCode, lookupAddressByPostalCode, sanitizePostalCode } from "@/lib/addressService";
 import { VehiclePhotoGallery } from "@/components/vehicles/VehiclePhotoGallery";
 
 const formSchema = z.object({
-  title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
-  brand: z.string().min(1, "Marca é obrigatória"),
-  model: z.string().min(1, "Modelo é obrigatório"),
+  title: z.string().min(3, "Titulo deve ter pelo menos 3 caracteres"),
+  brand: z.string().min(1, "Marca e obrigatoria"),
+  model: z.string().min(1, "Modelo e obrigatorio"),
   year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
-  color: z.string().min(1, "Cor é obrigatória"),
+  color: z.string().min(1, "Cor e obrigatoria"),
   plate: z.string().optional(),
   renavam: z.string().optional(),
-  fuel_type: z.string().min(1, "Combustível é obrigatório"),
+  fuel_type: z.string().min(1, "Combustivel e obrigatorio"),
   transmission: z.enum(["manual", "automatic"]),
   seats: z.coerce.number().min(2).max(9),
-  location_city: z.string().min(1, "Cidade é obrigatória"),
-  location_state: z.string().min(2, "Estado é obrigatório"),
-  daily_price: z.coerce.number().min(1, "Preço diário é obrigatório"),
+  location_city: z.string().min(1, "Cidade e obrigatoria"),
+  location_state: z.string().min(2, "Estado e obrigatorio"),
+  pickup_neighborhood: z.string().min(1, "Bairro e obrigatorio"),
+  pickup_street: z.string().min(1, "Rua e obrigatoria"),
+  pickup_number: z.string().min(1, "Numero e obrigatorio"),
+  pickup_complement: z.string().optional(),
+  pickup_zip_code: z.string().min(8, "CEP deve ter 8 digitos").max(9, "CEP invalido"),
+  daily_price: z.coerce.number().min(1, "Preco diario e obrigatorio"),
   weekly_price: z.coerce.number().optional(),
   monthly_price: z.coerce.number().optional(),
   deposit_amount: z.coerce.number().optional(),
+  has_driver_option: z.boolean().default(false),
+  driver_daily_price: z.coerce.number().positive("Informe o valor da diaria com motorista").optional(),
+  driver_notes: z.string().optional(),
+  mileage_limit_per_day: z.coerce.number().int("Informe um valor inteiro").positive("Informe um limite maior que zero").optional(),
   body_type: z.string().optional(),
   segment: z.string().optional(),
   is_popular: z.boolean().default(false),
+}).superRefine((values, ctx) => {
+  if (values.has_driver_option && (!values.driver_daily_price || values.driver_daily_price <= 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["driver_daily_price"],
+      message: "Informe o valor da diaria quando o motorista estiver disponivel.",
+    });
+  }
 });
 
 const brandOptions = [
@@ -61,7 +79,7 @@ const brandOptions = [
   "Peugeot", "Renault", "Toyota", "Volkswagen", "Outro",
 ];
 
-const fuelOptions = ["Flex", "Gasolina", "Etanol", "Diesel", "Elétrico", "Híbrido"];
+const fuelOptions = ["Flex", "Gasolina", "Etanol", "Diesel", "ElÃ©trico", "HÃ­brido"];
 
 const bodyTypeOptions = [
   { value: "hatch", label: "Hatch" },
@@ -72,7 +90,7 @@ const bodyTypeOptions = [
 ];
 
 const segmentOptions = [
-  { value: "economy", label: "Econômico" },
+  { value: "economy", label: "EconÃ´mico" },
   { value: "standard", label: "Standard" },
   { value: "premium", label: "Premium" },
   { value: "luxury", label: "Luxo" },
@@ -90,6 +108,7 @@ export default function EditVehicle() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<VehiclePhoto[]>([]);
+  const [searchingPickupPostalCode, setSearchingPickupPostalCode] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,20 +125,54 @@ export default function EditVehicle() {
       seats: 5,
       location_city: "",
       location_state: "",
+      pickup_neighborhood: "",
+      pickup_street: "",
+      pickup_number: "",
+      pickup_complement: "",
+      pickup_zip_code: "",
       daily_price: 0,
       weekly_price: undefined,
       monthly_price: undefined,
       deposit_amount: undefined,
+      has_driver_option: false,
+      driver_daily_price: undefined,
+      driver_notes: "",
+      mileage_limit_per_day: undefined,
       body_type: "",
       segment: "",
       is_popular: false,
     },
   });
 
+  const hasDriverOption = form.watch("has_driver_option");
+
   useEffect(() => {
     loadVehicle();
   }, [id]);
 
+  const handlePickupPostalCodeLookup = async (value: string) => {
+    const postalCode = sanitizePostalCode(value);
+    if (postalCode.length !== 8) {
+      return;
+    }
+
+    try {
+      setSearchingPickupPostalCode(true);
+      const address = await lookupAddressByPostalCode(postalCode);
+      form.setValue("pickup_street", address.street, { shouldDirty: true });
+      form.setValue("pickup_neighborhood", address.neighborhood, { shouldDirty: true });
+      form.setValue("location_city", address.city, { shouldDirty: true });
+      form.setValue("location_state", address.state, { shouldDirty: true });
+
+      if (!form.getValues("pickup_complement")) {
+        form.setValue("pickup_complement", address.complement, { shouldDirty: true });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel consultar o CEP.");
+    } finally {
+      setSearchingPickupPostalCode(false);
+    }
+  };
   const loadVehicle = async () => {
     if (!id) {
       navigate("/my-vehicles");
@@ -128,7 +181,7 @@ export default function EditVehicle() {
 
     const vehicle = await getVehicleById(id);
     if (!vehicle) {
-      toast.error("Veículo não encontrado");
+      toast.error("VeÃ­culo nÃ£o encontrado");
       navigate("/my-vehicles");
       return;
     }
@@ -146,10 +199,19 @@ export default function EditVehicle() {
       seats: vehicle.seats || 5,
       location_city: vehicle.location_city || "",
       location_state: vehicle.location_state || "",
+      pickup_neighborhood: vehicle.pickup_neighborhood || "",
+      pickup_street: vehicle.pickup_street || "",
+      pickup_number: vehicle.pickup_number || "",
+      pickup_complement: vehicle.pickup_complement || "",
+      pickup_zip_code: vehicle.pickup_zip_code || "",
       daily_price: vehicle.daily_price || 0,
       weekly_price: vehicle.weekly_price || undefined,
       monthly_price: vehicle.monthly_price || undefined,
       deposit_amount: vehicle.deposit_amount || undefined,
+      has_driver_option: vehicle.has_driver_option || false,
+      driver_daily_price: vehicle.driver_daily_price || undefined,
+      driver_notes: vehicle.driver_notes || "",
+      mileage_limit_per_day: vehicle.mileage_limit_per_day || undefined,
       body_type: vehicle.body_type || "",
       segment: vehicle.segment || "",
       is_popular: vehicle.is_popular || false,
@@ -170,16 +232,16 @@ export default function EditVehicle() {
       const success = await updateVehicle(id, values as VehicleFormData);
 
       if (!success) {
-        toast.error("Erro ao atualizar veículo");
+        toast.error("Erro ao atualizar veÃ­culo");
         setIsSubmitting(false);
         return;
       }
 
-      toast.success("Veículo atualizado com sucesso!");
+      toast.success("VeÃ­culo atualizado com sucesso!");
       navigate("/my-vehicles");
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Erro ao atualizar veículo");
+      toast.error("Erro ao atualizar veÃ­culo");
     } finally {
       setIsSubmitting(false);
     }
@@ -203,7 +265,7 @@ export default function EditVehicle() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Car className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold">Editar Veículo</h1>
+          <h1 className="text-2xl font-bold">Editar VeÃ­culo</h1>
         </div>
 
         <Form {...form}>
@@ -211,7 +273,7 @@ export default function EditVehicle() {
             {/* Basic Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Informações Básicas</CardTitle>
+                <CardTitle className="text-lg">InformaÃ§Ãµes BÃ¡sicas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -219,7 +281,7 @@ export default function EditVehicle() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Título do anúncio</FormLabel>
+                      <FormLabel>TÃ­tulo do anÃºncio</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Chevrolet Onix LT 2022" {...field} />
                       </FormControl>
@@ -334,7 +396,7 @@ export default function EditVehicle() {
             {/* Technical Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Especificações</CardTitle>
+                <CardTitle className="text-lg">EspecificaÃ§Ãµes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -343,7 +405,7 @@ export default function EditVehicle() {
                     name="fuel_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Combustível</FormLabel>
+                        <FormLabel>CombustÃ­vel</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -368,7 +430,7 @@ export default function EditVehicle() {
                     name="transmission"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Câmbio</FormLabel>
+                        <FormLabel>CÃ¢mbio</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -376,7 +438,7 @@ export default function EditVehicle() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="automatic">Automático</SelectItem>
+                            <SelectItem value="automatic">AutomÃ¡tico</SelectItem>
                             <SelectItem value="manual">Manual</SelectItem>
                           </SelectContent>
                         </Select>
@@ -457,7 +519,7 @@ export default function EditVehicle() {
             {/* Location */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Localização</CardTitle>
+                <CardTitle className="text-lg">Localizacao de retirada</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
@@ -493,20 +555,105 @@ export default function EditVehicle() {
                       <FormItem className="col-span-2">
                         <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: São Paulo" {...field} />
+                          <Input placeholder="Ex: Sao Paulo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="pickup_zip_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            placeholder="00000-000"
+                            value={formatPostalCode(field.value || "")}
+                            onChange={(e) => field.onChange(formatPostalCode(e.target.value))}
+                            onBlur={() => handlePickupPostalCodeLookup(field.value || "")}
+                            maxLength={9}
+                            inputMode="numeric"
+                            className="pr-10"
+                          />
+                          {searchingPickupPostalCode ? <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                        </div>
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Rua, bairro, cidade e UF sao preenchidos automaticamente pelo CEP.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="pickup_street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua / endereco</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Rua das Flores" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="pickup_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Numero</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="pickup_complement"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Complemento</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Apto, bloco, referencia..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="pickup_neighborhood"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Centro" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">O bairro aparece no anuncio. O endereco completo so e compartilhado nas etapas liberadas da reserva.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
             {/* Pricing */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Preços</CardTitle>
+                <CardTitle className="text-lg">Precos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -514,7 +661,7 @@ export default function EditVehicle() {
                   name="daily_price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Diária (R$) *</FormLabel>
+                      <FormLabel>Diaria (R$) *</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="150" {...field} />
                       </FormControl>
@@ -558,7 +705,7 @@ export default function EditVehicle() {
                   name="deposit_amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Caução (R$)</FormLabel>
+                      <FormLabel>Caucao (R$)</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="500" {...field} />
                       </FormControl>
@@ -569,13 +716,77 @@ export default function EditVehicle() {
 
                 <FormField
                   control={form.control}
+                  name="mileage_limit_per_day"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Limite de quilometragem por dia</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="200" {...field} />
+                      </FormControl>
+                      <p className="text-sm text-muted-foreground">Esse limite sera exibido no anuncio e na etapa de vistoria da reserva.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="has_driver_option"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5 pr-4">
+                        <FormLabel className="text-base">Motorista disponibilizado pelo locador</FormLabel>
+                        <p className="text-sm text-muted-foreground">Ative para oferecer o veiculo com e sem motorista, deixando o adicional bem claro no anuncio.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {hasDriverOption ? (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="driver_daily_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor adicional da diaria com motorista (R$)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="120" {...field} />
+                          </FormControl>
+                          <p className="text-sm text-muted-foreground">O valor do anuncio continuara exibindo o preco sem motorista e o adicional com motorista.</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="driver_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detalhes do servico com motorista</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: transfer, eventos ou uso executivo" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                ) : null}
+
+                <FormField
+                  control={form.control}
                   name="is_popular"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">Destacar como popular</FormLabel>
                         <p className="text-sm text-muted-foreground">
-                          Seu veículo aparecerá em destaque nas buscas
+                          Seu veiculo aparecera em destaque nas buscas
                         </p>
                       </div>
                       <FormControl>
@@ -590,7 +801,7 @@ export default function EditVehicle() {
             {/* Photos */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Fotos do Veículo</CardTitle>
+                <CardTitle className="text-lg">Fotos do VeÃ­culo</CardTitle>
               </CardHeader>
               <CardContent>
                 <VehiclePhotoGallery
@@ -613,7 +824,7 @@ export default function EditVehicle() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Salvar Alterações
+                  Salvar AlteraÃ§Ãµes
                 </>
               )}
             </Button>
@@ -623,3 +834,7 @@ export default function EditVehicle() {
     </WebLayout>
   );
 }
+
+
+
+

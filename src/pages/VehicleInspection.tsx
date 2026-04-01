@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,7 @@ export default function VehicleInspection() {
       .single();
 
     if (rentalError || !rentalData) {
-      toast.error("Reserva não encontrada");
+      toast.error("Reserva nÃ£o encontrada");
       navigate("/reservations");
       return;
     }
@@ -122,12 +122,12 @@ export default function VehicleInspection() {
     const isRenter = rentalData.renter_id === user.id;
 
     if (stepConfig.performedByRole === "owner" && !isOwner) {
-      toast.error("Apenas o proprietário pode realizar esta vistoria");
+      toast.error("Apenas o proprietÃ¡rio pode realizar esta vistoria");
       navigate("/reservations");
       return;
     }
     if (stepConfig.performedByRole === "renter" && !isRenter) {
-      toast.error("Apenas o locatário pode realizar esta vistoria");
+      toast.error("Apenas o locatÃ¡rio pode realizar esta vistoria");
       navigate("/reservations");
       return;
     }
@@ -220,6 +220,11 @@ export default function VehicleInspection() {
     if (submitStatus === "uploading" || submitStatus === "validating") return false;
     return true;
   };
+
+  const reservedDays = rental
+    ? Math.max(1, Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const totalMileageLimit = vehicle?.mileage_limit_per_day ? reservedDays * vehicle.mileage_limit_per_day : null;
 
   // Trigger file input for a specific photo slot (for re-upload from failed list)
   const handleReuploadClick = (slotId: string) => {
@@ -315,10 +320,10 @@ export default function VehicleInspection() {
   const handleSubmit = async () => {
     if (!rental || !userId || !vehicle) return;
     if (!canSubmit()) {
-      if (!allPhotosReady) toast.error(`Faltam ${totalRequired - completedPhotos} foto(s) obrigatória(s)`);
+      if (!allPhotosReady) toast.error(`Faltam ${totalRequired - completedPhotos} foto(s) obrigatÃ³ria(s)`);
       else if (!formData.mileage.trim()) toast.error("Informe a quilometragem atual");
-      else if (!formData.fuel_level) toast.error("Selecione o nível de combustível");
-      else if (formData.has_visible_damage && !formData.damage_notes.trim()) toast.error("Descreva as avarias visíveis");
+      else if (!formData.fuel_level) toast.error("Selecione o nÃ­vel de combustÃ­vel");
+      else if (formData.has_visible_damage && !formData.damage_notes.trim()) toast.error("Descreva as avarias visÃ­veis");
       return;
     }
 
@@ -348,7 +353,7 @@ export default function VehicleInspection() {
           .single();
 
         if (draftError || !draftInspection) {
-          toast.error("Não foi possível criar a vistoria no Supabase.");
+          toast.error("NÃ£o foi possÃ­vel criar a vistoria no Supabase.");
           setSubmitStatus("error");
           setSubmitProgress(0);
           return;
@@ -429,7 +434,7 @@ export default function VehicleInspection() {
           notes: formData.notes,
           status: "pending_validation",
         });
-        toast.warning("Não foi possível enviar para validação. Salvando como pendente.");
+        toast.warning("NÃ£o foi possÃ­vel enviar para validaÃ§Ã£o. Salvando como pendente.");
         setSubmitStatus("error");
         setSubmitProgress(0);
         return;
@@ -509,7 +514,7 @@ export default function VehicleInspection() {
       setSubmitStatus("success");
 
       if (inspection) {
-        toast.success(`${stepConfig.title} validada e concluída!`);
+        toast.success(`${stepConfig.title} validada e concluÃ­da!`);
         setTimeout(() => navigate("/reservations"), 1500);
       }
     } catch (error) {
@@ -561,7 +566,7 @@ export default function VehicleInspection() {
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">{stepConfig.title} - Concluída</h1>
+            <h1 className="text-2xl font-bold mb-2">{stepConfig.title} - ConcluÃ­da</h1>
             <p className="text-muted-foreground mb-2">
               Realizada em {new Date(insp.created_at).toLocaleDateString("pt-BR")}
             </p>
@@ -574,7 +579,7 @@ export default function VehicleInspection() {
             <div className="flex gap-3 justify-center mt-6">
               <Button onClick={handleDownloadPdf} disabled={downloadingPdf} className="gap-2">
                 {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Baixar Relatório
+                Baixar RelatÃ³rio
               </Button>
             </div>
           </div>
@@ -616,7 +621,7 @@ export default function VehicleInspection() {
               {stepConfig.title}
             </h1>
             <p className="text-muted-foreground mt-1">{stepConfig.description}</p>
-            <p className="text-xs text-muted-foreground mt-1">As fotos serão validadas por IA</p>
+            <p className="text-xs text-muted-foreground mt-1">As fotos serÃ£o validadas por IA</p>
           </div>
           <Badge variant={allPhotosReady ? "default" : "secondary"} className="text-lg px-4 py-2">
             {completedPhotos}/{totalRequired}
@@ -633,12 +638,30 @@ export default function VehicleInspection() {
               <div>
                 <p className="font-semibold">{vehicle.title || `${vehicle.brand} ${vehicle.model}`}</p>
                 <p className="text-sm text-muted-foreground">
-                  {vehicle.year} • {vehicle.color} • Placa: {vehicle.plate}
+                  {vehicle.year} â€¢ {vehicle.color} â€¢ Placa: {vehicle.plate}
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
+
+
+        {vehicle?.mileage_limit_per_day ? (
+          <Card className="mb-6 border-primary/20 bg-primary/5">
+            <CardContent className="p-4 space-y-2">
+              <p className="text-sm font-semibold">Limite de quilometragem contratado</p>
+              <p className="text-sm text-muted-foreground">
+                Este veiculo possui limite de {vehicle.mileage_limit_per_day} km por dia para esta reserva.
+              </p>
+              {totalMileageLimit ? (
+                <p className="text-sm font-medium">Referencia para o periodo: {totalMileageLimit} km.</p>
+              ) : null}
+              {rental?.with_driver ? (
+                <p className="text-xs text-muted-foreground">Reserva contratada com motorista disponibilizado pelo locador.</p>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Status card */}
         <InspectionStatusCard
@@ -693,7 +716,7 @@ export default function VehicleInspection() {
             {allPhotosReady && formData.mileage.trim() && !formData.fuel_level && (
               <div className="flex items-center gap-2 text-amber-600">
                 <AlertCircle className="w-5 h-5" />
-                <span className="font-medium text-sm">Selecione o combustível</span>
+                <span className="font-medium text-sm">Selecione o combustÃ­vel</span>
               </div>
             )}
             {canSubmit() && !hasRejected && (
@@ -738,3 +761,6 @@ export default function VehicleInspection() {
     </WebLayout>
   );
 }
+
+
+

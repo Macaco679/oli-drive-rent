@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
 import { Calendar, MapPin, ChevronRight, FileText, Check, ClipboardCheck, Download, Clock, PenTool } from "lucide-react";
@@ -24,7 +24,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
   pending_approval: { label: "Pendente", variant: "secondary" },
   approved: { label: "Aprovada", variant: "default" },
   active: { label: "Em uso", variant: "default" },
-  completed: { label: "Concluída", variant: "outline" },
+  completed: { label: "ConcluÃ­da", variant: "outline" },
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
@@ -43,7 +43,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-    "Veículo";
+    "VeÃ­culo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
@@ -52,6 +52,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
   
   const contractStage = deriveContractStage(contract);
   const bothSigned = contractStage === "both_signed" || contractStage === "inspection_released";
+  const rentalLicenseStatus = (rental as { driver_license_verification_status?: string | null }).driver_license_verification_status || "not_started";
 
   // Inspection status checks
   const ownerInitialDone = inspections.some(
@@ -80,7 +81,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
       case "preparing":
         return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Preparando</Badge>;
       case "sent":
-        return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando locatário</Badge>;
+        return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando locatÃ¡rio</Badge>;
       case "renter_signed":
         return <Badge variant="secondary" className="text-xs"><PenTool className="w-3 h-3 mr-1" />Falta sua assinatura</Badge>;
       case "both_signed":
@@ -95,10 +96,20 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
   // Determine current owner action
   const getOwnerAction = () => {
     if (isPending) {
-      return <span className="text-primary font-medium text-sm">Clique para analisar →</span>;
+      return <span className="text-primary font-medium text-sm">Clique para analisar â†’</span>;
     }
 
     if (isApproved && !contract) {
+      if (rentalLicenseStatus !== "approved") {
+        return (
+          <span className="text-muted-foreground text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {rentalLicenseStatus === "pending"
+              ? "CNH do locatario em validacao"
+              : "Aguardando validacao da CNH do locatario"}
+          </span>
+        );
+      }
       return (
         <Button size="sm" onClick={handleContractClick} className="gap-2">
           <FileText className="w-4 h-4" />Enviar Contrato
@@ -109,7 +120,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
     if (isApproved && contract && contractStage === "renter_signed") {
       return (
         <span className="text-amber-600 dark:text-amber-400 text-sm font-medium flex items-center gap-2">
-          <PenTool className="w-4 h-4" />Assine o contrato →
+          <PenTool className="w-4 h-4" />Assine o contrato â†’
         </span>
       );
     }
@@ -190,7 +201,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
             <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
               <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
               <span>
-                {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} até{" "}
+                {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} atÃ©{" "}
                 {format(new Date(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
               </span>
             </div>
@@ -211,6 +222,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
                 rentalStatus={rental.status}
                 hasPaid={hasPaid}
                 paymentStatus={paymentStatus}
+                renterLicenseStatus={(rental as { driver_license_verification_status?: string | null }).driver_license_verification_status || "not_started"}
                 initialVisible={4}
               />
             </div>
@@ -230,3 +242,5 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
     </div>
   );
 }
+
+

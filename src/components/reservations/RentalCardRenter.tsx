@@ -1,7 +1,7 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OliRental, OliVehicle } from "@/lib/supabase";
-import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool, Mail, ExternalLink, ChevronRight } from "lucide-react";
+import { Calendar, MapPin, FileText, CreditCard, Clock, ClipboardCheck, Check, PenTool, Mail, ExternalLink, ChevronRight, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -22,10 +22,10 @@ interface RentalCardRenterProps {
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending_approval: { label: "Aguardando aprovação", variant: "secondary" },
+  pending_approval: { label: "Aguardando aprovaÃ§Ã£o", variant: "secondary" },
   approved: { label: "Aprovada", variant: "default" },
   active: { label: "Em uso", variant: "default" },
-  completed: { label: "Concluída", variant: "outline" },
+  completed: { label: "ConcluÃ­da", variant: "outline" },
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
@@ -44,7 +44,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-    "Veículo";
+    "VeÃ­culo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
@@ -63,6 +63,8 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     (i) => i.inspection_stage === "renter_pickup_inspection" && (i.status === "validated" || i.status === "completed")
   );
   const paymentConfirmed = hasPaid || ["paid", "confirmed", "received", "receveid"].includes((paymentStatus ?? "") as string);
+  const rentalLicenseStatus = (rental as { driver_license_verification_status?: string | null }).driver_license_verification_status || "not_started";
+  const rentalLicenseApproved = rentalLicenseStatus === "approved";
 
   const getContractBadge = () => {
     if (!contract) return null;
@@ -72,7 +74,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       case "sent":
         return <Badge variant="secondary" className="text-xs"><Mail className="w-3 h-3 mr-1" />Verifique seu e-mail</Badge>;
       case "renter_signed":
-        return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando proprietário</Badge>;
+        return <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />Aguardando proprietÃ¡rio</Badge>;
       case "both_signed":
         return <Badge variant="default" className="text-xs"><Check className="w-3 h-3 mr-1" />Assinado</Badge>;
       case "inspection_released":
@@ -88,8 +90,24 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       return (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Clock className="w-4 h-4" />
-          <span className="text-sm">Aguardando aprovação do proprietário</span>
+          <span className="text-sm">Aguardando aprovaÃ§Ã£o do proprietÃ¡rio</span>
         </div>
+      );
+    }
+
+    if (isApproved && !rentalLicenseApproved) {
+      if (rentalLicenseStatus === "pending") {
+        return (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            <span className="text-sm">Aguardando validacao da CNH da reserva</span>
+          </div>
+        );
+      }
+      return (
+        <Button size="sm" onClick={() => navigate(`/profile/driver-license?flow=rental&rentalId=${rental.id}`)} className="gap-2">
+          <ShieldCheck className="w-4 h-4" />Validar CNH da reserva
+        </Button>
       );
     }
 
@@ -115,7 +133,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       );
     }
 
-    // After payment confirmed → renter starts pickup inspection
+    // After payment confirmed â†’ renter starts pickup inspection
     if (bothSigned && ownerInitialDone && paymentConfirmed && !renterPickupDone) {
       return (
         <div className="flex gap-2">
@@ -129,7 +147,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       );
     }
 
-    // Owner initial done but not paid yet → show pay button
+    // Owner initial done but not paid yet â†’ show pay button
     if (bothSigned && ownerInitialDone && !paymentConfirmed && !renterPickupDone) {
       return (
         <div className="flex gap-2">
@@ -143,11 +161,11 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       );
     }
 
-    // After pickup inspection done → waiting for owner final
+    // After pickup inspection done â†’ waiting for owner final
     if (renterPickupDone) {
       return (
         <span className="text-primary text-sm flex items-center gap-2">
-          <Check className="w-4 h-4" />Retirada registrada — aguardando vistoria final
+          <Check className="w-4 h-4" />Retirada registrada â€” aguardando vistoria final
         </span>
       );
     }
@@ -156,7 +174,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
       return (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Clock className="w-4 h-4" />
-          <span className="text-sm">Aguardando vistoria do proprietário</span>
+          <span className="text-sm">Aguardando vistoria do proprietÃ¡rio</span>
         </div>
       );
     }
@@ -207,7 +225,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
             <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
               <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
               <span>
-                {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} até{" "}
+                {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} atÃ©{" "}
                 {format(new Date(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
               </span>
             </div>
@@ -228,6 +246,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
                 rentalStatus={rental.status}
                 hasPaid={hasPaid}
                 paymentStatus={paymentStatus}
+                renterLicenseStatus={(rental as { driver_license_verification_status?: string | null }).driver_license_verification_status || "not_started"}
                 initialVisible={4}
               />
             </div>
@@ -247,3 +266,5 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
     </div>
   );
 }
+
+

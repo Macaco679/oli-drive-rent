@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, MapPin, Calendar, Users, Fuel, Gauge, Palette, Car, MessageCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useVehiclePhotosRealtime } from "@/hooks/useVehiclePhotosRealtime";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
 
@@ -50,6 +60,10 @@ const createStaticVehicle = (
     weekly_price: weeklyPrice,
     monthly_price: null,
     deposit_amount: null,
+    has_driver_option: false,
+    driver_daily_price: null,
+    driver_notes: null,
+    mileage_limit_per_day: null,
     location_city: city,
     location_state: state,
     pickup_neighborhood: null,
@@ -70,11 +84,11 @@ const createStaticVehicle = (
 });
 
 const staticVehicleFallback: Record<string, { vehicle: OliVehicle; coverImage: string }> = {
-  "static-1": createStaticVehicle("static-1", "Chevrolet Onix LT 2022", "Chevrolet", "Onix LT", 2022, 150, 900, "São Paulo", "SP", onixAzul),
-  "static-2": createStaticVehicle("static-2", "Hyundai HB20 Vision 2024", "Hyundai", "HB20 Vision", 2024, 140, 850, "São Paulo", "SP", hb20Prata),
-  "static-3": createStaticVehicle("static-3", "Fiat Argo Drive 2026", "Fiat", "Argo Drive", 2026, 160, 950, "São Paulo", "SP", argo2026),
-  "static-4": createStaticVehicle("static-4", "Citroën Basalt 2024", "Citroën", "Basalt", 2024, 180, 1100, "São Paulo", "SP", basaltBranco),
-  "static-5": createStaticVehicle("static-5", "Nissan Kicks 2024", "Nissan", "Kicks", 2024, 200, 1200, "São Paulo", "SP", kicksPreto),
+  "static-1": createStaticVehicle("static-1", "Chevrolet Onix LT 2022", "Chevrolet", "Onix LT", 2022, 150, 900, "SÃ£o Paulo", "SP", onixAzul),
+  "static-2": createStaticVehicle("static-2", "Hyundai HB20 Vision 2024", "Hyundai", "HB20 Vision", 2024, 140, 850, "SÃ£o Paulo", "SP", hb20Prata),
+  "static-3": createStaticVehicle("static-3", "Fiat Argo Drive 2026", "Fiat", "Argo Drive", 2026, 160, 950, "SÃ£o Paulo", "SP", argo2026),
+  "static-4": createStaticVehicle("static-4", "CitroÃ«n Basalt 2024", "CitroÃ«n", "Basalt", 2024, 180, 1100, "SÃ£o Paulo", "SP", basaltBranco),
+  "static-5": createStaticVehicle("static-5", "Nissan Kicks 2024", "Nissan", "Kicks", 2024, 200, 1200, "SÃ£o Paulo", "SP", kicksPreto),
   "static-6": createStaticVehicle("static-6", "Nissan Kicks Prata 2024", "Nissan", "Kicks", 2024, 195, 1150, "Rio de Janeiro", "RJ", kicksPrata),
   "static-7": createStaticVehicle("static-7", "Chevrolet Onix 2019", "Chevrolet", "Onix", 2019, 120, 700, "Belo Horizonte", "MG", onixPrata),
   "static-8": createStaticVehicle("static-8", "Chevrolet Prisma 2019", "Chevrolet", "Prisma", 2019, 130, 780, "Curitiba", "PR", prismaPreto),
@@ -89,6 +103,7 @@ export default function VehicleDetails() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showReservationNotice, setShowReservationNotice] = useState(false);
 
   const tryFallbackForPhoto = async (photoId: string) => {
     if (!id) return;
@@ -235,7 +250,7 @@ export default function VehicleDetails() {
       setPhotos(vehiclePhotos || []);
     } catch (e: any) {
       console.error("Error loading vehicle details:", e);
-      toast.error("Erro ao carregar o veículo. Tente novamente.");
+      toast.error("Erro ao carregar o veÃ­culo. Tente novamente.");
       setVehicle(null);
       setPhotos([]);
     } finally {
@@ -244,6 +259,11 @@ export default function VehicleDetails() {
   };
 
   const handleReservation = () => {
+    setShowReservationNotice(true);
+  };
+
+  const handleReservationContinue = () => {
+    setShowReservationNotice(false);
     if (!isAuthenticated) {
       navigate("/auth", { state: { returnTo: `/book/${vehicle?.id}` } });
     } else {
@@ -260,7 +280,7 @@ export default function VehicleDetails() {
     }
 
     if (currentUserId === vehicle.owner_id) {
-      toast.error("Você não pode enviar mensagem para si mesmo");
+      toast.error("VocÃª nÃ£o pode enviar mensagem para si mesmo");
       return;
     }
 
@@ -282,7 +302,7 @@ export default function VehicleDetails() {
     return (
       <WebLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-muted-foreground">Veículo não encontrado</p>
+          <p className="text-muted-foreground">Veiculo nao encontrado</p>
           <Button onClick={() => navigate(-1)} className="mt-4">
             Voltar
           </Button>
@@ -294,7 +314,7 @@ export default function VehicleDetails() {
   const vehicleTitle = vehicle.title || `${vehicle.brand || ""} ${vehicle.model || ""} ${vehicle.year || ""}`.trim();
   const location = vehicle.location_city && vehicle.location_state 
     ? `${vehicle.location_city} - ${vehicle.location_state}` 
-    : "Localização não informada";
+    : "LocalizaÃ§Ã£o nÃ£o informada";
 
   return (
     <WebLayout>
@@ -339,7 +359,7 @@ export default function VehicleDetails() {
               <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
                   <Car className="w-16 h-16 mx-auto mb-2" />
-                  <p>Sem fotos disponíveis</p>
+                  <p>Sem fotos disponÃ­veis</p>
                 </div>
               </div>
             )}
@@ -380,7 +400,7 @@ export default function VehicleDetails() {
                 <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
                   <Gauge className="w-6 h-6 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Câmbio</p>
+                    <p className="text-xs text-muted-foreground">CÃ¢mbio</p>
                     <p className="font-semibold capitalize">{vehicle.transmission}</p>
                   </div>
                 </div>
@@ -389,7 +409,7 @@ export default function VehicleDetails() {
                 <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
                   <Fuel className="w-6 h-6 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Combustível</p>
+                    <p className="text-xs text-muted-foreground">CombustÃ­vel</p>
                     <p className="font-semibold">{vehicle.fuel_type}</p>
                   </div>
                 </div>
@@ -411,7 +431,7 @@ export default function VehicleDetails() {
               <div className="space-y-3">
                 {vehicle.daily_price && (
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Diária</span>
+                    <span className="text-muted-foreground">DiÃ¡ria</span>
                     <span className="text-2xl font-bold text-primary">
                       R$ {vehicle.daily_price.toLocaleString('pt-BR')}
                     </span>
@@ -435,12 +455,60 @@ export default function VehicleDetails() {
                 )}
                 {vehicle.deposit_amount && (
                   <div className="flex justify-between items-center pt-3 border-t border-border">
-                    <span className="text-muted-foreground">Caução</span>
+                    <span className="text-muted-foreground">CauÃ§Ã£o</span>
                     <span className="font-semibold">
                       R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
                     </span>
                   </div>
                 )}
+              </div>
+            </div>
+
+
+            {/* Listing Conditions */}
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <h3 className="text-xl font-semibold">Condicoes do anuncio</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Reserva sem motorista</span>
+                  <span className="font-medium">
+                    {vehicle.daily_price ? `R$ ${vehicle.daily_price.toLocaleString("pt-BR")} / dia` : "Sob consulta"}
+                  </span>
+                </div>
+
+                {vehicle.has_driver_option ? (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Reserva com motorista</span>
+                      <span className="font-medium">
+                        {vehicle.daily_price != null && vehicle.driver_daily_price != null
+                          ? `R$ ${(vehicle.daily_price + vehicle.driver_daily_price).toLocaleString("pt-BR")} / dia`
+                          : "Sob consulta"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Adicional do motorista</span>
+                      <span className="font-medium">
+                        {vehicle.driver_daily_price != null ? `R$ ${vehicle.driver_daily_price.toLocaleString("pt-BR")} / dia` : "Sob consulta"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Este anuncio nao oferece motorista disponibilizado pelo locador.</p>
+                )}
+
+                {vehicle.driver_notes ? (
+                  <div className="rounded-xl bg-secondary/50 p-3 text-muted-foreground">
+                    {vehicle.driver_notes}
+                  </div>
+                ) : null}
+
+                {vehicle.mileage_limit_per_day ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Limite de quilometragem</span>
+                    <span className="font-medium">{vehicle.mileage_limit_per_day} km por dia</span>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -460,12 +528,28 @@ export default function VehicleDetails() {
                 size="lg"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
-                Falar com proprietário
+                Falar com proprietÃ¡rio
               </Button>
             </div>
           </div>
         </div>
       </div>
+      <AlertDialog open={showReservationNotice} onOpenChange={setShowReservationNotice}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Antes de iniciar a reserva</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para seguir, confirme que a documentacao do motorista e a situacao do veiculo estao regulares. Reservas com pendencias cadastrais, documentais ou operacionais podem nao ser aprovadas pela plataforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Revisar depois</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReservationContinue}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </WebLayout>
   );
 }
+
+

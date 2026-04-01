@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export default function BookVehicle() {
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const [withDriver, setWithDriver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCNHModal, setShowCNHModal] = useState(false);
 
@@ -63,10 +64,16 @@ export default function BookVehicle() {
     return days * vehicle.daily_price;
   };
 
+  const calculateDriverTotal = () => {
+    if (!vehicle?.has_driver_option || !withDriver) return 0;
+    return calculateDays() * (vehicle.driver_daily_price || 0);
+  };
+
   const calculateTotal = () => {
     const rentalPrice = calculateRentalPrice();
     const deposit = vehicle?.deposit_amount || 0;
-    return rentalPrice + deposit;
+    const driverTotal = calculateDriverTotal();
+    return rentalPrice + deposit + driverTotal;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,7 +100,7 @@ export default function BookVehicle() {
     }
 
     if (!pickupLocation || !dropoffLocation) {
-      toast.error("Por favor, informe os locais de retirada e devolução");
+      toast.error("Por favor, informe os locais de retirada e devoluÃ§Ã£o");
       return;
     }
 
@@ -101,7 +108,7 @@ export default function BookVehicle() {
 
     const { user } = await getCurrentUser();
     if (!user) {
-      toast.error("Você precisa estar logado");
+      toast.error("VocÃª precisa estar logado");
       navigate("/auth");
       return;
     }
@@ -116,7 +123,10 @@ export default function BookVehicle() {
       dropoff_location: dropoffLocation,
       total_price: calculateTotal(),
       deposit_amount: vehicle.deposit_amount || 0,
-      
+      with_driver: withDriver,
+      driver_daily_rate: withDriver ? vehicle.driver_daily_price || 0 : 0,
+      driver_total_amount: withDriver ? calculateDriverTotal() : 0,
+      driver_license_verification_status: "not_started",
       notes: notes || null,
     });
 
@@ -125,7 +135,7 @@ export default function BookVehicle() {
     if (rental) {
       toast.success("Reserva criada com sucesso!");
       
-      // Notificar o proprietário por email
+      // Notificar o proprietÃ¡rio por email
       const renterProfile = await getProfile(user.id);
       const vehicleTitle = vehicle.title || `${vehicle.brand} ${vehicle.model}`;
       notifyRentalRequest(
@@ -209,10 +219,10 @@ export default function BookVehicle() {
 
               {/* Dates */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Período</h3>
+                <h3 className="font-semibold text-lg">PerÃ­odo</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label>Data de início</Label>
+                    <Label>Data de inÃ­cio</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -240,7 +250,7 @@ export default function BookVehicle() {
                     </Popover>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Data de término</Label>
+                    <Label>Data de tÃ©rmino</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -275,26 +285,85 @@ export default function BookVehicle() {
 
               {/* Locations - Read only, defined by owner */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Local de Retirada e Devolução</h3>
+                <h3 className="font-semibold text-lg">Local de Retirada e DevoluÃ§Ã£o</h3>
                 <div className="bg-secondary/50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-2">
                     <MapPin className="w-4 h-4" />
-                    <span className="font-medium text-foreground">{pickupLocation || "A definir com o proprietário"}</span>
+                    <span className="font-medium text-foreground">{pickupLocation || "A definir com o proprietÃ¡rio"}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    O local exato de retirada e devolução será combinado diretamente com o proprietário após a aprovação da reserva.
+                    O local exato de retirada e devoluÃ§Ã£o serÃ¡ combinado diretamente com o proprietÃ¡rio apÃ³s a aprovaÃ§Ã£o da reserva.
                   </p>
                 </div>
               </div>
 
+
+              {vehicle.has_driver_option ? (
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h3 className="font-semibold text-lg">Modalidade da reserva</h3>
+                  <p className="text-sm text-muted-foreground">
+                    O locador disponibiliza este veiculo com ou sem motorista. Escolha abaixo como deseja seguir.
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setWithDriver(false)}
+                      className={`rounded-2xl border p-4 text-left transition-colors ${!withDriver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                    >
+                      <p className="font-semibold">Sem motorista</p>
+                      <p className="text-sm text-muted-foreground">Use o valor base do anuncio.</p>
+                      <p className="mt-3 text-lg font-bold text-primary">
+                        {vehicle.daily_price ? `R$ ${vehicle.daily_price.toLocaleString("pt-BR")} / dia` : "Sob consulta"}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWithDriver(true)}
+                      className={`rounded-2xl border p-4 text-left transition-colors ${withDriver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                    >
+                      <p className="font-semibold">Com motorista do locador</p>
+                      <p className="text-sm text-muted-foreground">Adicional cobrado pelo servico do motorista.</p>
+                      <p className="mt-3 text-lg font-bold text-primary">
+                        {vehicle.daily_price != null && vehicle.driver_daily_price != null
+                          ? `R$ ${(vehicle.daily_price + vehicle.driver_daily_price).toLocaleString("pt-BR")} / dia`
+                          : "Sob consulta"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Adicional: {vehicle.driver_daily_price != null ? `R$ ${vehicle.driver_daily_price.toLocaleString("pt-BR")} / dia` : "sob consulta"}
+                      </p>
+                    </button>
+                  </div>
+
+                  {vehicle.driver_notes ? (
+                    <div className="rounded-xl bg-secondary/50 p-4 text-sm text-muted-foreground">
+                      {vehicle.driver_notes}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {vehicle.mileage_limit_per_day ? (
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-2">
+                  <h3 className="font-semibold text-lg">Limite de quilometragem</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Este anuncio possui limite de {vehicle.mileage_limit_per_day} km por dia.
+                  </p>
+                  {days > 0 ? (
+                    <p className="text-sm font-medium">Total previsto para o periodo selecionado: {days * vehicle.mileage_limit_per_day} km.</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {/* Notes */}
               <div className="bg-card border border-border rounded-2xl p-6">
-                <Label htmlFor="notes">Observações (opcional)</Label>
+                <Label htmlFor="notes">ObservaÃ§Ãµes (opcional)</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Alguma informação adicional..."
+                  placeholder="Alguma informaÃ§Ã£o adicional..."
                   className="mt-2"
                   rows={4}
                 />
@@ -319,27 +388,41 @@ export default function BookVehicle() {
               {days > 0 ? (
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Período</span>
+                    <span className="text-muted-foreground">PerÃ­odo</span>
                     <span className="font-medium">{days} dia{days !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Diária</span>
+                    <span className="text-muted-foreground">DiÃ¡ria</span>
                     <span className="font-medium">
                       R$ {vehicle.daily_price?.toLocaleString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal diárias</span>
+                    <span className="text-muted-foreground">Subtotal diÃ¡rias</span>
                     <span className="font-medium">
                       R$ {calculateRentalPrice().toLocaleString('pt-BR')}
                     </span>
                   </div>
+                  {withDriver && vehicle.has_driver_option ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Motorista</span>
+                      <span className="font-medium">
+                        R$ {calculateDriverTotal().toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  ) : null}
                   {vehicle.deposit_amount ? (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Caução</span>
+                      <span className="text-muted-foreground">CauÃ§Ã£o</span>
                       <span className="font-medium">
                         R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
                       </span>
+                    </div>
+                  ) : null}
+                  {vehicle.mileage_limit_per_day ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Limite de km</span>
+                      <span className="font-medium">{days * vehicle.mileage_limit_per_day} km</span>
                     </div>
                   ) : null}
                   <div className="flex justify-between pt-4 border-t border-border">
@@ -363,3 +446,5 @@ export default function BookVehicle() {
     </WebLayout>
   );
 }
+
+

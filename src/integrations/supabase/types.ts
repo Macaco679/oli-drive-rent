@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -83,7 +83,7 @@ export type Database = {
         Row: {
           back_path: string | null
           category: string | null
-          codigo_segurança: number | null
+          "codigo_seguranÃ§a": number | null
           cpf: number | null
           created_at: string
           document_url: string | null
@@ -105,7 +105,7 @@ export type Database = {
         Insert: {
           back_path?: string | null
           category?: string | null
-          codigo_segurança?: number | null
+          "codigo_seguranÃ§a"?: number | null
           cpf?: number | null
           created_at?: string
           document_url?: string | null
@@ -127,7 +127,7 @@ export type Database = {
         Update: {
           back_path?: string | null
           category?: string | null
-          codigo_segurança?: number | null
+          "codigo_seguranÃ§a"?: number | null
           cpf?: number | null
           created_at?: string
           document_url?: string | null
@@ -625,7 +625,12 @@ export type Database = {
         Row: {
           created_at: string
           deposit_amount: number | null
+          driver_daily_rate: number | null
           driver_license_id: string | null
+          driver_license_verification_payload: Json | null
+          driver_license_verification_status: string
+          driver_license_verified_at: string | null
+          driver_total_amount: number | null
           dropoff_location: string | null
           end_date: string
           id: string
@@ -633,6 +638,7 @@ export type Database = {
           owner_id: string
           payment_deadline: string | null
           pickup_location: string | null
+          with_driver: boolean
           renter_id: string
           start_date: string
           status: Database["public"]["Enums"]["oli_rental_status"]
@@ -643,7 +649,12 @@ export type Database = {
         Insert: {
           created_at?: string
           deposit_amount?: number | null
+          driver_daily_rate?: number | null
           driver_license_id?: string | null
+          driver_license_verification_payload?: Json | null
+          driver_license_verification_status?: string
+          driver_license_verified_at?: string | null
+          driver_total_amount?: number | null
           dropoff_location?: string | null
           end_date: string
           id?: string
@@ -651,6 +662,7 @@ export type Database = {
           owner_id: string
           payment_deadline?: string | null
           pickup_location?: string | null
+          with_driver?: boolean
           renter_id: string
           start_date: string
           status?: Database["public"]["Enums"]["oli_rental_status"]
@@ -661,7 +673,12 @@ export type Database = {
         Update: {
           created_at?: string
           deposit_amount?: number | null
+          driver_daily_rate?: number | null
           driver_license_id?: string | null
+          driver_license_verification_payload?: Json | null
+          driver_license_verification_status?: string
+          driver_license_verified_at?: string | null
+          driver_total_amount?: number | null
           dropoff_location?: string | null
           end_date?: string
           id?: string
@@ -669,6 +686,7 @@ export type Database = {
           owner_id?: string
           payment_deadline?: string | null
           pickup_location?: string | null
+          with_driver?: boolean
           renter_id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["oli_rental_status"]
@@ -825,6 +843,8 @@ export type Database = {
         Row: {
           body_type: Database["public"]["Enums"]["oli_vehicle_body_type"] | null
           brand: string | null
+          driver_daily_price: number | null
+          driver_notes: string | null
           color: string | null
           created_at: string
           daily_price: number | null
@@ -834,10 +854,12 @@ export type Database = {
           is_active: boolean
           is_popular: boolean
           location_city: string | null
+          mileage_limit_per_day: number | null
           location_state: string | null
           model: string | null
           monthly_price: number | null
           owner_id: string
+          has_driver_option: boolean
           pickup_complement: string | null
           pickup_neighborhood: string | null
           pickup_number: string | null
@@ -860,6 +882,8 @@ export type Database = {
             | Database["public"]["Enums"]["oli_vehicle_body_type"]
             | null
           brand?: string | null
+          driver_daily_price?: number | null
+          driver_notes?: string | null
           color?: string | null
           created_at?: string
           daily_price?: number | null
@@ -869,10 +893,12 @@ export type Database = {
           is_active?: boolean
           is_popular?: boolean
           location_city?: string | null
+          mileage_limit_per_day?: number | null
           location_state?: string | null
           model?: string | null
           monthly_price?: number | null
           owner_id: string
+          has_driver_option?: boolean
           pickup_complement?: string | null
           pickup_neighborhood?: string | null
           pickup_number?: string | null
@@ -895,6 +921,8 @@ export type Database = {
             | Database["public"]["Enums"]["oli_vehicle_body_type"]
             | null
           brand?: string | null
+          driver_daily_price?: number | null
+          driver_notes?: string | null
           color?: string | null
           created_at?: string
           daily_price?: number | null
@@ -904,10 +932,12 @@ export type Database = {
           is_active?: boolean
           is_popular?: boolean
           location_city?: string | null
+          mileage_limit_per_day?: number | null
           location_state?: string | null
           model?: string | null
           monthly_price?: number | null
           owner_id?: string
+          has_driver_option?: boolean
           pickup_complement?: string | null
           pickup_neighborhood?: string | null
           pickup_number?: string | null
@@ -1191,3 +1221,7 @@ export const Constants = {
     },
   },
 } as const
+
+
+
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Check, Clock, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullTimelineStep, TimelineStepStatus } from "@/lib/inspectionTypes";
@@ -44,6 +44,17 @@ function getInspectionStepStatus(
   return "pending";
 }
 
+
+function mapRentalLicenseToTimeline(
+  renterLicenseStatus: string | null | undefined,
+  rentalStatus: string
+): TimelineStepStatus {
+  if (rentalStatus === "pending_approval") return "pending";
+  if (renterLicenseStatus === "approved") return "done";
+  if (renterLicenseStatus === "pending") return "analyzing";
+  if (renterLicenseStatus === "rejected") return "rejected";
+  return rentalStatus === "approved" || rentalStatus === "active" ? "current" : "pending";
+}
 function mapPaymentToTimeline(
   paymentStatus: PaymentStatus,
   ownerInitialDone: boolean
@@ -70,7 +81,8 @@ export function buildFullTimeline(
   inspections: InspectionRecord[],
   rentalStatus: string,
   hasPaid: boolean,
-  paymentStatus?: PaymentStatus
+  paymentStatus?: PaymentStatus,
+  renterLicenseStatus?: string | null
 ): FullTimelineStep[] {
   const cStage = deriveContractStage(contract);
 
@@ -87,16 +99,18 @@ export function buildFullTimeline(
 
   const paymentDone = hasPaid;
   const paymentStepStatus = mapPaymentToTimeline(paymentStatus ?? null, ownerInitialDone);
+  const renterLicenseStepStatus = mapRentalLicenseToTimeline(renterLicenseStatus, rentalStatus);
 
   return [
     { key: "approved", label: "Pedido aprovado", status: rentalStatus !== "pending_approval" ? "done" : "current" },
-    { key: "contract_sent", label: "Contrato enviado", status: contractCreated ? "done" : rentalStatus === "approved" ? "current" : "pending" },
-    { key: "renter_signed", label: "Contrato locatário", status: renterSigned ? "done" : contractCreated ? "current" : "pending" },
+    { key: "renter_cnh", label: "CNH locatario", status: renterLicenseStepStatus },
+    { key: "contract_sent", label: "Contrato enviado", status: contractCreated ? "done" : renterLicenseStepStatus === "done" ? "current" : "pending" },
+    { key: "renter_signed", label: "Contrato locatÃ¡rio", status: renterSigned ? "done" : contractCreated ? "current" : "pending" },
     { key: "owner_signed", label: "Contrato locador", status: ownerSigned ? "done" : renterSigned ? "current" : "pending" },
     { key: "contract_done", label: "Contrato assinado", status: bothSigned ? "done" : "pending" },
     { key: "owner_initial", label: "Vistoria locador", status: bothSigned ? ownerInitial : "pending" },
     { key: "payment", label: "Pagamento", status: bothSigned ? paymentStepStatus : "pending" },
-    { key: "renter_pickup", label: "Vistoria locatário retirada", status: paymentDone ? (renterPickup === "pending" ? "current" : renterPickup) : "pending" },
+    { key: "renter_pickup", label: "Vistoria locatÃ¡rio retirada", status: paymentDone ? (renterPickup === "pending" ? "current" : renterPickup) : "pending" },
     { key: "owner_final", label: "Vistoria locador final", status: renterPickupDone ? (ownerFinal === "pending" ? "current" : ownerFinal) : "pending" },
   ];
 }
@@ -107,12 +121,13 @@ interface InspectionTimelineProps {
   rentalStatus: string;
   hasPaid?: boolean;
   paymentStatus?: PaymentStatus;
+  renterLicenseStatus?: string | null;
   className?: string;
   initialVisible?: number;
 }
 
-export function InspectionTimeline({ contract, inspections, rentalStatus, hasPaid = false, paymentStatus, className, initialVisible = 10 }: InspectionTimelineProps) {
-  const allSteps = buildFullTimeline(contract, inspections, rentalStatus, hasPaid, paymentStatus);
+export function InspectionTimeline({ contract, inspections, rentalStatus, hasPaid = false, paymentStatus, renterLicenseStatus, className, initialVisible = 10 }: InspectionTimelineProps) {
+  const allSteps = buildFullTimeline(contract, inspections, rentalStatus, hasPaid, paymentStatus, renterLicenseStatus);
   const [expanded, setExpanded] = useState(false);
   const visibleSteps = initialVisible >= allSteps.length || expanded ? allSteps : allSteps.slice(0, initialVisible);
   const hasMore = initialVisible < allSteps.length && !expanded;
@@ -146,8 +161,8 @@ export function InspectionTimeline({ contract, inspections, rentalStatus, hasPai
               )}
             >
               {step.label}
-              {step.status === "done" && <span className="text-[10px] text-primary ml-1">✓</span>}
-              {step.status === "rejected" && <span className="text-[10px] text-destructive ml-1">✗</span>}
+              {step.status === "done" && <span className="text-[10px] text-primary ml-1">âœ“</span>}
+              {step.status === "rejected" && <span className="text-[10px] text-destructive ml-1">âœ—</span>}
               {step.status === "analyzing" && <span className="text-[10px] text-blue-600 ml-1">analisando...</span>}
             </div>
           </div>
@@ -172,3 +187,4 @@ export function InspectionTimeline({ contract, inspections, rentalStatus, hasPai
     </div>
   );
 }
+

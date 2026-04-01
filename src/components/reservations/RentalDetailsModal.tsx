@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
   pending_approval: { label: "Pendente", variant: "secondary" },
   approved: { label: "Aprovada", variant: "default" },
   active: { label: "Em uso", variant: "default" },
-  completed: { label: "Concluída", variant: "outline" },
+  completed: { label: "ConcluÃ­da", variant: "outline" },
   cancelled: { label: "Cancelada", variant: "destructive" },
 };
 
@@ -49,11 +49,12 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
 
   const vehicleTitle = rental.vehicle?.title || 
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-    "Veículo";
+    "VeÃ­culo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
   const isApproved = rental.status === "approved";
+  const rentalLicenseStatus = (rental as { driver_license_verification_status?: string | null }).driver_license_verification_status || "not_started";
 
   const handleApprove = async () => {
     setLoading(true);
@@ -61,9 +62,9 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     setLoading(false);
     
     if (success) {
-      toast.success("Reserva aprovada! O cliente receberá o contrato e poderá efetuar o pagamento.");
+      toast.success("Reserva aprovada! O locatario precisara concluir a validacao de CNH desta reserva antes do contrato.");
       
-      // Enviar notificação por email
+      // Enviar notificaÃ§Ã£o por email
       notifyRentalApproved(
         rental.renter_id,
         vehicleTitle,
@@ -86,7 +87,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     if (success) {
       toast.success("Reserva recusada");
       
-      // Enviar notificação por email
+      // Enviar notificaÃ§Ã£o por email
       notifyRentalRejected(
         rental.renter_id,
         vehicleTitle,
@@ -131,7 +132,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
               <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} até{" "}
+                  {format(new Date(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} atÃ©{" "}
                   {format(new Date(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
                 </span>
               </div>
@@ -144,43 +145,43 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
           <div>
             <h4 className="font-semibold mb-4 flex items-center gap-2">
               <User className="w-5 h-5" />
-              Dados do Locatário
+              Dados do LocatÃ¡rio
             </h4>
             {renter ? (
               <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Nome completo</span>
-                  <span className="font-medium">{renter.full_name || "Não informado"}</span>
+                  <span className="font-medium">{renter.full_name || "NÃ£o informado"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     Email
                   </span>
-                  <span className="font-medium">{renter.email || "Não informado"}</span>
+                  <span className="font-medium">{renter.email || "NÃ£o informado"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Phone className="w-4 h-4" />
                     Telefone
                   </span>
-                  <span className="font-medium">{renter.phone || renter.whatsapp_phone || "Não informado"}</span>
+                  <span className="font-medium">{renter.phone || renter.whatsapp_phone || "NÃ£o informado"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">CPF</span>
-                  <span className="font-medium">{renter.cpf || "Não informado"}</span>
+                  <span className="font-medium">{renter.cpf || "NÃ£o informado"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Data de nascimento</span>
                   <span className="font-medium">
                     {renter.birth_date 
                       ? format(new Date(renter.birth_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "Não informado"}
+                      : "NÃ£o informado"}
                   </span>
                 </div>
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">Carregando dados do locatário...</p>
+              <p className="text-muted-foreground text-sm">Carregando dados do locatÃ¡rio...</p>
             )}
           </div>
 
@@ -190,7 +191,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
           <div>
             <h4 className="font-semibold mb-4 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Locais de Retirada e Devolução
+              Locais de Retirada e DevoluÃ§Ã£o
             </h4>
             <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -198,12 +199,12 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
                 <span className="font-medium">{rental.pickup_location || "A definir"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Devolução</span>
+                <span className="text-muted-foreground">DevoluÃ§Ã£o</span>
                 <span className="font-medium">{rental.dropoff_location || "A definir"}</span>
               </div>
             </div>
             <p className="text-muted-foreground text-xs mt-2">
-              * Os locais de retirada e devolução são definidos pelo proprietário em comum acordo com o cliente.
+              * Os locais de retirada e devoluÃ§Ã£o sÃ£o definidos pelo proprietÃ¡rio em comum acordo com o cliente.
             </p>
           </div>
 
@@ -219,7 +220,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
             </div>
             {rental.deposit_amount && (
               <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-                <span>Caução</span>
+                <span>CauÃ§Ã£o</span>
                 <span>R$ {rental.deposit_amount.toLocaleString('pt-BR')}</span>
               </div>
             )}
@@ -230,7 +231,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
             <>
               <Separator />
               <div>
-                <h4 className="font-semibold mb-2">Observações do cliente</h4>
+                <h4 className="font-semibold mb-2">ObservaÃ§Ãµes do cliente</h4>
                 <p className="text-muted-foreground bg-secondary/50 rounded-xl p-4">
                   {rental.notes}
                 </p>
@@ -278,3 +279,4 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     </Dialog>
   );
 }
+

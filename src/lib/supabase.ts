@@ -1,8 +1,9 @@
-// ============================================================
-// SUPABASE CONECTADO - Funções Reais
+﻿// ============================================================
+// SUPABASE CONECTADO - FunÃ§Ãµes Reais
 // ============================================================
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface OliProfile {
   id: string;
@@ -14,6 +15,10 @@ export interface OliProfile {
   marital_status: string | null;
   profession: string | null;
   birth_date: string | null;
+  street: string | null;
+  neigbhorhood: string | null;
+  number: number | null;
+  complemention: string | null;
   phone: string | null;
   whatsapp_phone: string | null;
   role: "renter" | "owner" | "both";
@@ -40,6 +45,10 @@ export interface OliVehicle {
   weekly_price: number | null;
   monthly_price: number | null;
   deposit_amount: number | null;
+  has_driver_option: boolean;
+  driver_daily_price: number | null;
+  driver_notes: string | null;
+  mileage_limit_per_day: number | null;
   location_city: string | null;
   location_state: string | null;
   pickup_neighborhood: string | null;
@@ -76,6 +85,13 @@ export interface OliRental {
   dropoff_location: string | null;
   total_price: number | null;
   deposit_amount: number | null;
+  driver_license_id: string | null;
+  driver_license_verification_status: string | null;
+  driver_license_verified_at: string | null;
+  driver_license_verification_payload: unknown | null;
+  with_driver: boolean;
+  driver_daily_rate: number | null;
+  driver_total_amount: number | null;
   status: string;
   notes: string | null;
   created_at: string;
@@ -212,7 +228,7 @@ export const getAvailableVehicles = async (limit?: number): Promise<OliVehicle[]
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao buscar veículos disponíveis:", error);
+    console.error("Erro ao buscar veÃ­culos disponÃ­veis:", error);
     return [];
   }
 
@@ -232,7 +248,7 @@ export const getAllVehicles = async (limit?: number): Promise<OliVehicle[]> => {
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao buscar todos os veículos:", error);
+    console.error("Erro ao buscar todos os veÃ­culos:", error);
     return [];
   }
 
@@ -247,7 +263,7 @@ export const getVehicleById = async (vehicleId: string): Promise<OliVehicle | nu
     .single();
 
   if (error) {
-    console.error("Erro ao buscar veículo:", error);
+    console.error("Erro ao buscar veÃ­culo:", error);
     return null;
   }
 
@@ -262,7 +278,7 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
     .order("is_cover", { ascending: false });
 
   if (error) {
-    console.error("Erro ao buscar fotos do veículo:", error);
+    console.error("Erro ao buscar fotos do veÃ­culo:", error);
     return [];
   }
 
@@ -277,7 +293,7 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
         return { ...photo, image_url: parsed.toString() };
       }
     } catch {
-      // ignora URLs inválidas
+      // ignora URLs invÃ¡lidas
     }
     return photo;
   });
@@ -294,7 +310,7 @@ const normalizeImageUrl = (url: string): string => {
   const correctHost = "sgpktbljjlixmyjmhppa.supabase.co";
   try {
     const parsed = new URL(url);
-    // Se o host contém o projeto ref mas tem typo (ex: "h" extra), corrige
+    // Se o host contÃ©m o projeto ref mas tem typo (ex: "h" extra), corrige
     if (parsed.hostname.includes("sgpktblj") && parsed.hostname !== correctHost) {
       parsed.hostname = correctHost;
       return parsed.toString();
@@ -318,7 +334,7 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
   const coverUrl = coverRes.data?.image_url ?? null;
   if (coverUrl) return normalizeImageUrl(coverUrl);
 
-  // 2) Se não houver capa, tenta qualquer foto na tabela
+  // 2) Se nÃ£o houver capa, tenta qualquer foto na tabela
   const anyRes = await supabase
     .from("oli_vehicle_photos")
     .select("image_url")
@@ -336,7 +352,7 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
 
   if (listErr || !files || files.length === 0) return null;
 
-  // Pega o primeiro arquivo "real" (não pasta)
+  // Pega o primeiro arquivo "real" (nÃ£o pasta)
   const first = files.find((f) => !!f.name && !f.name.endsWith("/"));
   if (!first?.name) return null;
 
@@ -354,7 +370,7 @@ export const getMyVehicles = async (ownerId: string): Promise<OliVehicle[]> => {
     .eq("owner_id", ownerId);
 
   if (error) {
-    console.error("Erro ao buscar meus veículos:", error);
+    console.error("Erro ao buscar meus veÃ­culos:", error);
     return [];
   }
 
@@ -375,6 +391,13 @@ export const createRental = async (rental: {
   dropoff_location?: string;
   total_price?: number;
   deposit_amount?: number;
+  driver_license_id?: string | null;
+  driver_license_verification_status?: string | null;
+  driver_license_verified_at?: string | null;
+  driver_license_verification_payload?: Json | null;
+  with_driver?: boolean;
+  driver_daily_rate?: number;
+  driver_total_amount?: number;
   notes?: string;
 }): Promise<OliRental | null> => {
   const { data, error } = await supabase
@@ -414,7 +437,7 @@ export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]>
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Erro ao buscar reservas dos meus veículos:", error);
+    console.error("Erro ao buscar reservas dos meus veÃ­culos:", error);
     return [];
   }
 
@@ -452,3 +475,8 @@ export const getProfileById = async (userId: string): Promise<OliProfile | null>
 
   return data as OliProfile;
 };
+
+
+
+
+

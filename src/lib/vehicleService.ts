@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+﻿import { supabase } from "@/integrations/supabase/client";
 
 // Re-export from vehiclePhotoService for convenience
 export {
@@ -36,6 +36,10 @@ export interface VehicleFormData {
   weekly_price?: number;
   monthly_price?: number;
   deposit_amount?: number;
+  has_driver_option?: boolean;
+  driver_daily_price?: number;
+  driver_notes?: string;
+  mileage_limit_per_day?: number;
   body_type?: string;
   segment?: string;
   is_popular?: boolean;
@@ -83,6 +87,10 @@ export async function createVehicle(data: VehicleFormData): Promise<{ id: string
       weekly_price: data.weekly_price || null,
       monthly_price: data.monthly_price || null,
       deposit_amount: data.deposit_amount || null,
+      has_driver_option: data.has_driver_option || false,
+      driver_daily_price: data.driver_daily_price || null,
+      driver_notes: data.driver_notes || null,
+      mileage_limit_per_day: data.mileage_limit_per_day || null,
       body_type: (data.body_type as any) || null,
       segment: (data.segment as any) || null,
       is_popular: data.is_popular || false,
@@ -220,3 +228,4 @@ export async function deleteVehicle(vehicleId: string): Promise<boolean> {
 
   return true;
 }
+

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+﻿import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getDriverLicense, DriverLicenseRecord } from "@/lib/driverLicenseService";
 
@@ -9,6 +9,9 @@ export interface LicenseData {
   licenseNumber: string;
   category: string;
   expiresAt: string;
+  cpf: string;
+  codigoSeguranca: string;
+  nomeMae: string;
   frontPath?: string | null;
   backPath?: string | null;
   selfiePath?: string | null;
@@ -41,6 +44,9 @@ const defaultLicenseData: LicenseData = {
   licenseNumber: "",
   category: "",
   expiresAt: "",
+  cpf: "",
+  codigoSeguranca: "",
+  nomeMae: "",
   frontPath: null,
   backPath: null,
   selfiePath: null,
@@ -70,6 +76,9 @@ function mapRecordToData(record: DriverLicenseRecord): LicenseData {
     licenseNumber: record.license_number || "",
     category: record.category || "",
     expiresAt: record.expires_at || "",
+    cpf: record.cpf ? String(record.cpf) : "",
+    codigoSeguranca: record.codigo_seguranca ? String(record.codigo_seguranca) : "",
+    nomeMae: record.nome_mae || "",
     frontPath: record.front_path,
     backPath: record.back_path,
     selfiePath: record.selfie_path,
@@ -109,7 +118,7 @@ export function DriverLicenseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadFromSupabase();
 
-    // Escutar mudanças de autenticação
+    // Escutar mudanÃ§as de autenticaÃ§Ã£o
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") {
         loadFromSupabase();
@@ -160,3 +169,4 @@ export function useDriverLicense() {
   }
   return context;
 }
+
