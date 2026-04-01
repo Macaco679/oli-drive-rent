@@ -185,11 +185,42 @@ export function CardPaymentModal({
       if (error) throw error;
       console.log("Card webhook response:", data);
 
-      if (data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "approved" || data?.success === true) {
+      const isApproved = data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "approved" || data?.success === true || data?.approved === true;
+      const isDeclined = data?.status === "failed" || data?.status === "DECLINED" || data?.success === false;
+
+      if (isApproved) {
+        // Insert payment record into oli_payments so realtime picks it up
+        const paymentRecord = data?.payment || data;
+        const { error: insertErr } = await supabase
+          .from("oli_payments")
+          .insert({
+            rental_id: rental.id,
+            user_id: user.id,
+            payment_type: "rental",
+            amount: amount,
+            method: "credit_card",
+            status: "confirmed",
+            provider: paymentRecord?.provider || "asaas",
+            provider_payment_id: paymentRecord?.id || null,
+            provider_customer_id: paymentRecord?.provider_customer_id || "",
+            external_reference: paymentRecord?.id || null,
+            billingType: "CREDIT_CARD",
+          });
+
+        if (insertErr) {
+          console.warn("Payment record insert (may already exist):", insertErr);
+        }
+
+        // Update rental status to active
+        await supabase
+          .from("oli_rentals")
+          .update({ status: "active" })
+          .eq("id", rental.id);
+
         setSuccess(true);
         toast.success("Pagamento aprovado!");
         onPaymentComplete?.();
-      } else if (data?.status === "failed" || data?.status === "DECLINED" || data?.success === false) {
+      } else if (isDeclined) {
         setErrorMsg(data?.message || data?.error || "Pagamento recusado. Verifique os dados do cartão.");
         toast.error(data?.message || "Pagamento recusado");
       } else {
