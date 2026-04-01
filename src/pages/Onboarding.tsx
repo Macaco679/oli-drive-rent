@@ -315,7 +315,7 @@ export default function Onboarding() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="number">Numero</Label>
+                  <Label htmlFor="number">Número</Label>
                   <Input id="number" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="123" className="mt-1 h-12" />
                 </div>
                 <div>
@@ -332,7 +332,7 @@ export default function Onboarding() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="city">Cidade</Label>
-                  <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ex: Sao Paulo" className="mt-1 h-12" />
+                  <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ex: São Paulo" className="mt-1 h-12" />
                 </div>
                 <div>
                   <Label htmlFor="state">Estado (UF)</Label>
