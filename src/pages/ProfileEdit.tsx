@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,18 +32,16 @@ import { FaceRecognitionField } from "@/components/profile/FaceRecognitionField"
 import { MapPin } from "lucide-react";
 import { lookupAddressByPostalCode, sanitizePostalCode } from "@/lib/addressService";
 
-// Validation schema
 const formSchema = z.object({
   full_name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  cpf: z.string().min(11, "CPF deve ter 11 dÃ­gitos").max(14, "CPF invÃ¡lido"),
+  cpf: z.string().min(11, "CPF deve ter 11 d\u00edgitos").max(14, "CPF inv\u00e1lido"),
   rg: z.string().optional(),
   nationality: z.string().optional(),
   marital_status: z.string().optional(),
   profession: z.string().optional(),
-  birth_date: z.string().min(1, "Data de nascimento Ã© obrigatÃ³ria"),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dÃ­gitos").max(15, "Telefone invÃ¡lido"),
+  birth_date: z.string().min(1, "Data de nascimento \u00e9 obrigat\u00f3ria"),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 d\u00edgitos").max(15, "Telefone inv\u00e1lido"),
   whatsapp_phone: z.string().optional(),
-  // Address fields
   street: z.string().optional(),
   number: z.string().optional(),
   neighborhood: z.string().optional(),
@@ -55,16 +53,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Marital status options
 const maritalStatusOptions = [
   { value: "solteiro", label: "Solteiro(a)" },
   { value: "casado", label: "Casado(a)" },
   { value: "divorciado", label: "Divorciado(a)" },
-  { value: "viuvo", label: "ViÃºvo(a)" },
-  { value: "uniao_estavel", label: "UniÃ£o EstÃ¡vel" },
+  { value: "viuvo", label: "Vi\u00favo(a)" },
+  { value: "uniao_estavel", label: "Uni\u00e3o Est\u00e1vel" },
 ];
 
-// CPF formatting
 const formatCPF = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 3) return digits;
@@ -73,7 +69,6 @@ const formatCPF = (value: string): string => {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 };
 
-// Phone formatting
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 2) return digits;
@@ -81,12 +76,10 @@ const formatPhone = (value: string): string => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
-// RG formatting (simple, varies by state)
 const formatRG = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9.-]/g, "").slice(0, 20);
 };
 
-// CEP formatting
 const formatCEP = (value: string): string => {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
@@ -141,7 +134,6 @@ export default function ProfileEdit() {
       if (userProfile) {
         setProfile(userProfile);
 
-        // Load address from oli_user_addresses
         const { data: addrData } = await supabase
           .from("oli_user_addresses")
           .select("*")
@@ -179,9 +171,7 @@ export default function ProfileEdit() {
 
   const handlePostalCodeLookup = async (value: string) => {
     const postalCode = sanitizePostalCode(value);
-    if (postalCode.length !== 8) {
-      return;
-    }
+    if (postalCode.length !== 8) return;
 
     try {
       setSearchingPostalCode(true);
@@ -195,17 +185,17 @@ export default function ProfileEdit() {
         form.setValue("complement", address.complement, { shouldDirty: true });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel consultar o CEP.");
+      toast.error(error instanceof Error ? error.message : "N\u00e3o foi poss\u00edvel consultar o CEP.");
     } finally {
       setSearchingPostalCode(false);
     }
   };
+
   const onSubmit = async (data: FormData) => {
     if (!profile) return;
 
     setSaving(true);
     try {
-      // Remove formatting before saving
       const cleanedData: Record<string, unknown> = {
         full_name: data.full_name.trim(),
         cpf: data.cpf.replace(/\D/g, ""),
@@ -216,7 +206,6 @@ export default function ProfileEdit() {
         birth_date: data.birth_date,
         phone: data.phone.replace(/\D/g, ""),
         whatsapp_phone: data.whatsapp_phone?.replace(/\D/g, "") || null,
-        // Sync address fields to oli_profiles columns
         street: data.street?.trim() || null,
         neigbhorhood: data.neighborhood?.trim() || null,
         number: data.number?.trim() ? Number(data.number.trim()) : null,
@@ -227,7 +216,6 @@ export default function ProfileEdit() {
       if (updated) {
         setProfile(updated);
 
-        // Save address to oli_user_addresses (upsert)
         const addressData = {
           user_id: profile.id,
           street: data.street?.trim() || null,
@@ -241,7 +229,6 @@ export default function ProfileEdit() {
           label: "Principal",
         };
 
-        // Check if address already exists
         const { data: existingAddr } = await supabase
           .from("oli_user_addresses")
           .select("id")
@@ -289,7 +276,6 @@ export default function ProfileEdit() {
 
   return (
     <div className="min-h-screen bg-primary/5">
-      {/* Header */}
       <div className="bg-primary text-primary-foreground sticky top-0 z-50 shadow-lg">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
@@ -309,14 +295,12 @@ export default function ProfileEdit() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-        {/* Alert for incomplete profile */}
         {isIncomplete && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar veÃ­culos.
+              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar ve\u00edculos.
               <br />
               <span className="text-sm">
                 Campos faltando: {missingFields.join(", ")}
@@ -329,31 +313,25 @@ export default function ProfileEdit() {
           <Alert className="mb-6 border-primary/50 bg-primary/5 text-primary">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil completo!</strong> VocÃª pode alugar veÃ­culos normalmente.
+              <strong>Perfil completo!</strong> Voc\u00ea pode alugar ve\u00edculos normalmente.
             </AlertDescription>
           </Alert>
         )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Email (read-only) */}
             <Card className="shadow-md border-0">
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg">E-mail</CardTitle>
                 <CardDescription>
-                  O e-mail nÃ£o pode ser alterado
+                  O e-mail n\u00e3o pode ser alterado
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <Input
-                  value={email}
-                  disabled
-                  className="bg-muted"
-                />
+                <Input value={email} disabled className="bg-muted" />
               </CardContent>
             </Card>
 
-            {/* Personal Data */}
             <Card className="shadow-md border-0">
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -481,7 +459,7 @@ export default function ProfileEdit() {
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ProfissÃ£o</FormLabel>
+                      <FormLabel>Profiss\u00e3o</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Motorista de aplicativo" {...field} />
                       </FormControl>
@@ -492,7 +470,6 @@ export default function ProfileEdit() {
               </CardContent>
             </Card>
 
-            {/* Contact Info */}
             <Card className="shadow-md border-0">
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -554,7 +531,6 @@ export default function ProfileEdit() {
               </CardContent>
             </Card>
 
-            {/* Address */}
             <Card className="shadow-md border-0">
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -562,10 +538,10 @@ export default function ProfileEdit() {
                     <span className="text-primary font-bold">3</span>
                   </div>
                   <MapPin className="w-5 h-5 text-primary" />
-                  EndereÃ§o
+                  Endere\u00e7o
                 </CardTitle>
                 <CardDescription>
-                  NecessÃ¡rio para geraÃ§Ã£o do contrato de locaÃ§Ã£o
+                  Necess\u00e1rio para gera\u00e7\u00e3o do contrato de loca\u00e7\u00e3o
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -589,7 +565,7 @@ export default function ProfileEdit() {
                     name="number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>NÃºmero</FormLabel>
+                        <FormLabel>N\u00famero</FormLabel>
                         <FormControl>
                           <Input placeholder="123" {...field} />
                         </FormControl>
@@ -635,7 +611,7 @@ export default function ProfileEdit() {
                       <FormItem>
                         <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <Input placeholder="SÃ£o Paulo" {...field} />
+                          <Input placeholder="S\u00e3o Paulo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -688,7 +664,6 @@ export default function ProfileEdit() {
               }}
             />
 
-            {/* Submit */}
             <Button
               type="submit"
               className="w-full h-14 text-lg shadow-lg"
@@ -703,7 +678,7 @@ export default function ProfileEdit() {
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Salvar AlteraÃ§Ãµes
+                  Salvar Altera\u00e7\u00f5es
                 </>
               )}
             </Button>
@@ -713,4 +688,3 @@ export default function ProfileEdit() {
     </div>
   );
 }
-
