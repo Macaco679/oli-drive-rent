@@ -953,7 +953,7 @@ export default function DriverLicenseForm() {
             <AlertDialogHeader>
               <AlertDialogTitle>Antes de enviar para validação</AlertDialogTitle>
               <AlertDialogDescription>
-                Se a CNH estiver com pendencias, vencimento, bloqueio ou qualquer situacao irregular, ela nao sera aceita pela plataforma. Confira o documento antes de continuar.
+                Se a CNH estiver com pendências, vencimento, bloqueio ou qualquer situação irregular, ela não será aceita pela plataforma. Confira o documento antes de continuar.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
