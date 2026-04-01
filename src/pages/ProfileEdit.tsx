@@ -34,13 +34,13 @@ import { lookupAddressByPostalCode, sanitizePostalCode } from "@/lib/addressServ
 
 const formSchema = z.object({
   full_name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  cpf: z.string().min(11, "CPF deve ter 11 d\u00edgitos").max(14, "CPF inv\u00e1lido"),
+  cpf: z.string().min(11, "CPF deve ter 11 dígitos").max(14, "CPF inválido"),
   rg: z.string().optional(),
   nationality: z.string().optional(),
   marital_status: z.string().optional(),
   profession: z.string().optional(),
-  birth_date: z.string().min(1, "Data de nascimento \u00e9 obrigat\u00f3ria"),
-  phone: z.string().min(10, "Telefone deve ter pelo menos 10 d\u00edgitos").max(15, "Telefone inv\u00e1lido"),
+  birth_date: z.string().min(1, "Data de nascimento é obrigatória"),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos").max(15, "Telefone inválido"),
   whatsapp_phone: z.string().optional(),
   street: z.string().optional(),
   number: z.string().optional(),
@@ -57,8 +57,8 @@ const maritalStatusOptions = [
   { value: "solteiro", label: "Solteiro(a)" },
   { value: "casado", label: "Casado(a)" },
   { value: "divorciado", label: "Divorciado(a)" },
-  { value: "viuvo", label: "Vi\u00favo(a)" },
-  { value: "uniao_estavel", label: "Uni\u00e3o Est\u00e1vel" },
+  { value: "viuvo", label: "Viúvo(a)" },
+  { value: "uniao_estavel", label: "União Estável" },
 ];
 
 const formatCPF = (value: string): string => {
@@ -185,7 +185,7 @@ export default function ProfileEdit() {
         form.setValue("complement", address.complement, { shouldDirty: true });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "N\u00e3o foi poss\u00edvel consultar o CEP.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível consultar o CEP.");
     } finally {
       setSearchingPostalCode(false);
     }
@@ -300,7 +300,7 @@ export default function ProfileEdit() {
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar ve\u00edculos.
+              <strong>Perfil incompleto!</strong> Complete seus dados para poder alugar veículos.
               <br />
               <span className="text-sm">
                 Campos faltando: {missingFields.join(", ")}
@@ -313,7 +313,7 @@ export default function ProfileEdit() {
           <Alert className="mb-6 border-primary/50 bg-primary/5 text-primary">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Perfil completo!</strong> Voc\u00ea pode alugar ve\u00edculos normalmente.
+              <strong>Perfil completo!</strong> Você pode alugar veículos normalmente.
             </AlertDescription>
           </Alert>
         )}
@@ -324,7 +324,7 @@ export default function ProfileEdit() {
               <CardHeader className="bg-primary/5 rounded-t-lg">
                 <CardTitle className="text-lg">E-mail</CardTitle>
                 <CardDescription>
-                  O e-mail n\u00e3o pode ser alterado
+                  O e-mail não pode ser alterado
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -459,7 +459,7 @@ export default function ProfileEdit() {
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Profiss\u00e3o</FormLabel>
+                      <FormLabel>Profissão</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Motorista de aplicativo" {...field} />
                       </FormControl>
@@ -538,10 +538,10 @@ export default function ProfileEdit() {
                     <span className="text-primary font-bold">3</span>
                   </div>
                   <MapPin className="w-5 h-5 text-primary" />
-                  Endere\u00e7o
+                  Endereço
                 </CardTitle>
                 <CardDescription>
-                  Necess\u00e1rio para gera\u00e7\u00e3o do contrato de loca\u00e7\u00e3o
+                  Necessário para geração do contrato de locação
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -565,7 +565,7 @@ export default function ProfileEdit() {
                     name="number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>N\u00famero</FormLabel>
+                        <FormLabel>Número</FormLabel>
                         <FormControl>
                           <Input placeholder="123" {...field} />
                         </FormControl>
@@ -611,7 +611,7 @@ export default function ProfileEdit() {
                       <FormItem>
                         <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <Input placeholder="S\u00e3o Paulo" {...field} />
+                          <Input placeholder="São Paulo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -678,7 +678,7 @@ export default function ProfileEdit() {
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Salvar Altera\u00e7\u00f5es
+                  Salvar Alterações
                 </>
               )}
             </Button>
