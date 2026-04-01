@@ -408,7 +408,8 @@ export const createRental = async (rental: {
     notes: rental.notes || null,
   };
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("oli_rentals")
     .insert([insertData])
     .select()
