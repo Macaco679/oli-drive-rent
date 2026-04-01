@@ -626,6 +626,9 @@ export type Database = {
           created_at: string
           deposit_amount: number | null
           driver_license_id: string | null
+          driver_license_verification_payload: Json | null
+          driver_license_verification_status: string | null
+          driver_license_verified_at: string | null
           dropoff_location: string | null
           end_date: string
           id: string
@@ -644,6 +647,9 @@ export type Database = {
           created_at?: string
           deposit_amount?: number | null
           driver_license_id?: string | null
+          driver_license_verification_payload?: Json | null
+          driver_license_verification_status?: string | null
+          driver_license_verified_at?: string | null
           dropoff_location?: string | null
           end_date: string
           id?: string
@@ -662,6 +668,9 @@ export type Database = {
           created_at?: string
           deposit_amount?: number | null
           driver_license_id?: string | null
+          driver_license_verification_payload?: Json | null
+          driver_license_verification_status?: string | null
+          driver_license_verified_at?: string | null
           dropoff_location?: string | null
           end_date?: string
           id?: string
