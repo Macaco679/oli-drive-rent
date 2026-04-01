@@ -103,7 +103,7 @@ function SecurityCodeHint() {
               <div className="h-2 rounded-full bg-slate-200" />
             </div>
             <div className="mt-5 rounded-lg border border-dashed border-primary bg-primary/10 p-3 text-center">
-              <p className="text-xs font-semibold text-primary">Codigo de seguranca</p>
+              <p className="text-xs font-semibold text-primary">Código de segurança</p>
               <p className="text-[11px] text-muted-foreground">Faixa inferior da CNH</p>
             </div>
           </div>
