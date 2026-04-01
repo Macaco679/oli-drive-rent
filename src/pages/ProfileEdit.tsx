@@ -547,6 +547,33 @@ export default function ProfileEdit() {
               <CardContent className="pt-6 space-y-4">
                 <FormField
                   control={form.control}
+                  name="postal_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            placeholder="00000-000"
+                            value={field.value}
+                            onChange={(e) => {
+                              const formatted = formatCEP(e.target.value);
+                              field.onChange(formatted);
+                              handlePostalCodeLookup(formatted);
+                            }}
+                            className="font-mono"
+                            inputMode="numeric"
+                          />
+                        </FormControl>
+                        {searchingPostalCode && <Loader2 className="absolute right-3 top-2.5 h-5 w-5 animate-spin text-muted-foreground" />}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="street"
                   render={({ field }) => (
                     <FormItem>
@@ -632,26 +659,6 @@ export default function ProfileEdit() {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="postal_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CEP</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="00000-000"
-                          value={field.value}
-                          onChange={(e) => field.onChange(formatCEP(e.target.value))}
-                          className="font-mono"
-                          inputMode="numeric"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
