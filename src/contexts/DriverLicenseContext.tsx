@@ -15,6 +15,7 @@ export interface LicenseData {
   frontPath?: string | null;
   backPath?: string | null;
   selfiePath?: string | null;
+  notes?: string | null;
 }
 
 export interface LicenseFiles {
