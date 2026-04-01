@@ -123,10 +123,6 @@ export default function BookVehicle() {
       dropoff_location: dropoffLocation,
       total_price: calculateTotal(),
       deposit_amount: vehicle.deposit_amount || 0,
-      with_driver: withDriver,
-      driver_daily_rate: withDriver ? vehicle.driver_daily_price || 0 : 0,
-      driver_total_amount: withDriver ? calculateDriverTotal() : 0,
-      driver_license_verification_status: "not_started",
       notes: notes || null,
     });
 

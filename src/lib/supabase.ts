@@ -392,17 +392,26 @@ export const createRental = async (rental: {
   total_price?: number;
   deposit_amount?: number;
   driver_license_id?: string | null;
-  driver_license_verification_status?: string | null;
-  driver_license_verified_at?: string | null;
-  driver_license_verification_payload?: Json | null;
-  with_driver?: boolean;
-  driver_daily_rate?: number;
-  driver_total_amount?: number;
-  notes?: string;
+  notes?: string | null;
 }): Promise<OliRental | null> => {
-  const { data, error } = await supabase
+  const insertData: Record<string, unknown> = {
+    vehicle_id: rental.vehicle_id,
+    renter_id: rental.renter_id,
+    owner_id: rental.owner_id,
+    start_date: rental.start_date,
+    end_date: rental.end_date,
+    pickup_location: rental.pickup_location || null,
+    dropoff_location: rental.dropoff_location || null,
+    total_price: rental.total_price || null,
+    deposit_amount: rental.deposit_amount || null,
+    driver_license_id: rental.driver_license_id || null,
+    notes: rental.notes || null,
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("oli_rentals")
-    .insert([rental])
+    .insert([insertData])
     .select()
     .single();
 
