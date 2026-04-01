@@ -319,9 +319,9 @@ export default function DriverLicenseForm() {
     const hasExistingBack = licenseData?.backPath;
     const hasExistingSelfie = licenseData?.selfiePath;
 
-    if (!frontFile && !hasExistingFront) newErrors.front = "Foto da frente Ã© obrigatÃ³ria";
-    if (!backFile && !hasExistingBack) newErrors.back = "Foto do verso Ã© obrigatÃ³ria";
-    if (!selfieFile && !hasExistingSelfie) newErrors.selfie = "Selfie segurando a CNH Ã© obrigatÃ³ria";
+    if (!frontFile && !hasExistingFront) newErrors.front = "Foto da frente é obrigatória";
+    if (!backFile && !hasExistingBack) newErrors.back = "Foto do verso é obrigatória";
+    if (!selfieFile && !hasExistingSelfie) newErrors.selfie = "Selfie segurando a CNH é obrigatória";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -353,7 +353,7 @@ export default function DriverLicenseForm() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("VocÃª precisa estar logado");
+        toast.error("Vocàª precisa estar logado");
         navigate("/auth");
         return;
       }
@@ -395,7 +395,7 @@ export default function DriverLicenseForm() {
       const backUrl = getBackPath ? await getSignedImageUrl(getBackPath) : null;
       const selfieUrl = getSelfiePath ? await getSignedImageUrl(getSelfiePath) : null;
 
-      // 3. Iniciar verificaÃ§Ã£o - mostrar timer
+      // 3. Iniciar verificação - mostrar timer
       setLoading(false);
       setVerifying(true);
       startTimer();
@@ -467,7 +467,7 @@ export default function DriverLicenseForm() {
         }
       } catch (fetchErr: unknown) {
         if (fetchErr instanceof Error && fetchErr.message === "TIMEOUT") {
-          console.error("[CNH] Webhook timeout apÃ³s", VERIFICATION_TIMEOUT_MS / 1000, "segundos");
+          console.error("[CNH] Webhook timeout após", VERIFICATION_TIMEOUT_MS / 1000, "segundos");
         } else {
           console.error("[CNH] Erro no webhook:", fetchErr);
         }
@@ -511,7 +511,7 @@ export default function DriverLicenseForm() {
         // 5b. Mostrar resultado na tela
         setVerificationResult({ approved: isApproved, statusLabel, motivo: webhookResult?.motivo || null });
 
-        // 5c. Enviar email de notificaÃ§Ã£o
+        // 5c. Enviar email de notificação
         try {
           const EDGE_FUNCTION_URL = `https://sgpktbljjlixmyjmhppa.supabase.co/functions/v1/send-notification-email`;
           const { data: { session } } = await supabase.auth.getSession();
@@ -539,7 +539,7 @@ export default function DriverLicenseForm() {
           const emailResult = await emailResp.text();
           console.log("[CNH] Resposta do email:", emailResp.status, emailResult);
         } catch (emailErr) {
-          console.warn("[CNH] Email de notificaÃ§Ã£o falhou:", emailErr);
+          console.warn("[CNH] Email de notificação falhou:", emailErr);
         }
 
         // 5d. Recarregar dados do contexto
@@ -551,7 +551,7 @@ export default function DriverLicenseForm() {
           status: "pending",
         });
         setVerifying(false);
-        toast.info("VerificaÃ§Ã£o em andamento. VocÃª serÃ¡ notificado em breve.");
+        toast.info("Verificação em andamento. Vocàª será notificado em breve.");
         await loadFromSupabase();
         navigate(pageBackTarget);
         return;
@@ -579,7 +579,7 @@ export default function DriverLicenseForm() {
     );
   }
 
-  // Tela de resultado da verificaÃ§Ã£o
+  // Tela de resultado da verificação
   if (verificationResult) {
     return (
       <WebLayout>
@@ -594,7 +594,7 @@ export default function DriverLicenseForm() {
                 Status: <span className="font-semibold text-green-700">{verificationResult.statusLabel}</span>
               </p>
               <p className="text-muted-foreground mb-8">
-                Sua carteira de habilitaÃ§Ã£o foi verificada com sucesso. Agora vocÃª pode fazer reservas de veÃ­culos na plataforma.
+                Sua carteira de habilitação foi verificada com sucesso. Agora vocàª pode fazer reservas de veículos na plataforma.
               </p>
               <div className="flex flex-col gap-3">
                 {verificationFlow === "rental" ? (
@@ -620,7 +620,7 @@ export default function DriverLicenseForm() {
               </div>
               <h1 className="text-2xl font-bold text-destructive mb-2">CNH Reprovada</h1>
               <p className="text-muted-foreground mb-2">
-                Verifique a situaÃ§Ã£o da sua carteira de habilitaÃ§Ã£o.
+                Verifique a situação da sua carteira de habilitação.
               </p>
               {verificationResult.motivo && (
                 <p className="text-sm text-destructive/80 mb-2">
@@ -628,7 +628,7 @@ export default function DriverLicenseForm() {
                 </p>
               )}
               <p className="text-muted-foreground mb-8">
-                Sua carteira de habilitaÃ§Ã£o nÃ£o foi aprovada na verificaÃ§Ã£o. Verifique os dados informados e as fotos enviadas, ou entre em contato com o suporte.
+                Sua carteira de habilitação não foi aprovada na verificação. Verifique os dados informados e as fotos enviadas, ou entre em contato com o suporte.
               </p>
               <div className="flex flex-col gap-3">
                 <Button onClick={() => { setVerificationResult(null); }} className="w-full h-12">
@@ -645,7 +645,7 @@ export default function DriverLicenseForm() {
     );
   }
 
-  // Tela de verificaÃ§Ã£o em andamento (timer)
+  // Tela de verificação em andamento (timer)
   if (verifying) {
     const progressPercent = Math.min((elapsedSeconds / 60) * 100, 95);
     return (
@@ -656,8 +656,8 @@ export default function DriverLicenseForm() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Verificando sua CNH</h1>
           <p className="text-muted-foreground mb-6">
-            Estamos consultando os Ã³rgÃ£os de trÃ¢nsito para validar sua habilitaÃ§Ã£o. 
-            Isso pode levar atÃ© 60 segundos.
+            Estamos consultando os órgãos de trânsito para validar sua habilitação. 
+            Isso pode levar até 60 segundos.
           </p>
 
           <div className="mb-4">
@@ -671,7 +671,7 @@ export default function DriverLicenseForm() {
           </div>
 
           <p className="text-sm text-muted-foreground mt-4">
-            NÃ£o feche esta pÃ¡gina. O resultado aparecerÃ¡ automaticamente.
+            Não feche esta página. O resultado aparecerá automaticamente.
           </p>
         </div>
     </WebLayout>
@@ -717,7 +717,7 @@ export default function DriverLicenseForm() {
               <span className="text-xl">â³</span>
             </div>
             <div>
-              <p className="font-medium text-yellow-800">Em anÃ¡lise</p>
+              <p className="font-medium text-yellow-800">Em análise</p>
               <p className="text-sm text-yellow-700">{verificationFlow === "rental" ? "A validacao desta reserva esta sendo analisada." : "Sua CNH esta sendo analisada."}</p>
             </div>
           </div>
@@ -819,7 +819,7 @@ export default function DriverLicenseForm() {
                       id="codigoSeguranca"
                       value={codigoSeguranca}
                       onChange={(e) => setCodigoSeguranca(e.target.value)}
-                      placeholder="CÃ³digo de seguranÃ§a da CNH"
+                      placeholder="Código de segurança da CNH"
                       className={`mt-1 h-12 ${errors.codigoSeguranca ? "border-destructive" : ""}`}
                       disabled={isViewMode}
                     />
@@ -827,12 +827,12 @@ export default function DriverLicenseForm() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="nomeMae">Nome da MÃ£e <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="nomeMae">Nome da Mãe <span className="text-destructive">*</span></Label>
                   <Input
                     id="nomeMae"
                     value={nomeMae}
                     onChange={(e) => setNomeMae(e.target.value)}
-                    placeholder="Nome completo da mÃ£e"
+                    placeholder="Nome completo da mãe"
                     className={`mt-1 h-12 ${errors.nomeMae ? "border-destructive" : ""}`}
                     disabled={isViewMode}
                   />
@@ -910,11 +910,11 @@ export default function DriverLicenseForm() {
               ) : verificationFlow === "rental" ? (
                 currentStatus === "rejected" ? "Reenviar validacao da reserva" : "Validar CNH para esta reserva"
               ) : currentStatus === "rejected" ? (
-                "Reenviar para verificaÃ§Ã£o"
+                "Reenviar para verificação"
               ) : currentStatus === "pending" ? (
                 "Atualizar e reenviar"
               ) : (
-                "Enviar para verificaÃ§Ã£o"
+                "Enviar para verificação"
               )}
             </Button>
           )}

@@ -100,7 +100,7 @@ export default function BookVehicle() {
     }
 
     if (!pickupLocation || !dropoffLocation) {
-      toast.error("Por favor, informe os locais de retirada e devoluÃ§Ã£o");
+      toast.error("Por favor, informe os locais de retirada e devolução");
       return;
     }
 
@@ -108,7 +108,7 @@ export default function BookVehicle() {
 
     const { user } = await getCurrentUser();
     if (!user) {
-      toast.error("VocÃª precisa estar logado");
+      toast.error("Vocàª precisa estar logado");
       navigate("/auth");
       return;
     }
@@ -135,7 +135,7 @@ export default function BookVehicle() {
     if (rental) {
       toast.success("Reserva criada com sucesso!");
       
-      // Notificar o proprietÃ¡rio por email
+      // Notificar o proprietário por email
       const renterProfile = await getProfile(user.id);
       const vehicleTitle = vehicle.title || `${vehicle.brand} ${vehicle.model}`;
       notifyRentalRequest(
@@ -219,10 +219,10 @@ export default function BookVehicle() {
 
               {/* Dates */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h3 className="font-semibold text-lg">PerÃ­odo</h3>
+                <h3 className="font-semibold text-lg">Período</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label>Data de inÃ­cio</Label>
+                    <Label>Data de início</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -250,7 +250,7 @@ export default function BookVehicle() {
                     </Popover>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Data de tÃ©rmino</Label>
+                    <Label>Data de término</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -285,14 +285,14 @@ export default function BookVehicle() {
 
               {/* Locations - Read only, defined by owner */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Local de Retirada e DevoluÃ§Ã£o</h3>
+                <h3 className="font-semibold text-lg">Local de Retirada e Devolução</h3>
                 <div className="bg-secondary/50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-2">
                     <MapPin className="w-4 h-4" />
-                    <span className="font-medium text-foreground">{pickupLocation || "A definir com o proprietÃ¡rio"}</span>
+                    <span className="font-medium text-foreground">{pickupLocation || "A definir com o proprietário"}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    O local exato de retirada e devoluÃ§Ã£o serÃ¡ combinado diretamente com o proprietÃ¡rio apÃ³s a aprovaÃ§Ã£o da reserva.
+                    O local exato de retirada e devolução será combinado diretamente com o proprietário após a aprovação da reserva.
                   </p>
                 </div>
               </div>
@@ -358,12 +358,12 @@ export default function BookVehicle() {
 
               {/* Notes */}
               <div className="bg-card border border-border rounded-2xl p-6">
-                <Label htmlFor="notes">ObservaÃ§Ãµes (opcional)</Label>
+                <Label htmlFor="notes">Observações (opcional)</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Alguma informaÃ§Ã£o adicional..."
+                  placeholder="Alguma informação adicional..."
                   className="mt-2"
                   rows={4}
                 />
@@ -388,17 +388,17 @@ export default function BookVehicle() {
               {days > 0 ? (
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">PerÃ­odo</span>
+                    <span className="text-muted-foreground">Período</span>
                     <span className="font-medium">{days} dia{days !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">DiÃ¡ria</span>
+                    <span className="text-muted-foreground">Diária</span>
                     <span className="font-medium">
                       R$ {vehicle.daily_price?.toLocaleString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal diÃ¡rias</span>
+                    <span className="text-muted-foreground">Subtotal diárias</span>
                     <span className="font-medium">
                       R$ {calculateRentalPrice().toLocaleString('pt-BR')}
                     </span>
@@ -413,7 +413,7 @@ export default function BookVehicle() {
                   ) : null}
                   {vehicle.deposit_amount ? (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">CauÃ§Ã£o</span>
+                      <span className="text-muted-foreground">Caução</span>
                       <span className="font-medium">
                         R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
                       </span>

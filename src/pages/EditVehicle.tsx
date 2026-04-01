@@ -79,7 +79,7 @@ const brandOptions = [
   "Peugeot", "Renault", "Toyota", "Volkswagen", "Outro",
 ];
 
-const fuelOptions = ["Flex", "Gasolina", "Etanol", "Diesel", "ElÃ©trico", "HÃ­brido"];
+const fuelOptions = ["Flex", "Gasolina", "Etanol", "Diesel", "Elétrico", "Híbrido"];
 
 const bodyTypeOptions = [
   { value: "hatch", label: "Hatch" },
@@ -90,7 +90,7 @@ const bodyTypeOptions = [
 ];
 
 const segmentOptions = [
-  { value: "economy", label: "EconÃ´mico" },
+  { value: "economy", label: "Econômico" },
   { value: "standard", label: "Standard" },
   { value: "premium", label: "Premium" },
   { value: "luxury", label: "Luxo" },
@@ -181,7 +181,7 @@ export default function EditVehicle() {
 
     const vehicle = await getVehicleById(id);
     if (!vehicle) {
-      toast.error("VeÃ­culo nÃ£o encontrado");
+      toast.error("Veículo não encontrado");
       navigate("/my-vehicles");
       return;
     }
@@ -232,16 +232,16 @@ export default function EditVehicle() {
       const success = await updateVehicle(id, values as VehicleFormData);
 
       if (!success) {
-        toast.error("Erro ao atualizar veÃ­culo");
+        toast.error("Erro ao atualizar veículo");
         setIsSubmitting(false);
         return;
       }
 
-      toast.success("VeÃ­culo atualizado com sucesso!");
+      toast.success("Veículo atualizado com sucesso!");
       navigate("/my-vehicles");
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Erro ao atualizar veÃ­culo");
+      toast.error("Erro ao atualizar veículo");
     } finally {
       setIsSubmitting(false);
     }
@@ -265,7 +265,7 @@ export default function EditVehicle() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Car className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold">Editar VeÃ­culo</h1>
+          <h1 className="text-2xl font-bold">Editar Veículo</h1>
         </div>
 
         <Form {...form}>
@@ -273,7 +273,7 @@ export default function EditVehicle() {
             {/* Basic Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">InformaÃ§Ãµes BÃ¡sicas</CardTitle>
+                <CardTitle className="text-lg">Informações Básicas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -281,7 +281,7 @@ export default function EditVehicle() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>TÃ­tulo do anÃºncio</FormLabel>
+                      <FormLabel>Título do anúncio</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Chevrolet Onix LT 2022" {...field} />
                       </FormControl>
@@ -396,7 +396,7 @@ export default function EditVehicle() {
             {/* Technical Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">EspecificaÃ§Ãµes</CardTitle>
+                <CardTitle className="text-lg">Especificações</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -405,7 +405,7 @@ export default function EditVehicle() {
                     name="fuel_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CombustÃ­vel</FormLabel>
+                        <FormLabel>Combustível</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -430,7 +430,7 @@ export default function EditVehicle() {
                     name="transmission"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CÃ¢mbio</FormLabel>
+                        <FormLabel>Câmbio</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -438,7 +438,7 @@ export default function EditVehicle() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="automatic">AutomÃ¡tico</SelectItem>
+                            <SelectItem value="automatic">Automático</SelectItem>
                             <SelectItem value="manual">Manual</SelectItem>
                           </SelectContent>
                         </Select>
@@ -801,7 +801,7 @@ export default function EditVehicle() {
             {/* Photos */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Fotos do VeÃ­culo</CardTitle>
+                <CardTitle className="text-lg">Fotos do Veículo</CardTitle>
               </CardHeader>
               <CardContent>
                 <VehiclePhotoGallery
@@ -824,7 +824,7 @@ export default function EditVehicle() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Salvar AlteraÃ§Ãµes
+                  Salvar Alterações
                 </>
               )}
             </Button>

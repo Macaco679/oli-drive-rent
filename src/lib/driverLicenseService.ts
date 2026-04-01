@@ -22,7 +22,7 @@ export interface DriverLicenseRecord {
 }
 
 /**
- * Busca a CNH do usuÃ¡rio atual
+ * Busca a CNH do usuário atual
  */
 export async function getDriverLicense(userId: string): Promise<DriverLicenseRecord | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,7 +41,7 @@ export async function getDriverLicense(userId: string): Promise<DriverLicenseRec
 
   const mappedData = {
     ...(data as Record<string, unknown>),
-    codigo_seguranca: (data as Record<string, unknown>)["codigo_seguranÃ§a"] ?? null,
+    codigo_seguranca: (data as Record<string, unknown>)["codigo_segurança"] ?? null,
   };
 
   return mappedData as DriverLicenseRecord;
@@ -83,7 +83,7 @@ export async function uploadLicenseImage(
 }
 
 /**
- * ObtÃ©m URL assinada para visualizar imagem privada
+ * Obtém URL assinada para visualizar imagem privada
  */
 export async function getSignedImageUrl(path: string): Promise<string | null> {
   if (!path) return null;
@@ -130,7 +130,7 @@ export async function saveDriverLicense(
     ...(data.back_path && { back_path: data.back_path }),
     ...(data.selfie_path !== undefined && { selfie_path: data.selfie_path }),
     ...(data.cpf !== undefined && { cpf: data.cpf ? Number(data.cpf.replace(/\D/g, "")) : null }),
-    ...(data.codigo_seguranca !== undefined && { "codigo_seguranÃ§a": data.codigo_seguranca ? Number(data.codigo_seguranca.replace(/\D/g, "")) : null }),
+    ...(data.codigo_seguranca !== undefined && { "codigo_segurança": data.codigo_seguranca ? Number(data.codigo_seguranca.replace(/\D/g, "")) : null }),
     ...(data.nome_mae !== undefined && { nome_mae: data.nome_mae }),
   };
 
@@ -148,7 +148,7 @@ export async function saveDriverLicense(
 
   const mappedResult = {
     ...(result as Record<string, unknown>),
-    codigo_seguranca: (result as Record<string, unknown>)["codigo_seguranÃ§a"] ?? null,
+    codigo_seguranca: (result as Record<string, unknown>)["codigo_segurança"] ?? null,
   };
 
   return mappedResult as DriverLicenseRecord;
@@ -196,7 +196,7 @@ export async function submitDriverLicense(
 
     if (files.selfie) {
       selfiePath = await uploadLicenseImage(userId, files.selfie, "selfie");
-      // Selfie Ã© opcional, nÃ£o retorna erro
+      // Selfie é opcional, não retorna erro
     }
 
     // 2. Salvar dados na tabela

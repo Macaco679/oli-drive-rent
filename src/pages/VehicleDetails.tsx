@@ -84,11 +84,11 @@ const createStaticVehicle = (
 });
 
 const staticVehicleFallback: Record<string, { vehicle: OliVehicle; coverImage: string }> = {
-  "static-1": createStaticVehicle("static-1", "Chevrolet Onix LT 2022", "Chevrolet", "Onix LT", 2022, 150, 900, "SÃ£o Paulo", "SP", onixAzul),
-  "static-2": createStaticVehicle("static-2", "Hyundai HB20 Vision 2024", "Hyundai", "HB20 Vision", 2024, 140, 850, "SÃ£o Paulo", "SP", hb20Prata),
-  "static-3": createStaticVehicle("static-3", "Fiat Argo Drive 2026", "Fiat", "Argo Drive", 2026, 160, 950, "SÃ£o Paulo", "SP", argo2026),
-  "static-4": createStaticVehicle("static-4", "CitroÃ«n Basalt 2024", "CitroÃ«n", "Basalt", 2024, 180, 1100, "SÃ£o Paulo", "SP", basaltBranco),
-  "static-5": createStaticVehicle("static-5", "Nissan Kicks 2024", "Nissan", "Kicks", 2024, 200, 1200, "SÃ£o Paulo", "SP", kicksPreto),
+  "static-1": createStaticVehicle("static-1", "Chevrolet Onix LT 2022", "Chevrolet", "Onix LT", 2022, 150, 900, "São Paulo", "SP", onixAzul),
+  "static-2": createStaticVehicle("static-2", "Hyundai HB20 Vision 2024", "Hyundai", "HB20 Vision", 2024, 140, 850, "São Paulo", "SP", hb20Prata),
+  "static-3": createStaticVehicle("static-3", "Fiat Argo Drive 2026", "Fiat", "Argo Drive", 2026, 160, 950, "São Paulo", "SP", argo2026),
+  "static-4": createStaticVehicle("static-4", "Citroën Basalt 2024", "Citroën", "Basalt", 2024, 180, 1100, "São Paulo", "SP", basaltBranco),
+  "static-5": createStaticVehicle("static-5", "Nissan Kicks 2024", "Nissan", "Kicks", 2024, 200, 1200, "São Paulo", "SP", kicksPreto),
   "static-6": createStaticVehicle("static-6", "Nissan Kicks Prata 2024", "Nissan", "Kicks", 2024, 195, 1150, "Rio de Janeiro", "RJ", kicksPrata),
   "static-7": createStaticVehicle("static-7", "Chevrolet Onix 2019", "Chevrolet", "Onix", 2019, 120, 700, "Belo Horizonte", "MG", onixPrata),
   "static-8": createStaticVehicle("static-8", "Chevrolet Prisma 2019", "Chevrolet", "Prisma", 2019, 130, 780, "Curitiba", "PR", prismaPreto),
@@ -250,7 +250,7 @@ export default function VehicleDetails() {
       setPhotos(vehiclePhotos || []);
     } catch (e: any) {
       console.error("Error loading vehicle details:", e);
-      toast.error("Erro ao carregar o veÃ­culo. Tente novamente.");
+      toast.error("Erro ao carregar o veículo. Tente novamente.");
       setVehicle(null);
       setPhotos([]);
     } finally {
@@ -280,7 +280,7 @@ export default function VehicleDetails() {
     }
 
     if (currentUserId === vehicle.owner_id) {
-      toast.error("VocÃª nÃ£o pode enviar mensagem para si mesmo");
+      toast.error("Vocàª não pode enviar mensagem para si mesmo");
       return;
     }
 
@@ -314,7 +314,7 @@ export default function VehicleDetails() {
   const vehicleTitle = vehicle.title || `${vehicle.brand || ""} ${vehicle.model || ""} ${vehicle.year || ""}`.trim();
   const location = vehicle.location_city && vehicle.location_state 
     ? `${vehicle.location_city} - ${vehicle.location_state}` 
-    : "LocalizaÃ§Ã£o nÃ£o informada";
+    : "Localização não informada";
 
   return (
     <WebLayout>
@@ -359,7 +359,7 @@ export default function VehicleDetails() {
               <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
                   <Car className="w-16 h-16 mx-auto mb-2" />
-                  <p>Sem fotos disponÃ­veis</p>
+                  <p>Sem fotos disponíveis</p>
                 </div>
               </div>
             )}
@@ -400,7 +400,7 @@ export default function VehicleDetails() {
                 <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
                   <Gauge className="w-6 h-6 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">CÃ¢mbio</p>
+                    <p className="text-xs text-muted-foreground">Câmbio</p>
                     <p className="font-semibold capitalize">{vehicle.transmission}</p>
                   </div>
                 </div>
@@ -409,7 +409,7 @@ export default function VehicleDetails() {
                 <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
                   <Fuel className="w-6 h-6 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">CombustÃ­vel</p>
+                    <p className="text-xs text-muted-foreground">Combustível</p>
                     <p className="font-semibold">{vehicle.fuel_type}</p>
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export default function VehicleDetails() {
               <div className="space-y-3">
                 {vehicle.daily_price && (
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">DiÃ¡ria</span>
+                    <span className="text-muted-foreground">Diária</span>
                     <span className="text-2xl font-bold text-primary">
                       R$ {vehicle.daily_price.toLocaleString('pt-BR')}
                     </span>
@@ -455,7 +455,7 @@ export default function VehicleDetails() {
                 )}
                 {vehicle.deposit_amount && (
                   <div className="flex justify-between items-center pt-3 border-t border-border">
-                    <span className="text-muted-foreground">CauÃ§Ã£o</span>
+                    <span className="text-muted-foreground">Caução</span>
                     <span className="font-semibold">
                       R$ {vehicle.deposit_amount.toLocaleString('pt-BR')}
                     </span>
@@ -528,7 +528,7 @@ export default function VehicleDetails() {
                 size="lg"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
-                Falar com proprietÃ¡rio
+                Falar com proprietário
               </Button>
             </div>
           </div>
