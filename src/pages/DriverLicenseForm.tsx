@@ -310,12 +310,12 @@ export default function DriverLicenseForm() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim()) newErrors.fullName = "Nome completo e obrigatório";
-    if (!licenseNumber.trim()) newErrors.licenseNumber = "Número de Registro da CNH e obrigatório";
-    if (!category) newErrors.category = "Categoria e obrigatória";
-    if (!cpf.trim()) newErrors.cpf = "CPF e obrigatório";
-    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Codigo de seguranca e obrigatório";
-    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mae e obrigatório";
+    if (!fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
+    if (!licenseNumber.trim()) newErrors.licenseNumber = "Número de Registro da CNH é obrigatório";
+    if (!category) newErrors.category = "Categoria é obrigatória";
+    if (!cpf.trim()) newErrors.cpf = "CPF é obrigatório";
+    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Código de segurança é obrigatório";
+    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mãe é obrigatório";
 
     const hasExistingFront = licenseData?.frontPath;
     const hasExistingBack = licenseData?.backPath;
