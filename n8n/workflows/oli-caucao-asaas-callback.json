@@ -1,0 +1,159 @@
+﻿{
+  "name": "OLI - Caução Asaas - Callback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oli-caucao-asaas-callback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "bfe03f74-f1c2-495d-9aa1-4a37cdf19578",
+      "name": "Webhook - Callback Asaas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        320
+      ],
+      "webhookId": "oli-caucao-asaas-callback"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst headers = $json.headers ?? {};\nconst expectedToken = $env.ASAAS_WEBHOOK_TOKEN || '';\nconst receivedToken = headers['asaas-access-token'] || headers['Asaas-Access-Token'] || '';\n\nif (expectedToken && receivedToken !== expectedToken) {\n  throw new Error('Webhook Asaas sem token valido');\n}\n\nconst payment = payload.payment || {};\nconst rawStatus = String(payment.status || payload.event || 'PENDING').toUpperCase();\nlet normalizedStatus = 'pending';\n\nif (['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_CREATED'].includes(String(payload.event || '').toUpperCase())) {\n  normalizedStatus = payload.event === 'PAYMENT_CREATED' ? 'pending' : 'confirmed';\n}\nif (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(rawStatus)) normalizedStatus = 'confirmed';\nif (['OVERDUE', 'DELETED', 'CANCELLED', 'REFUNDED'].includes(rawStatus)) normalizedStatus = rawStatus === 'REFUNDED' ? 'refunded' : 'failed';\n\nconst paymentId = payment.id || payload.id || null;\nif (!paymentId) {\n  throw new Error('Webhook Asaas sem payment.id');\n}\n\nreturn [{\n  json: {\n    provider_payment_id: paymentId,\n    external_reference: payment.externalReference || null,\n    provider_customer_id: payment.customer || null,\n    status: normalizedStatus,\n    raw_status: rawStatus,\n    billingType: payment.billingType || null,\n    amount: payment.value || null,\n    due_date: payment.dueDate || null,\n    invoice_url: payment.invoiceUrl || null,\n    bank_slip_url: payment.bankSlipUrl || null,\n    payment_link: payment.invoiceUrl || payment.bankSlipUrl || null,\n    status_detail: `Evento Asaas: ${payload.event || rawStatus}` ,\n    webhook_payload: payload,\n  },\n}];"
+      },
+      "id": "0ddd4633-46dd-4a11-b2c7-e391bf87396f",
+      "name": "Normalizar Evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{($env.SUPABASE_URL || '').replace(/\/$/, '') + '/rest/v1/oli_payments?provider_payment_id=eq.' + encodeURIComponent($json.provider_payment_id) + '&payment_type=eq.deposit'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  status: $json.status,\n  status_detail: $json.status_detail,\n  provider_customer_id: $json.provider_customer_id,\n  invoice_url: $json.invoice_url,\n  bank_slip_url: $json.bank_slip_url,\n  payment_link: $json.payment_link,\n  external_reference: $json.external_reference,\n  due_date: $json.due_date,\n  billingType: $json.billingType,\n  webhook_payload: $json.webhook_payload,\n} }}",
+        "options": {}
+      },
+      "id": "f4872e15-b0af-4c7b-a9c1-75d4fa26ef77",
+      "name": "Supabase - Atualizar Pagamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { received: true, provider_payment_id: $('Normalizar Evento').first().json.provider_payment_id, status: $('Normalizar Evento').first().json.status } }];"
+      },
+      "id": "2127ef1d-3b2c-4cff-aecb-21d27e95a3e0",
+      "name": "Preparar ACK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "7db82371-4118-4f87-9b61-dc27dd1dc4cc",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        120,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Callback Asaas": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Evento": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Atualizar Pagamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Atualizar Pagamento": {
+      "main": [
+        [
+          {
+            "node": "Preparar ACK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar ACK": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3e85df03-f296-4421-9c9e-c7e70765f651",
+  "id": "oli-caucao-asaas-callback",
+  "tags": []
+}

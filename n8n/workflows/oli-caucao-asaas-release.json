@@ -1,0 +1,257 @@
+﻿{
+  "name": "OLI - Caução Asaas - Liberar Escrow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oli-caucao-asaas-release",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d2a6b987-0a91-477d-95c7-238bb6fe7f1d",
+      "name": "Webhook - Liberar Escrow",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        520
+      ],
+      "webhookId": "oli-caucao-asaas-release"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst providerPaymentId = input.provider_payment_id || input.payment_id || null;\nconst escrowId = input.escrow_id || null;\nconst ownerApproved = Boolean(input.owner_approved);\nconst platformApproved = Boolean(input.platform_approved);\n\nif (!escrowId && !providerPaymentId) {\n  throw new Error('provider_payment_id ou escrow_id obrigatorio');\n}\nif (!ownerApproved || !platformApproved) {\n  throw new Error('A caucao so pode ser liberada com aval do locador e da plataforma');\n}\n\nreturn [{\n  json: {\n    provider_payment_id: providerPaymentId,\n    escrow_id: escrowId,\n    rental_id: input.rental_id || null,\n    owner_approved: ownerApproved,\n    platform_approved: platformApproved,\n    release_reason: input.release_reason || 'owner_and_platform_approved',\n  },\n}];"
+      },
+      "id": "225e26e8-9a14-4dd1-a253-f21f471a9870",
+      "name": "Validar Liberação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{($env.ASAAS_API_BASE_URL || 'https://api.asaas.com/v3') + '/payments/' + encodeURIComponent($json.provider_payment_id) + '/escrow'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{$env.ASAAS_CAUCAO_API_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb55cc1c-5f81-4eea-95aa-cfe747519f46",
+      "name": "Asaas - Buscar Escrow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -420,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Validar Liberação').first().json;\nconst escrow = $json;\nconst escrowId = request.escrow_id || escrow.id || escrow.escrow?.id || null;\n\nif (!escrowId) {\n  throw new Error('Nao foi possivel localizar o id da garantia escrow');\n}\n\nreturn [{\n  json: {\n    ...request,\n    escrow_id: escrowId,\n    escrow_payload: escrow,\n  },\n}];"
+      },
+      "id": "15c574e6-2f5d-4c7f-a0ae-e46692a94a51",
+      "name": "Resolver Escrow",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.ASAAS_API_BASE_URL || 'https://api.asaas.com/v3') + '/escrow/' + encodeURIComponent($json.escrow_id) + '/finish'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{$env.ASAAS_CAUCAO_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "349bd813-0e08-499a-bfb2-071414b5df66",
+      "name": "Asaas - Liberar Escrow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{($env.SUPABASE_URL || '').replace(/\/$/, '') + '/rest/v1/oli_payments?provider_payment_id=eq.' + encodeURIComponent($('Validar Liberação').first().json.provider_payment_id) + '&payment_type=eq.deposit'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  status_detail: 'Escrow liberado manualmente via n8n apos aval do locador e da plataforma.',\n  webhook_payload: {\n    release_request: $('Validar Liberação').first().json,\n    escrow_lookup: $('Resolver Escrow').first().json.escrow_payload,\n    escrow_finish: $json,\n  }\n} }}",
+        "options": {}
+      },
+      "id": "b21a7a24-8e39-4fd0-aed0-44914d0ff13f",
+      "name": "Supabase - Registrar Liberação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { success: true, released: true, provider_payment_id: $('Validar Liberação').first().json.provider_payment_id, escrow_id: $('Resolver Escrow').first().json.escrow_id } }];"
+      },
+      "id": "62abf0d9-631d-4a1f-ac6e-8d3a07b8c4f9",
+      "name": "Montar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "bd56bcbe-29bb-4b5a-8e58-d2fe5d1dd98d",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Liberar Escrow": {
+      "main": [
+        [
+          {
+            "node": "Validar Liberação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Liberação": {
+      "main": [
+        [
+          {
+            "node": "Asaas - Buscar Escrow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asaas - Buscar Escrow": {
+      "main": [
+        [
+          {
+            "node": "Resolver Escrow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver Escrow": {
+      "main": [
+        [
+          {
+            "node": "Asaas - Liberar Escrow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asaas - Liberar Escrow": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Registrar Liberação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Registrar Liberação": {
+      "main": [
+        [
+          {
+            "node": "Montar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Resposta": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "41e870c5-4d53-46be-b6bc-e9545acbaadf",
+  "id": "oli-caucao-asaas-release",
+  "tags": []
+}

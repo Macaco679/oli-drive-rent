@@ -1,0 +1,217 @@
+﻿{
+  "name": "OLI - Caução Asaas - Criar Cobrança",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oli-caucao-asaas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "3f53d4f4-0e39-4f7c-b24e-97c72ab69b01",
+      "name": "Webhook - Criar Caução",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -840,
+        120
+      ],
+      "webhookId": "oli-caucao-asaas"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst amount = Number(input.amount || 0);\nconst customer = input.customer || {};\nconst errors = [];\n\nif (!input.rental_id) errors.push('rental_id obrigatorio');\nif (!input.user_id) errors.push('user_id obrigatorio');\nif (!amount || Number.isNaN(amount) || amount <= 0) errors.push('amount deve ser maior que zero');\nif (!customer.name) errors.push('customer.name obrigatorio');\nif (!customer.email) errors.push('customer.email obrigatorio');\nif (!customer.cpfCnpj) errors.push('customer.cpfCnpj obrigatorio');\n\nif (errors.length) {\n  throw new Error(errors.join(' | '));\n}\n\nconst pad = (value) => String(value).padStart(2, '0');\nconst plusDays = (days) => {\n  const date = new Date();\n  date.setDate(date.getDate() + days);\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;\n};\n\nconst dueDate = input.due_date || plusDays(1);\nconst vehicle = input.vehicle || {};\nconst externalReference = input.external_reference || `OLI-CAUCAO-${input.rental_id}`;\nconst description = input.description || `Caucao da reserva ${input.rental_id}${vehicle.plate ? ` - ${vehicle.plate}` : ''}`;\n\nreturn [{\n  json: {\n    source: input,\n    rental_id: input.rental_id,\n    user_id: input.user_id,\n    vehicle_id: input.vehicle_id || null,\n    amount,\n    dueDate,\n    billingType: input.billingType || 'UNDEFINED',\n    externalReference,\n    description,\n    provider: input.provider || 'asaas',\n    payment_type: input.payment_type || 'deposit',\n    customer: {\n      name: String(customer.name || '').trim(),\n      email: String(customer.email || '').trim(),\n      cpfCnpj: String(customer.cpfCnpj || '').replace(/\\D/g, ''),\n      phone: String(customer.phone || customer.mobilePhone || '').replace(/\\D/g, ''),\n      mobilePhone: String(customer.phone || customer.mobilePhone || '').replace(/\\D/g, ''),\n    },\n    vehicle,\n    escrow: input.escrow || { enabled: true },\n  },\n}];"
+      },
+      "id": "d5e0d27d-bca7-4709-9835-342cb13b16f4",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.ASAAS_API_BASE_URL || 'https://api.asaas.com/v3') + '/customers'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{$env.ASAAS_CAUCAO_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  name: $json.customer.name,\n  email: $json.customer.email,\n  cpfCnpj: $json.customer.cpfCnpj,\n  mobilePhone: $json.customer.mobilePhone || undefined,\n} }}",
+        "options": {}
+      },
+      "id": "435159f6-50a5-43ef-9ab9-b063c0f2d11b",
+      "name": "Asaas - Criar Cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -360,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Normalizar Payload').first().json;\nconst customer = $json;\nif (!customer.id) {\n  throw new Error('Asaas nao retornou customer.id');\n}\n\nreturn [{\n  json: {\n    ...request,\n    customerId: customer.id,\n    provider_customer_id: customer.id,\n    customerResponse: customer,\n  },\n}];"
+      },
+      "id": "fb7cf061-31f3-4c83-9870-6693ee5ea0c0",
+      "name": "Consolidar Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.ASAAS_API_BASE_URL || 'https://api.asaas.com/v3') + '/payments'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{$env.ASAAS_CAUCAO_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  customer: $json.customerId,\n  billingType: $json.billingType,\n  value: $json.amount,\n  dueDate: $json.dueDate,\n  description: $json.description,\n  externalReference: $json.externalReference,\n} }}",
+        "options": {}
+      },
+      "id": "37f0964e-9e49-4b6d-91ea-e708e53212c5",
+      "name": "Asaas - Criar Cobrança",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Consolidar Cliente').first().json;\nconst payment = $json;\n\nif (!payment.id) {\n  throw new Error('Asaas nao retornou payment.id');\n}\n\nconst status = String(payment.status || 'PENDING').toUpperCase();\nconst normalizedStatus = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(status)\n  ? 'confirmed'\n  : ['OVERDUE', 'DELETED', 'CANCELLED'].includes(status)\n    ? 'failed'\n    : 'pending';\n\nreturn [{\n  json: {\n    success: true,\n    provider: 'asaas',\n    payment_type: request.payment_type,\n    rental_id: request.rental_id,\n    user_id: request.user_id,\n    vehicle_id: request.vehicle_id,\n    amount: payment.value ?? request.amount,\n    status: normalizedStatus,\n    raw_status: payment.status || 'PENDING',\n    method: 'asaas',\n    billingType: payment.billingType || request.billingType,\n    id: payment.id,\n    provider_payment_id: payment.id,\n    provider_customer_id: request.provider_customer_id,\n    customer: request.provider_customer_id,\n    external_reference: payment.externalReference || request.externalReference,\n    reference: payment.externalReference || request.externalReference,\n    payment_link: payment.invoiceUrl || payment.bankSlipUrl || null,\n    invoice_url: payment.invoiceUrl || null,\n    bank_slip_url: payment.bankSlipUrl || null,\n    due_date: payment.dueDate || request.dueDate,\n    message: request.escrow?.enabled\n      ? 'Cobranca de caucao criada na Asaas. Se a conta usada tiver Escrow habilitado, o valor ficara retido ate a liberacao manual.'\n      : 'Cobranca de caucao criada na Asaas.',\n    escrow: {\n      requested: Boolean(request.escrow?.enabled),\n      release_condition: request.escrow?.release_condition || null,\n      release_checklist: request.escrow?.release_checklist || [],\n      note: 'A retencao real depende da conta/subconta usada nesta credencial estar com Conta Escrow habilitada no Asaas.',\n    },\n    asaas_payment: payment,\n  },\n}];"
+      },
+      "id": "46e8e04e-4f4d-413c-99db-a986f01406f3",
+      "name": "Montar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "e599426f-e585-4cd0-b8df-fd2f9c94b9ae",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Criar Caução": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "Asaas - Criar Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asaas - Criar Cliente": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Cliente": {
+      "main": [
+        [
+          {
+            "node": "Asaas - Criar Cobrança",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asaas - Criar Cobrança": {
+      "main": [
+        [
+          {
+            "node": "Montar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Resposta": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "539b9df6-d782-45f4-bf42-136c49c5d1b8",
+  "id": "oli-caucao-asaas-create",
+  "tags": []
+}
