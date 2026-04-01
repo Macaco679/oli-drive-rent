@@ -74,16 +74,16 @@ function SecurityCodeHint() {
         <button
           type="button"
           className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Onde localizar o codigo de seguranca da CNH"
+          aria-label="Onde localizar o código de segurança da CNH"
         >
           <Info className="h-3.5 w-3.5" />
         </button>
       </HoverCardTrigger>
       <HoverCardContent align="start" className="w-80 space-y-3">
         <div>
-          <p className="text-sm font-medium">Onde encontrar o codigo de seguranca</p>
+          <p className="text-sm font-medium">Onde encontrar o código de segurança</p>
           <p className="text-sm text-muted-foreground">
-            Na CNH fisica, ele aparece como um número pequeno na faixa inferior do documento.
+            Na CNH física, ele aparece como um número pequeno na faixa inferior do documento.
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
@@ -103,7 +103,7 @@ function SecurityCodeHint() {
               <div className="h-2 rounded-full bg-slate-200" />
             </div>
             <div className="mt-5 rounded-lg border border-dashed border-primary bg-primary/10 p-3 text-center">
-              <p className="text-xs font-semibold text-primary">Codigo de seguranca</p>
+              <p className="text-xs font-semibold text-primary">Código de segurança</p>
               <p className="text-[11px] text-muted-foreground">Faixa inferior da CNH</p>
             </div>
           </div>
@@ -310,12 +310,12 @@ export default function DriverLicenseForm() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim()) newErrors.fullName = "Nome completo e obrigatório";
-    if (!licenseNumber.trim()) newErrors.licenseNumber = "Número de Registro da CNH e obrigatório";
-    if (!category) newErrors.category = "Categoria e obrigatória";
-    if (!cpf.trim()) newErrors.cpf = "CPF e obrigatório";
-    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Codigo de seguranca e obrigatório";
-    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mae e obrigatório";
+    if (!fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
+    if (!licenseNumber.trim()) newErrors.licenseNumber = "Número de Registro da CNH é obrigatório";
+    if (!category) newErrors.category = "Categoria é obrigatória";
+    if (!cpf.trim()) newErrors.cpf = "CPF é obrigatório";
+    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Código de segurança é obrigatório";
+    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mãe é obrigatório";
 
     const hasExistingFront = licenseData?.frontPath;
     const hasExistingBack = licenseData?.backPath;
@@ -723,7 +723,7 @@ export default function DriverLicenseForm() {
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validação de CNH da reserva" : "Verificacao de CNH"}</h1>
+              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validação de CNH da reserva" : "Verificação de CNH"}</h1>
               {verificationFlow === "rental" && rentalContext ? <p className="text-sm text-muted-foreground mt-1">Reserva: {rentalContext.vehicleTitle}</p> : null}
             </div>
           </div>
@@ -772,7 +772,7 @@ export default function DriverLicenseForm() {
             </div>
             <div>
               <p className="font-medium text-green-800">{verificationFlow === "rental" ? "CNH validada para esta reserva" : "CNH aprovada"}</p>
-              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as proximas etapas." : "Você pode fazer reservas."}</p>
+              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as próximas etapas." : "Você pode fazer reservas."}</p>
             </div>
           </div>
         )}
@@ -842,7 +842,7 @@ export default function DriverLicenseForm() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="codigoSeguranca">Codigo de Seguranca <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="codigoSeguranca">Código de Segurança <span className="text-destructive">*</span></Label>
                       <SecurityCodeHint />
                     </div>
                     <Input
@@ -953,7 +953,7 @@ export default function DriverLicenseForm() {
             <AlertDialogHeader>
               <AlertDialogTitle>Antes de enviar para validação</AlertDialogTitle>
               <AlertDialogDescription>
-                Se a CNH estiver com pendencias, vencimento, bloqueio ou qualquer situacao irregular, ela nao sera aceita pela plataforma. Confira o documento antes de continuar.
+                Se a CNH estiver com pendências, vencimento, bloqueio ou qualquer situação irregular, ela não será aceita pela plataforma. Confira o documento antes de continuar.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
