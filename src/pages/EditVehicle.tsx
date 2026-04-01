@@ -36,24 +36,24 @@ import { formatPostalCode, lookupAddressByPostalCode, sanitizePostalCode } from 
 import { VehiclePhotoGallery } from "@/components/vehicles/VehiclePhotoGallery";
 
 const formSchema = z.object({
-  title: z.string().min(3, "Titulo deve ter pelo menos 3 caracteres"),
-  brand: z.string().min(1, "Marca e obrigatoria"),
-  model: z.string().min(1, "Modelo e obrigatorio"),
+  title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
+  brand: z.string().min(1, "Marca e obrigatória"),
+  model: z.string().min(1, "Modelo e obrigatório"),
   year: z.coerce.number().min(1990).max(new Date().getFullYear() + 1),
-  color: z.string().min(1, "Cor e obrigatoria"),
+  color: z.string().min(1, "Cor e obrigatória"),
   plate: z.string().optional(),
   renavam: z.string().optional(),
-  fuel_type: z.string().min(1, "Combustivel e obrigatorio"),
+  fuel_type: z.string().min(1, "Combustível e obrigatório"),
   transmission: z.enum(["manual", "automatic"]),
   seats: z.coerce.number().min(2).max(9),
-  location_city: z.string().min(1, "Cidade e obrigatoria"),
-  location_state: z.string().min(2, "Estado e obrigatorio"),
-  pickup_neighborhood: z.string().min(1, "Bairro e obrigatorio"),
-  pickup_street: z.string().min(1, "Rua e obrigatoria"),
-  pickup_number: z.string().min(1, "Numero e obrigatorio"),
+  location_city: z.string().min(1, "Cidade e obrigatória"),
+  location_state: z.string().min(2, "Estado e obrigatório"),
+  pickup_neighborhood: z.string().min(1, "Bairro e obrigatório"),
+  pickup_street: z.string().min(1, "Rua e obrigatória"),
+  pickup_number: z.string().min(1, "Número e obrigatório"),
   pickup_complement: z.string().optional(),
-  pickup_zip_code: z.string().min(8, "CEP deve ter 8 digitos").max(9, "CEP invalido"),
-  daily_price: z.coerce.number().min(1, "Preco diario e obrigatorio"),
+  pickup_zip_code: z.string().min(8, "CEP deve ter 8 dígitos").max(9, "CEP inválido"),
+  daily_price: z.coerce.number().min(1, "Preco diario e obrigatório"),
   weekly_price: z.coerce.number().optional(),
   monthly_price: z.coerce.number().optional(),
   deposit_amount: z.coerce.number().optional(),
@@ -168,7 +168,7 @@ export default function EditVehicle() {
         form.setValue("pickup_complement", address.complement, { shouldDirty: true });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel consultar o CEP.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível consultar o CEP.");
     } finally {
       setSearchingPickupPostalCode(false);
     }
@@ -555,7 +555,7 @@ export default function EditVehicle() {
                       <FormItem className="col-span-2">
                         <FormLabel>Cidade</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Sao Paulo" {...field} />
+                          <Input placeholder="Ex: São Paulo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -594,7 +594,7 @@ export default function EditVehicle() {
                   name="pickup_street"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Rua / endereco</FormLabel>
+                      <FormLabel>Rua / endereço</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Rua das Flores" {...field} />
                       </FormControl>
@@ -609,7 +609,7 @@ export default function EditVehicle() {
                     name="pickup_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Numero</FormLabel>
+                        <FormLabel>Número</FormLabel>
                         <FormControl>
                           <Input placeholder="123" {...field} />
                         </FormControl>
@@ -642,7 +642,7 @@ export default function EditVehicle() {
                       <FormControl>
                         <Input placeholder="Ex: Centro" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">O bairro aparece no anuncio. O endereco completo so e compartilhado nas etapas liberadas da reserva.</p>
+                      <p className="text-xs text-muted-foreground">O bairro aparece no anuncio. O endereço completo so e compartilhado nas etapas liberadas da reserva.</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -736,7 +736,7 @@ export default function EditVehicle() {
                     <FormItem className="flex items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5 pr-4">
                         <FormLabel className="text-base">Motorista disponibilizado pelo locador</FormLabel>
-                        <p className="text-sm text-muted-foreground">Ative para oferecer o veiculo com e sem motorista, deixando o adicional bem claro no anuncio.</p>
+                        <p className="text-sm text-muted-foreground">Ative para oferecer o veículo com e sem motorista, deixando o adicional bem claro no anuncio.</p>
                       </div>
                       <FormControl>
                         <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -786,7 +786,7 @@ export default function EditVehicle() {
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">Destacar como popular</FormLabel>
                         <p className="text-sm text-muted-foreground">
-                          Seu veiculo aparecera em destaque nas buscas
+                          Seu veículo aparecerá em destaque nas buscas
                         </p>
                       </div>
                       <FormControl>

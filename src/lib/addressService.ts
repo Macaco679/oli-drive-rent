@@ -35,7 +35,7 @@ export async function lookupAddressByPostalCode(postalCode: string): Promise<Pos
   const sanitizedPostalCode = sanitizePostalCode(postalCode);
 
   if (sanitizedPostalCode.length !== 8) {
-    throw new Error("Informe um CEP com 8 digitos.");
+    throw new Error("Informe um CEP com 8 dígitos.");
   }
 
   const cached = postalCodeCache.get(sanitizedPostalCode);
@@ -44,7 +44,7 @@ export async function lookupAddressByPostalCode(postalCode: string): Promise<Pos
   const response = await fetch(`https://viacep.com.br/ws/${sanitizedPostalCode}/json/`);
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel consultar o CEP.");
+    throw new Error("Não foi possível consultar o CEP.");
   }
 
   const data = (await response.json()) as ViaCepResponse;

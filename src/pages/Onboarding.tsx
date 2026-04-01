@@ -54,7 +54,7 @@ export default function Onboarding() {
       } catch (error) {
         if (!active) return;
         lastPostalCodeLookupRef.current = "";
-        toast.error(error instanceof Error ? error.message : "Nao foi possivel buscar o CEP.");
+        toast.error(error instanceof Error ? error.message : "Não foi possível buscar o CEP.");
       } finally {
         if (active) {
           setSearchingPostalCode(false);
@@ -94,7 +94,7 @@ export default function Onboarding() {
     }
 
     if (!isPostalCodeComplete(postalCode)) {
-      throw new Error("Preencha um CEP valido para salvar o endereco.");
+      throw new Error("Preencha um CEP valido para salvar o endereço.");
     }
 
     const addressPayload = {
@@ -186,19 +186,19 @@ export default function Onboarding() {
       value: "renter" as UserRole,
       icon: UserCheck,
       title: "Quero alugar carros",
-      description: "Sou motorista e preciso de um veiculo",
+      description: "Sou motorista e preciso de um veículo",
     },
     {
       value: "owner" as UserRole,
       icon: Car,
       title: "Quero anunciar meus carros",
-      description: "Tenho veiculos e quero aluga-los",
+      description: "Tenho veículos e quero alugá-los",
     },
     {
       value: "both" as UserRole,
       icon: Users,
-      title: "Quero as duas opcoes",
-      description: "Alugar e anunciar veiculos",
+      title: "Quero as duas opções",
+      description: "Alugar e anunciar veículos",
     },
   ];
 
@@ -209,7 +209,7 @@ export default function Onboarding() {
           <h1 className="text-6xl font-bold mb-6">OLI</h1>
           <p className="text-2xl mb-4">Bem-vindo!</p>
           <p className="text-white/80 text-lg">
-            Vamos configurar seu perfil para voce comecar a usar a plataforma de aluguel de carros.
+            Vamos configurar seu perfil para voce começar a usar a plataforma de aluguel de carros.
           </p>
         </div>
       </div>
@@ -222,7 +222,7 @@ export default function Onboarding() {
 
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-2">Configurar perfil</h2>
-            <p className="text-muted-foreground">Complete suas informacoes para comecar</p>
+            <p className="text-muted-foreground">Complete suas informações para começar</p>
           </div>
 
           <div className="bg-card p-8 rounded-2xl shadow-xl border border-border space-y-6">
@@ -281,7 +281,7 @@ export default function Onboarding() {
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="font-semibold">Endereco principal</p>
+                  <p className="font-semibold">Endereço principal</p>
                   <p className="text-sm text-muted-foreground">
                     Ao informar o CEP, rua, bairro, cidade e UF sao preenchidos automaticamente.
                   </p>
