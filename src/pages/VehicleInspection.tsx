@@ -132,7 +132,7 @@ export default function VehicleInspection() {
       return;
     }
 
-    setRental(rentalData as OliRental);
+    setRental(rentalData as unknown as OliRental);
 
     const storageKey = getInspectionStorageKey(rentalData.id, inspectionStep, user.id);
     const storedInspectionId = localStorage.getItem(storageKey);
