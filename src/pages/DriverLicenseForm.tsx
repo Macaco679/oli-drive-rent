@@ -129,6 +129,11 @@ export default function DriverLicenseForm() {
   const [cpf, setCpf] = useState("");
   const [codigoSeguranca, setCodigoSeguranca] = useState("");
   const [nomeMae, setNomeMae] = useState("");
+  const [dataValidade, setDataValidade] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [dataPrimeiraHabilitacao, setDataPrimeiraHabilitacao] = useState("");
+  const [dataUltimaEmissao, setDataUltimaEmissao] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
   // Files state
   const [frontFile, setFrontFile] = useState<File | null>(null);
