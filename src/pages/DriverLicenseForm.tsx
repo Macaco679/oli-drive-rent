@@ -772,7 +772,7 @@ export default function DriverLicenseForm() {
             </div>
             <div>
               <p className="font-medium text-green-800">{verificationFlow === "rental" ? "CNH validada para esta reserva" : "CNH aprovada"}</p>
-              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as proximas etapas." : "Você pode fazer reservas."}</p>
+              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as próximas etapas." : "Você pode fazer reservas."}</p>
             </div>
           </div>
         )}
