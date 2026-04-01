@@ -167,7 +167,7 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
           },
           total: amount,
           billingType: "PIX",
-          veiculo: {
+          veículo: {
             placa: rental.vehicle?.plate || "",
           },
           rental_id: rental.id,

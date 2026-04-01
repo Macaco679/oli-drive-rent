@@ -68,42 +68,42 @@ const getStatusMeta = (status: FaceValidationStatus) => {
         label: "Validado",
         tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
         icon: ShieldCheck,
-        description: "Biometria aprovada. Sua identidade facial est\u00e1 pronta para uso.",
+        description: "Biometria aprovada. Sua identidade facial está pronta para uso.",
       };
     case "pending":
       return {
-        label: "Em an\u00e1lise",
+        label: "Em análise",
         tone: "bg-amber-50 text-amber-700 border-amber-200",
         icon: Clock3,
-        description: "Foto enviada. A valida\u00e7\u00e3o est\u00e1 aguardando retorno do provedor.",
+        description: "Foto enviada. A validação está aguardando retorno do provedor.",
       };
     case "needs_review":
       return {
-        label: "Revis\u00e3o manual",
+        label: "Revisão manual",
         tone: "bg-sky-50 text-sky-700 border-sky-200",
         icon: AlertCircle,
-        description: "Recebemos a selfie, mas ela precisa de an\u00e1lise complementar.",
+        description: "Recebemos a selfie, mas ela precisa de análise complementar.",
       };
     case "rejected":
       return {
         label: "Reprovado",
         tone: "bg-rose-50 text-rose-700 border-rose-200",
         icon: XCircle,
-        description: "A selfie foi recusada. Fa\u00e7a uma nova captura com boa ilumina\u00e7\u00e3o.",
+        description: "A selfie foi recusada. Faça uma nova captura com boa iluminação.",
       };
     case "error":
       return {
         label: "Falha no envio",
         tone: "bg-red-50 text-red-700 border-red-200",
         icon: AlertCircle,
-        description: "N\u00e3o foi poss\u00edvel concluir a valida\u00e7\u00e3o facial autom\u00e1tica.",
+        description: "Não foi possível concluir a validação facial automática.",
       };
     default:
       return {
-        label: "N\u00e3o enviado",
+        label: "Não enviado",
         tone: "bg-muted text-muted-foreground border-border",
         icon: ScanFace,
-        description: "Capture uma selfie ou envie uma foto para iniciar sua valida\u00e7\u00e3o de identidade.",
+        description: "Capture uma selfie ou envie uma foto para iniciar sua validação de identidade.",
       };
   }
 };
@@ -191,7 +191,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
       setCapturedImage(null);
     } catch (error) {
       console.warn("Camera error:", error);
-      toast.info("N\u00e3o foi poss\u00edvel acessar a c\u00e2mera. Use a op\u00e7\u00e3o de upload de arquivo.");
+      toast.info("Não foi possível acessar a câmera. Use a opção de upload de arquivo.");
     }
   };
 
@@ -237,7 +237,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     setSaving(true);
     try {
       const { user } = await getCurrentUser();
-      if (!user) throw new Error("Usu\u00e1rio n\u00e3o autenticado");
+      if (!user) throw new Error("Usuário não autenticado");
 
       const imageResponse = await fetch(capturedImage);
       const blob = await imageResponse.blob();
@@ -365,14 +365,14 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         resolvedStatus === "approved"
           ? "Selfie validada com sucesso!"
           : resolvedStatus === "rejected"
-            ? "Selfie enviada, mas foi reprovada. Fa\u00e7a uma nova captura."
+            ? "Selfie enviada, mas foi reprovada. Faça uma nova captura."
             : resolvedStatus === "error"
-              ? "Selfie salva, mas houve falha na valida\u00e7\u00e3o autom\u00e1tica."
-              : "Selfie enviada! Valida\u00e7\u00e3o facial em an\u00e1lise.",
+              ? "Selfie salva, mas houve falha na validação automática."
+              : "Selfie enviada! Validação facial em análise.",
       );
     } catch (error) {
-      console.error("Erro ao salvar valida\u00e7\u00e3o facial:", error);
-      toast.error("Erro ao salvar valida\u00e7\u00e3o facial");
+      console.error("Erro ao salvar validação facial:", error);
+      toast.error("Erro ao salvar validação facial");
     } finally {
       setSaving(false);
     }
@@ -382,7 +382,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     setSaving(true);
     try {
       const { user } = await getCurrentUser();
-      if (!user) throw new Error("Usu\u00e1rio n\u00e3o autenticado");
+      if (!user) throw new Error("Usuário não autenticado");
 
       await supabase
         .from("oli_profiles")
@@ -407,10 +407,10 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         referenceId: null,
       });
 
-      toast.success("Valida\u00e7\u00e3o facial removida");
+      toast.success("Validação facial removida");
     } catch (error) {
       console.error("Erro ao remover:", error);
-      toast.error("Erro ao remover valida\u00e7\u00e3o facial");
+      toast.error("Erro ao remover validação facial");
     } finally {
       setSaving(false);
     }
@@ -441,10 +441,10 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <ScanFace className="w-4 h-4 text-primary" />
               </div>
-              Valida\u00e7\u00e3o Facial
+              Validação Facial
             </CardTitle>
             <CardDescription>
-              Capture ou envie uma selfie para verifica\u00e7\u00e3o de identidade.
+              Capture ou envie uma selfie para verificação de identidade.
             </CardDescription>
           </div>
           <Badge variant="outline" className={statusMeta.tone}>
@@ -484,7 +484,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
             {scorePercent != null && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Score de correspond\u00eancia</span>
+                  <span className="text-muted-foreground">Score de correspondência</span>
                   <span className="font-semibold">{scorePercent}%</span>
                 </div>
                 <Progress value={scorePercent} className="h-2" />
@@ -496,15 +496,15 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         {currentFaceUrl && !capturing && !capturedImage ? (
           <div className="space-y-4">
             <div className="border-2 border-border rounded-lg p-4 bg-white flex justify-center">
-              <img src={currentFaceUrl} alt="Selfie de valida\u00e7\u00e3o facial" className="max-h-48 rounded-lg object-cover" />
+              <img src={currentFaceUrl} alt="Selfie de validação facial" className="max-h-48 rounded-lg object-cover" />
             </div>
             <div className="flex flex-wrap items-center gap-2 justify-center text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Selfie cadastrada para valida\u00e7\u00e3o de identidade
+              Selfie cadastrada para validação de identidade
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
-                <RefreshCw className="w-4 h-4" /> Refazer com c\u00e2mera
+                <RefreshCw className="w-4 h-4" /> Refazer com câmera
               </Button>
               <Button type="button" variant="outline" className="flex-1 gap-2" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4" /> Enviar arquivo
@@ -520,7 +520,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-48 object-cover" />
             </div>
             <div className="text-xs text-muted-foreground text-center space-y-1">
-              <p>Centralize o rosto, retire \u00f3culos escuros e use boa ilumina\u00e7\u00e3o.</p>
+              <p>Centralize o rosto, retire óculos escuros e use boa iluminação.</p>
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1" onClick={handleCancel}>
@@ -539,7 +539,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Ao confirmar, a selfie ficar\u00e1 com status <strong>Em an\u00e1lise</strong> at\u00e9 o retorno da valida\u00e7\u00e3o.
+                Ao confirmar, a selfie ficará com status <strong>Em análise</strong> até o retorno da validação.
               </AlertDescription>
             </Alert>
             <div className="flex gap-2">
@@ -548,7 +548,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               </Button>
               <Button type="button" className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Enviar para valida\u00e7\u00e3o
+                Enviar para validação
               </Button>
             </div>
           </div>
@@ -556,11 +556,11 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
           <div className="space-y-3">
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <ScanFace className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">Nenhuma selfie enviada para valida\u00e7\u00e3o facial</p>
+              <p className="text-muted-foreground text-sm">Nenhuma selfie enviada para validação facial</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
-                <Camera className="w-4 h-4" /> Usar c\u00e2mera
+                <Camera className="w-4 h-4" /> Usar câmera
               </Button>
               <Button
                 type="button"

@@ -69,7 +69,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
   const vehicleTitle =
     rental.vehicle?.title ||
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-    "Veiculo";
+    "Veículo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
@@ -91,7 +91,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
     setLoading(false);
 
     if (success) {
-      toast.success("Reserva aprovada! O locatario precisara concluir a validacao de CNH desta reserva antes do contrato.");
+      toast.success("Reserva aprovada! O locatario precisara concluir a validação de CNH desta reserva antes do contrato.");
       notifyRentalApproved(
         rental.renter_id,
         vehicleTitle,
@@ -252,7 +252,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
                 <div className="space-y-1">
                   <p className="font-medium">Fluxo da caucao</p>
                   <p className="text-sm text-muted-foreground">
-                    A caucao e separada do pagamento principal. O valor fica retido ate a devolucao do veiculo e so pode
+                    A caucao e separada do pagamento principal. O valor fica retido ate a devolucao do veículo e so pode
                     ser liberado apos vistoria final, aval do locador e aval da OLI.
                   </p>
                 </div>

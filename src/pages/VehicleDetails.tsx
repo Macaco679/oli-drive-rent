@@ -302,7 +302,7 @@ export default function VehicleDetails() {
     return (
       <WebLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-muted-foreground">Veiculo nao encontrado</p>
+          <p className="text-muted-foreground">Veículo nao encontrado</p>
           <Button onClick={() => navigate(-1)} className="mt-4">
             Voltar
           </Button>
@@ -539,7 +539,7 @@ export default function VehicleDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Antes de iniciar a reserva</AlertDialogTitle>
             <AlertDialogDescription>
-              Para seguir, confirme que a documentacao do motorista e a situacao do veiculo estao regulares. Reservas com pendencias cadastrais, documentais ou operacionais podem nao ser aprovadas pela plataforma.
+              Para seguir, confirme que a documentacao do motorista e a situacao do veículo estao regulares. Reservas com pendencias cadastrais, documentais ou operacionais podem nao ser aprovadas pela plataforma.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

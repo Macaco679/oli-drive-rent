@@ -59,7 +59,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
   const vehicleTitle =
     rental.vehicle?.title ||
     `${rental.vehicle?.brand || ""} ${rental.vehicle?.model || ""} ${rental.vehicle?.year || ""}`.trim() ||
-    "Veiculo";
+    "Veículo";
 
   const statusInfo = statusMap[rental.status] || { label: rental.status, variant: "secondary" as const };
   const isPending = rental.status === "pending_approval";
@@ -138,7 +138,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
         return (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span className="text-sm">Aguardando validacao da CNH da reserva</span>
+            <span className="text-sm">Aguardando validação da CNH da reserva</span>
           </div>
         );
       }

@@ -298,7 +298,7 @@ export default function BookVehicle() {
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                   <h3 className="font-semibold text-lg">Modalidade da reserva</h3>
                   <p className="text-sm text-muted-foreground">
-                    O locador disponibiliza este veiculo com ou sem motorista. Escolha abaixo como deseja seguir.
+                    O locador disponibiliza este veículo com ou sem motorista. Escolha abaixo como deseja seguir.
                   </p>
 
                   <div className="grid gap-3 sm:grid-cols-2">

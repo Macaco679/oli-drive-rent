@@ -166,7 +166,7 @@ export default function Reservations() {
             <TabsContent value="renter">
               {asRenter.length === 0 ? (
                 <EmptyState
-                  message="Voce ainda nao tem reservas ativas"
+                  message="Você ainda nao tem reservas ativas"
                   action="Buscar carros"
                   onAction={() => navigate("/search")}
                 />
@@ -189,8 +189,8 @@ export default function Reservations() {
             <TabsContent value="owner">
               {asOwner.length === 0 ? (
                 <EmptyState
-                  message="Voce ainda nao tem reservas como locador"
-                  action="Ver meus veiculos"
+                  message="Você ainda nao tem reservas como locador"
+                  action="Ver meus veículos"
                   onAction={() => navigate("/my-vehicles")}
                 />
               ) : (

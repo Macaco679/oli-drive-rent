@@ -150,7 +150,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
       toast.success("Codigo da caucao copiado.");
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      toast.error("Nao foi possivel copiar o codigo.");
+      toast.error("Não foi possível copiar o codigo.");
     }
   };
 
@@ -161,19 +161,19 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
     const cleanPhone = clientPhone.replace(/\D/g, "");
 
     if (!clientName.trim()) {
-      toast.error("Nome completo e obrigatorio.");
+      toast.error("Nome completo e obrigatório.");
       return;
     }
     if (!clientEmail.trim()) {
-      toast.error("Email e obrigatorio.");
+      toast.error("Email e obrigatório.");
       return;
     }
     if (cleanCPF.length < 11) {
-      toast.error("CPF invalido.");
+      toast.error("CPF inválido.");
       return;
     }
     if (cleanPhone.length < 10) {
-      toast.error("Celular invalido.");
+      toast.error("Celular inválido.");
       return;
     }
 
@@ -182,7 +182,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuario nao autenticado");
+      if (!user) throw new Error("Usuário nao autenticado");
 
       const payload = {
         _webhook_target: "oli-caucao-asaas",
@@ -211,7 +211,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
           provider: "asaas",
           release_condition: "manual_after_owner_and_platform_approval",
           release_checklist: [
-            "devolucao_do_veiculo",
+            "devolucao_do_veículo",
             "vistoria_final_aprovada",
             "aval_do_locador",
             "aval_da_plataforma_oli",
@@ -317,7 +317,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
       }
     } catch (error) {
       console.error("Erro ao gerar caucao Asaas:", error);
-      toast.error("Nao foi possivel iniciar a caucao via Asaas.");
+      toast.error("Não foi possível iniciar a caucao via Asaas.");
     } finally {
       setLoading(false);
     }
@@ -334,7 +334,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
             Caucao via Asaas
           </DialogTitle>
           <DialogDescription>
-            Esta etapa e separada do pagamento da reserva. A caucao fica retida ate a devolucao do veiculo e so pode
+            Esta etapa e separada do pagamento da reserva. A caucao fica retida ate a devolucao do veículo e so pode
             ser liberada com aval do locador e da OLI.
           </DialogDescription>
         </DialogHeader>
@@ -351,7 +351,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
               </Badge>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              A liberacao da caucao depende de devolucao do veiculo, vistoria final aprovada, aval do locador e aval da
+              A liberacao da caucao depende de devolucao do veículo, vistoria final aprovada, aval do locador e aval da
               plataforma.
             </p>
           </div>
@@ -383,7 +383,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
               <div>
                 <h3 className="font-semibold text-lg">Caucao garantida</h3>
                 <p className="text-sm text-muted-foreground">
-                  A caucao desta reserva ja foi registrada. O fluxo pode seguir para a retirada do veiculo.
+                  A caucao desta reserva ja foi registrada. O fluxo pode seguir para a retirada do veículo.
                 </p>
               </div>
             </div>
@@ -473,7 +473,7 @@ export function AsaasDepositModal({ open, onOpenChange, rental, onDepositComplet
             <p>Fluxo planejado para a OLI:</p>
             <p>1. Pagamento principal confirmado.</p>
             <p>2. Caucao gerada e paga via Asaas.</p>
-            <p>3. Valor fica retido ate a devolucao do veiculo.</p>
+            <p>3. Valor fica retido ate a devolucao do veículo.</p>
             <p>4. Liberacao manual somente com aval do locador e da plataforma.</p>
           </div>
         </div>
