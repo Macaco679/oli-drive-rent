@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WebLayout } from "@/components/layout/WebLayout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCurrentUser, getMyRentalsAsRenter, getMyRentalsAsOwner, getVehicleById, OliRental, OliVehicle } from "@/lib/supabase";
+import { getCurrentUser, getMyRentalsAsOwner, getMyRentalsAsRenter, getVehicleById, OliRental, OliVehicle } from "@/lib/supabase";
 import { RentalContract } from "@/lib/contractService";
 import { Car } from "lucide-react";
 import { RentalCardRenter } from "@/components/reservations/RentalCardRenter";
@@ -13,6 +13,7 @@ import { ContractViewModal } from "@/components/contracts/ContractViewModal";
 import { PaymentMethodSelector, PaymentMethod } from "@/components/payments/PaymentMethodSelector";
 import { PixPaymentModal } from "@/components/payments/PixPaymentModal";
 import { CardPaymentModal } from "@/components/payments/CardPaymentModal";
+import { AsaasDepositModal } from "@/components/payments/AsaasDepositModal";
 import { toast } from "sonner";
 
 interface RentalWithVehicle extends OliRental {
@@ -23,20 +24,19 @@ export default function Reservations() {
   const [asRenter, setAsRenter] = useState<RentalWithVehicle[]>([]);
   const [asOwner, setAsOwner] = useState<RentalWithVehicle[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Modal states
   const [selectedRental, setSelectedRental] = useState<RentalWithVehicle | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
   const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [showCardModal, setShowCardModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const [contractMode, setContractMode] = useState<"owner" | "renter">("owner");
-  
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadRentals();
+    void loadRentals();
   }, []);
 
   const loadRentals = async () => {
@@ -55,14 +55,14 @@ export default function Reservations() {
       renterRentals.map(async (rental) => {
         const vehicle = await getVehicleById(rental.vehicle_id);
         return { ...rental, vehicle: vehicle || undefined };
-      })
+      }),
     );
 
     const ownerWithVehicles = await Promise.all(
       ownerRentals.map(async (rental) => {
         const vehicle = await getVehicleById(rental.vehicle_id);
         return { ...rental, vehicle: vehicle || undefined };
-      })
+      }),
     );
 
     setAsRenter(renterWithVehicles);
@@ -70,7 +70,6 @@ export default function Reservations() {
     setLoading(false);
   };
 
-  // Owner actions
   const handleOwnerCardClick = (rental: RentalWithVehicle) => {
     setSelectedRental(rental);
     setShowDetailsModal(true);
@@ -82,8 +81,7 @@ export default function Reservations() {
     setShowContractModal(true);
   };
 
-  // Renter actions
-  const handleViewContract = (rental: RentalWithVehicle, contract: RentalContract | null) => {
+  const handleViewContract = (rental: RentalWithVehicle, _contract: RentalContract | null) => {
     setSelectedRental(rental);
     setContractMode("renter");
     setShowContractModal(true);
@@ -98,6 +96,11 @@ export default function Reservations() {
   const handlePay = (rental: RentalWithVehicle) => {
     setSelectedRental(rental);
     setShowPaymentSelector(true);
+  };
+
+  const handleDeposit = (rental: RentalWithVehicle) => {
+    setSelectedRental(rental);
+    setShowDepositModal(true);
   };
 
   const handleSelectPaymentMethod = (method: PaymentMethod) => {
@@ -116,18 +119,18 @@ export default function Reservations() {
   };
 
   const handlePaymentComplete = () => {
-    toast.success("Pagamento confirmado! O veículo está liberado para uso.");
-    loadRentals();
+    toast.success("Pagamento principal confirmado. A reserva segue para a caucao quando exigida.");
+    void loadRentals();
+  };
+
+  const handleDepositComplete = () => {
+    toast.success("Caucao registrada. A retirada sera liberada quando a Asaas confirmar o pagamento.");
+    void loadRentals();
   };
 
   const handleContractSent = () => {
-    toast.success("Contrato enviado! O locatário pode visualizar e assinar.");
-    loadRentals();
-  };
-
-  const handleContractSigned = () => {
-    toast.success("Contrato assinado com sucesso!");
-    loadRentals();
+    toast.success("Contrato enviado! O locatario pode visualizar e assinar.");
+    void loadRentals();
   };
 
   const EmptyState = ({ message, action, onAction }: { message: string; action: string; onAction: () => void }) => (
@@ -152,26 +155,31 @@ export default function Reservations() {
         ) : (
           <Tabs defaultValue="renter" className="w-full">
             <TabsList className="w-full max-w-md grid grid-cols-2 mb-8">
-              <TabsTrigger value="renter" className="text-base py-3">Como motorista</TabsTrigger>
-              <TabsTrigger value="owner" className="text-base py-3">Como locador</TabsTrigger>
+              <TabsTrigger value="renter" className="text-base py-3">
+                Como motorista
+              </TabsTrigger>
+              <TabsTrigger value="owner" className="text-base py-3">
+                Como locador
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="renter">
               {asRenter.length === 0 ? (
                 <EmptyState
-                  message="Você ainda não tem reservas ativas"
+                  message="Voce ainda nao tem reservas ativas"
                   action="Buscar carros"
                   onAction={() => navigate("/search")}
                 />
               ) : (
                 <div className="grid gap-6">
                   {asRenter.map((rental) => (
-                    <RentalCardRenter 
-                      key={rental.id} 
+                    <RentalCardRenter
+                      key={rental.id}
                       rental={rental}
                       onViewContract={(contract) => handleViewContract(rental, contract)}
                       onSignContract={(contract) => handleSignContract(rental, contract)}
                       onPay={() => handlePay(rental)}
+                      onDeposit={() => handleDeposit(rental)}
                     />
                   ))}
                 </div>
@@ -181,15 +189,15 @@ export default function Reservations() {
             <TabsContent value="owner">
               {asOwner.length === 0 ? (
                 <EmptyState
-                  message="Você ainda não tem reservas como locador"
-                  action="Ver meus veículos"
+                  message="Voce ainda nao tem reservas como locador"
+                  action="Ver meus veiculos"
                   onAction={() => navigate("/my-vehicles")}
                 />
               ) : (
                 <div className="grid gap-6">
                   {asOwner.map((rental) => (
-                    <RentalCardOwner 
-                      key={rental.id} 
+                    <RentalCardOwner
+                      key={rental.id}
                       rental={rental}
                       onClick={() => handleOwnerCardClick(rental)}
                       onSendContract={() => handleSendContract(rental)}
@@ -202,7 +210,6 @@ export default function Reservations() {
         )}
       </div>
 
-      {/* Modal: Detalhes da reserva (Owner) */}
       <RentalDetailsModal
         open={showDetailsModal}
         onOpenChange={setShowDetailsModal}
@@ -215,7 +222,6 @@ export default function Reservations() {
         }}
       />
 
-      {/* Modal: Visualizar/Enviar Contrato */}
       <ContractViewModal
         open={showContractModal}
         onOpenChange={setShowContractModal}
@@ -224,7 +230,6 @@ export default function Reservations() {
         onContractSent={handleContractSent}
       />
 
-      {/* Modal: Seleção de Método de Pagamento */}
       <PaymentMethodSelector
         open={showPaymentSelector}
         onOpenChange={setShowPaymentSelector}
@@ -232,7 +237,6 @@ export default function Reservations() {
         onSelectMethod={handleSelectPaymentMethod}
       />
 
-      {/* Modal: Pagamento PIX */}
       <PixPaymentModal
         open={showPixModal}
         onOpenChange={setShowPixModal}
@@ -241,13 +245,19 @@ export default function Reservations() {
         onBack={handleBackToPaymentSelector}
       />
 
-      {/* Modal: Pagamento com Cartão */}
       <CardPaymentModal
         open={showCardModal}
         onOpenChange={setShowCardModal}
         rental={selectedRental}
         onPaymentComplete={handlePaymentComplete}
         onBack={handleBackToPaymentSelector}
+      />
+
+      <AsaasDepositModal
+        open={showDepositModal}
+        onOpenChange={setShowDepositModal}
+        rental={selectedRental}
+        onDepositComplete={handleDepositComplete}
       />
     </WebLayout>
   );

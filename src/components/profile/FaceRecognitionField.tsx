@@ -368,7 +368,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
             face_validation_status: resolvedStatus,
             face_validation_score: resolvedScore,
             face_validation_validated_at: resolvedValidatedAt,
-          })
+          } as any)
           .eq("id", user.id);
       }
 
@@ -610,3 +610,5 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     </Card>
   );
 }
+
+
