@@ -441,7 +441,7 @@ export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]>
     return [];
   }
 
-  return (data || []) as OliRental[];
+  return (data || []) as unknown as OliRental[];
 };
 
 export const updateRentalStatus = async (
