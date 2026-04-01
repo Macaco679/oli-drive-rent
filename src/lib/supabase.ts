@@ -411,7 +411,7 @@ export const createRental = async (rental: {
     return null;
   }
 
-  return data as OliRental;
+  return data as unknown as OliRental;
 };
 
 export const getMyRentalsAsRenter = async (renterId: string): Promise<OliRental[]> => {
