@@ -185,6 +185,7 @@ export default function DriverLicenseForm() {
       setCpf(licenseData.cpf ? formatCPF(licenseData.cpf) : "");
       setCodigoSeguranca(licenseData.codigoSeguranca || "");
       setNomeMae(licenseData.nomeMae || "");
+      setDataValidade(licenseData.expiresAt || "");
 
       const loadPreviews = async () => {
         if (licenseData.frontPath) {
