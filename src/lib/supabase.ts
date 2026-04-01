@@ -1,5 +1,5 @@
 ﻿// ============================================================
-// SUPABASE CONECTADO - FunÃ§Ãµes Reais
+// SUPABASE CONECTADO - Funções Reais
 // ============================================================
 
 import { supabase } from "@/integrations/supabase/client";
@@ -228,7 +228,7 @@ export const getAvailableVehicles = async (limit?: number): Promise<OliVehicle[]
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao buscar veÃ­culos disponÃ­veis:", error);
+    console.error("Erro ao buscar veículos disponíveis:", error);
     return [];
   }
 
@@ -248,7 +248,7 @@ export const getAllVehicles = async (limit?: number): Promise<OliVehicle[]> => {
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao buscar todos os veÃ­culos:", error);
+    console.error("Erro ao buscar todos os veículos:", error);
     return [];
   }
 
@@ -263,7 +263,7 @@ export const getVehicleById = async (vehicleId: string): Promise<OliVehicle | nu
     .single();
 
   if (error) {
-    console.error("Erro ao buscar veÃ­culo:", error);
+    console.error("Erro ao buscar veículo:", error);
     return null;
   }
 
@@ -278,7 +278,7 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
     .order("is_cover", { ascending: false });
 
   if (error) {
-    console.error("Erro ao buscar fotos do veÃ­culo:", error);
+    console.error("Erro ao buscar fotos do veículo:", error);
     return [];
   }
 
@@ -293,7 +293,7 @@ export const getVehiclePhotos = async (vehicleId: string): Promise<OliVehiclePho
         return { ...photo, image_url: parsed.toString() };
       }
     } catch {
-      // ignora URLs invÃ¡lidas
+      // ignora URLs inválidas
     }
     return photo;
   });
@@ -310,7 +310,7 @@ const normalizeImageUrl = (url: string): string => {
   const correctHost = "sgpktbljjlixmyjmhppa.supabase.co";
   try {
     const parsed = new URL(url);
-    // Se o host contÃ©m o projeto ref mas tem typo (ex: "h" extra), corrige
+    // Se o host contém o projeto ref mas tem typo (ex: "h" extra), corrige
     if (parsed.hostname.includes("sgpktblj") && parsed.hostname !== correctHost) {
       parsed.hostname = correctHost;
       return parsed.toString();
@@ -334,7 +334,7 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
   const coverUrl = coverRes.data?.image_url ?? null;
   if (coverUrl) return normalizeImageUrl(coverUrl);
 
-  // 2) Se nÃ£o houver capa, tenta qualquer foto na tabela
+  // 2) Se não houver capa, tenta qualquer foto na tabela
   const anyRes = await supabase
     .from("oli_vehicle_photos")
     .select("image_url")
@@ -352,7 +352,7 @@ export const getVehicleCoverPhoto = async (vehicleId: string): Promise<string | 
 
   if (listErr || !files || files.length === 0) return null;
 
-  // Pega o primeiro arquivo "real" (nÃ£o pasta)
+  // Pega o primeiro arquivo "real" (não pasta)
   const first = files.find((f) => !!f.name && !f.name.endsWith("/"));
   if (!first?.name) return null;
 
@@ -370,7 +370,7 @@ export const getMyVehicles = async (ownerId: string): Promise<OliVehicle[]> => {
     .eq("owner_id", ownerId);
 
   if (error) {
-    console.error("Erro ao buscar meus veÃ­culos:", error);
+    console.error("Erro ao buscar meus veículos:", error);
     return [];
   }
 
@@ -411,7 +411,7 @@ export const createRental = async (rental: {
     return null;
   }
 
-  return data as OliRental;
+  return data as unknown as OliRental;
 };
 
 export const getMyRentalsAsRenter = async (renterId: string): Promise<OliRental[]> => {
@@ -426,7 +426,7 @@ export const getMyRentalsAsRenter = async (renterId: string): Promise<OliRental[
     return [];
   }
 
-  return (data || []) as OliRental[];
+  return (data || []) as unknown as OliRental[];
 };
 
 export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]> => {
@@ -437,11 +437,11 @@ export const getMyRentalsAsOwner = async (ownerId: string): Promise<OliRental[]>
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Erro ao buscar reservas dos meus veÃ­culos:", error);
+    console.error("Erro ao buscar reservas dos meus veículos:", error);
     return [];
   }
 
-  return (data || []) as OliRental[];
+  return (data || []) as unknown as OliRental[];
 };
 
 export const updateRentalStatus = async (

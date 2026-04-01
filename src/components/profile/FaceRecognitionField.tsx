@@ -1,4 +1,4 @@
-﻿import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
@@ -68,52 +68,50 @@ const getStatusMeta = (status: FaceValidationStatus) => {
         label: "Validado",
         tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
         icon: ShieldCheck,
-        description: "Biometria aprovada. Sua identidade facial esta pronta para uso.",
+        description: "Biometria aprovada. Sua identidade facial est\u00e1 pronta para uso.",
       };
     case "pending":
       return {
-        label: "Em analise",
+        label: "Em an\u00e1lise",
         tone: "bg-amber-50 text-amber-700 border-amber-200",
         icon: Clock3,
-        description: "Foto enviada. A validacao esta aguardando retorno do provedor.",
+        description: "Foto enviada. A valida\u00e7\u00e3o est\u00e1 aguardando retorno do provedor.",
       };
     case "needs_review":
       return {
-        label: "Revisao manual",
+        label: "Revis\u00e3o manual",
         tone: "bg-sky-50 text-sky-700 border-sky-200",
         icon: AlertCircle,
-        description: "Recebemos a selfie, mas ela precisa de analise complementar.",
+        description: "Recebemos a selfie, mas ela precisa de an\u00e1lise complementar.",
       };
     case "rejected":
       return {
         label: "Reprovado",
         tone: "bg-rose-50 text-rose-700 border-rose-200",
         icon: XCircle,
-        description: "A selfie foi recusada. Faca uma nova captura com boa iluminacao.",
+        description: "A selfie foi recusada. Fa\u00e7a uma nova captura com boa ilumina\u00e7\u00e3o.",
       };
     case "error":
       return {
         label: "Falha no envio",
         tone: "bg-red-50 text-red-700 border-red-200",
         icon: AlertCircle,
-        description: "Nao foi possivel concluir a validacao facial automatica.",
+        description: "N\u00e3o foi poss\u00edvel concluir a valida\u00e7\u00e3o facial autom\u00e1tica.",
       };
     default:
       return {
-        label: "Nao enviado",
+        label: "N\u00e3o enviado",
         tone: "bg-muted text-muted-foreground border-border",
         icon: ScanFace,
-        description: "Capture uma selfie ou envie uma foto para iniciar sua validacao de identidade.",
+        description: "Capture uma selfie ou envie uma foto para iniciar sua valida\u00e7\u00e3o de identidade.",
       };
   }
 };
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return null;
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
@@ -126,23 +124,12 @@ const formatScore = (score?: number | null) => {
   return Math.round(score);
 };
 
-const isCameraAvailable = (): boolean => {
-  if (typeof navigator === "undefined") return false;
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
-
-  return (
-    window.location.protocol === "https:" ||
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  );
-};
-
 export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange }: FaceRecognitionFieldProps) {
   const [capturing, setCapturing] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [saving, setSaving] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const normalizedStatus = normalizeStatus(validation?.status);
@@ -156,66 +143,55 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
       (onFaceChange as (payload: FaceValidationPayload) => void)(payload);
       return;
     }
-
     (onFaceChange as (url: string | null) => void)(payload.url);
   };
 
   const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
     }
-
     setCapturing(false);
   };
 
+  // Attach stream to video element once both are available
   useEffect(() => {
-    if (!capturing || !videoRef.current || !streamRef.current) return;
-
-    const videoElement = videoRef.current;
-    videoElement.srcObject = streamRef.current;
-
-    void videoElement.play().catch((error) => {
-      console.warn("Camera playback error:", error);
-    });
-
+    if (capturing && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.setAttribute("playsinline", "true");
+      videoRef.current.play().catch((err) => {
+        console.warn("Camera playback error:", err);
+      });
+    }
     return () => {
-      if (videoElement.srcObject) {
-        videoElement.srcObject = null;
+      if (stream && !capturing) {
+        stream.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [capturing]);
+  }, [capturing, stream]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [stream]);
 
   const startCamera = async () => {
-    if (!isCameraAvailable()) {
-      toast.info("Camera requer HTTPS. Use a opcao de upload de arquivo.");
-      return;
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
       });
-
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
       setCapturing(true);
+      setStream(mediaStream);
       setCapturedImage(null);
     } catch (error) {
       console.warn("Camera error:", error);
-      toast.info("Nao foi possivel acessar a camera. Use a opcao de upload de arquivo.");
+      toast.info("N\u00e3o foi poss\u00edvel acessar a c\u00e2mera. Use a op\u00e7\u00e3o de upload de arquivo.");
     }
   };
 
@@ -231,7 +207,8 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     if (!context) return;
 
     context.drawImage(video, 0, 0);
-    setCapturedImage(canvas.toDataURL("image/jpeg", 0.9));
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    setCapturedImage(dataUrl);
     stopCamera();
   };
 
@@ -260,7 +237,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     setSaving(true);
     try {
       const { user } = await getCurrentUser();
-      if (!user) throw new Error("Usuario nao autenticado");
+      if (!user) throw new Error("Usu\u00e1rio n\u00e3o autenticado");
 
       const imageResponse = await fetch(capturedImage);
       const blob = await imageResponse.blob();
@@ -388,14 +365,14 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         resolvedStatus === "approved"
           ? "Selfie validada com sucesso!"
           : resolvedStatus === "rejected"
-            ? "Selfie enviada, mas foi reprovada. Faca uma nova captura."
+            ? "Selfie enviada, mas foi reprovada. Fa\u00e7a uma nova captura."
             : resolvedStatus === "error"
-              ? "Selfie salva, mas houve falha na validacao automatica."
-              : "Selfie enviada! Validacao facial em analise.",
+              ? "Selfie salva, mas houve falha na valida\u00e7\u00e3o autom\u00e1tica."
+              : "Selfie enviada! Valida\u00e7\u00e3o facial em an\u00e1lise.",
       );
     } catch (error) {
-      console.error("Erro ao salvar validacao facial:", error);
-      toast.error("Erro ao salvar validacao facial");
+      console.error("Erro ao salvar valida\u00e7\u00e3o facial:", error);
+      toast.error("Erro ao salvar valida\u00e7\u00e3o facial");
     } finally {
       setSaving(false);
     }
@@ -405,7 +382,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     setSaving(true);
     try {
       const { user } = await getCurrentUser();
-      if (!user) throw new Error("Usuario nao autenticado");
+      if (!user) throw new Error("Usu\u00e1rio n\u00e3o autenticado");
 
       await supabase
         .from("oli_profiles")
@@ -430,10 +407,10 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         referenceId: null,
       });
 
-      toast.success("Validacao facial removida");
+      toast.success("Valida\u00e7\u00e3o facial removida");
     } catch (error) {
       console.error("Erro ao remover:", error);
-      toast.error("Erro ao remover validacao facial");
+      toast.error("Erro ao remover valida\u00e7\u00e3o facial");
     } finally {
       setSaving(false);
     }
@@ -464,10 +441,10 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <ScanFace className="w-4 h-4 text-primary" />
               </div>
-              Validacao Facial
+              Valida\u00e7\u00e3o Facial
             </CardTitle>
             <CardDescription>
-              Capture ou envie uma selfie para verificacao de identidade.
+              Capture ou envie uma selfie para verifica\u00e7\u00e3o de identidade.
             </CardDescription>
           </div>
           <Badge variant="outline" className={statusMeta.tone}>
@@ -507,7 +484,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
             {scorePercent != null && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Score de correspondencia</span>
+                  <span className="text-muted-foreground">Score de correspond\u00eancia</span>
                   <span className="font-semibold">{scorePercent}%</span>
                 </div>
                 <Progress value={scorePercent} className="h-2" />
@@ -519,18 +496,16 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
         {currentFaceUrl && !capturing && !capturedImage ? (
           <div className="space-y-4">
             <div className="border-2 border-border rounded-lg p-4 bg-white flex justify-center">
-              <img src={currentFaceUrl} alt="Selfie de validacao facial" className="max-h-48 rounded-lg object-cover" />
+              <img src={currentFaceUrl} alt="Selfie de valida\u00e7\u00e3o facial" className="max-h-48 rounded-lg object-cover" />
             </div>
             <div className="flex flex-wrap items-center gap-2 justify-center text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Selfie cadastrada para validacao de identidade
+              Selfie cadastrada para valida\u00e7\u00e3o de identidade
             </div>
             <div className="flex gap-2">
-              {isCameraAvailable() ? (
-                <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
-                  <RefreshCw className="w-4 h-4" /> Refazer com camera
-                </Button>
-              ) : null}
+              <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
+                <RefreshCw className="w-4 h-4" /> Refazer com c\u00e2mera
+              </Button>
               <Button type="button" variant="outline" className="flex-1 gap-2" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4" /> Enviar arquivo
               </Button>
@@ -545,7 +520,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-48 object-cover" />
             </div>
             <div className="text-xs text-muted-foreground text-center space-y-1">
-              <p>Centralize o rosto, retire oculos escuros e use boa iluminacao.</p>
+              <p>Centralize o rosto, retire \u00f3culos escuros e use boa ilumina\u00e7\u00e3o.</p>
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1" onClick={handleCancel}>
@@ -564,7 +539,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Ao confirmar, a selfie ficara com status <strong>Em analise</strong> ate o retorno da validacao.
+                Ao confirmar, a selfie ficar\u00e1 com status <strong>Em an\u00e1lise</strong> at\u00e9 o retorno da valida\u00e7\u00e3o.
               </AlertDescription>
             </Alert>
             <div className="flex gap-2">
@@ -573,7 +548,7 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
               </Button>
               <Button type="button" className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Enviar para validacao
+                Enviar para valida\u00e7\u00e3o
               </Button>
             </div>
           </div>
@@ -581,27 +556,19 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
           <div className="space-y-3">
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <ScanFace className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">Nenhuma selfie enviada para validacao facial</p>
-              {!isCameraAvailable() && (
-                <p className="text-xs text-amber-600 mt-2">
-                  Camera indisponivel neste ambiente. Use o upload de arquivo abaixo.
-                </p>
-              )}
+              <p className="text-muted-foreground text-sm">Nenhuma selfie enviada para valida\u00e7\u00e3o facial</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              {isCameraAvailable() && (
-                <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
-                  <Camera className="w-4 h-4" /> Usar camera
-                </Button>
-              )}
+              <Button type="button" variant="outline" className="flex-1 gap-2" onClick={startCamera}>
+                <Camera className="w-4 h-4" /> Usar c\u00e2mera
+              </Button>
               <Button
                 type="button"
-                variant={isCameraAvailable() ? "outline" : "default"}
+                variant="outline"
                 className="flex-1 gap-2"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="w-4 h-4" />
-                {isCameraAvailable() ? "Enviar arquivo" : "Selecionar foto"}
+                <Upload className="w-4 h-4" /> Enviar arquivo
               </Button>
             </div>
           </div>
@@ -610,5 +577,3 @@ export function FaceRecognitionField({ currentFaceUrl, validation, onFaceChange 
     </Card>
   );
 }
-
-
