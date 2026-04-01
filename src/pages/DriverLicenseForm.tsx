@@ -842,7 +842,7 @@ export default function DriverLicenseForm() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="codigoSeguranca">Codigo de Seguranca <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="codigoSeguranca">Código de Segurança <span className="text-destructive">*</span></Label>
                       <SecurityCodeHint />
                     </div>
                     <Input
