@@ -401,12 +401,17 @@ export default function DriverLicenseForm() {
       startTimer();
 
       // 4. Chamar webhook n8n com timeout de 90s
-      let webhookResult: { cnh_aprovada?: boolean; status?: string; motivo?: string | null } | null = null;
+      let webhookResult: { 
+        cnh_aprovada?: boolean; 
+        status?: string; 
+        motivo?: string | null;
+        campos_reprovados?: string[];
+        campos_ausentes?: string[];
+      } | null = null;
 
       try {
         console.log("[CNH] Enviando para webhook via proxy...");
         
-        // Use Promise.race for timeout since supabase.functions.invoke doesn't support AbortController
         const invokePromise = supabase.functions.invoke("webhook-proxy", {
           body: {
             _webhook_target: "cnhcheck",
@@ -438,31 +443,31 @@ export default function DriverLicenseForm() {
           console.error("[CNH] Erro no webhook-proxy:", webhookError);
         } else if (webhookData) {
           console.log("[CNH] Resposta do webhook-proxy (raw):", webhookData);
-          // webhookData comes parsed from supabase.functions.invoke
           let parsed = typeof webhookData === "string" ? JSON.parse(webhookData) : webhookData;
           parsed = Array.isArray(parsed) ? parsed[0] : parsed;
 
-          // n8n may return { output: "{\"status\":\"REPROVADA\",\"motivo\":\"...\"}" }
-          // Parse the nested output string if present
+          // n8n may nest response in { output: "..." }
           if (parsed?.output && typeof parsed.output === "string") {
             try {
               const inner = JSON.parse(parsed.output);
-              console.log("[CNH] Output interno parseado:", inner);
-              // Map n8n response format to our expected format
-              const statusUpper = (inner.status || "").toUpperCase();
-              const isApproved = statusUpper === "APROVADA";
-              webhookResult = {
-                cnh_aprovada: isApproved,
-                status: inner.status || statusUpper,
-                motivo: inner.motivo || null,
-              };
+              parsed = Array.isArray(inner) ? inner[0] : inner;
             } catch {
               console.warn("[CNH] Falha ao parsear output interno:", parsed.output);
-              webhookResult = parsed;
             }
-          } else {
-            webhookResult = parsed;
           }
+
+          console.log("[CNH] Parsed result:", parsed);
+
+          // Map response: status "APROVADA" = approved, anything else = rejected
+          const statusUpper = (parsed?.status || "").toUpperCase();
+          const isApproved = statusUpper === "APROVADA";
+          webhookResult = {
+            cnh_aprovada: isApproved,
+            status: parsed?.status || statusUpper,
+            motivo: parsed?.motivo || null,
+            campos_reprovados: parsed?.campos_reprovados || [],
+            campos_ausentes: parsed?.campos_ausentes || [],
+          };
           console.log("[CNH] Resultado final:", webhookResult);
         }
       } catch (fetchErr: unknown) {
@@ -475,87 +480,89 @@ export default function DriverLicenseForm() {
 
       stopTimer();
 
-      // 5. Processar resultado do webhook
-      if (webhookResult && typeof webhookResult.cnh_aprovada === "boolean") {
-        const isApproved = webhookResult.cnh_aprovada;
-        const newStatus = isApproved ? "approved" : "rejected";
-        const statusLabel = webhookResult.status || (isApproved ? "APROVADA" : "REPROVADA");
+      // 5. Processar resultado - NUNCA deixar como pendente, sempre aprovado ou rejeitado
+      const isApproved = webhookResult?.cnh_aprovada === true;
+      const newStatus = isApproved ? "approved" : "rejected";
+      const statusLabel = webhookResult?.status || (isApproved ? "APROVADA" : "REPROVADA");
+      const motivo = webhookResult?.motivo || (isApproved ? null : "Falha na verificação ou timeout");
+      const camposReprovados = webhookResult?.campos_reprovados || [];
+      const camposAusentes = webhookResult?.campos_ausentes || [];
 
-        console.log("[CNH] Atualizando status no banco:", newStatus);
+      // Build rejection notes for DB
+      const rejectionNotes = !isApproved
+        ? [
+            motivo ? `Motivo: ${motivo}` : null,
+            camposReprovados.length > 0 ? `Campos reprovados: ${camposReprovados.join(", ")}` : null,
+            camposAusentes.length > 0 ? `Campos ausentes: ${camposAusentes.join(", ")}` : null,
+          ].filter(Boolean).join(". ")
+        : null;
 
-        // 5a. Atualizar oli_driver_licenses
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateError } = await (supabase as any)
-          .from("oli_driver_licenses")
-          .update({
-            status: newStatus,
-            ...(isApproved ? { verified_at: new Date().toISOString() } : {}),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
+      console.log("[CNH] Atualizando status no banco:", newStatus);
 
-        if (updateError) {
-          console.error("[CNH] Erro ao atualizar status:", updateError);
-          toast.error("Erro ao atualizar status da CNH no banco");
-        } else {
-          console.log("[CNH] Status atualizado com sucesso:", newStatus);
-        }
-
-        await updateRentalVerification({
-          driver_license_id: latestLicense?.id ?? null,
+      // 5a. Atualizar oli_driver_licenses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
+        .from("oli_driver_licenses")
+        .update({
           status: newStatus,
-          verifiedAt: isApproved ? new Date().toISOString() : null,
-          payload: webhookResult as Json,
-        });
+          notes: rejectionNotes,
+          ...(isApproved ? { verified_at: new Date().toISOString() } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
 
-        // 5b. Mostrar resultado na tela
-        setVerificationResult({ approved: isApproved, statusLabel, motivo: webhookResult?.motivo || null });
-
-        // 5c. Enviar email de notificação
-        try {
-          const EDGE_FUNCTION_URL = `https://sgpktbljjlixmyjmhppa.supabase.co/functions/v1/send-notification-email`;
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          const emailPayload = {
-            type: isApproved ? "cnh_approved" : "cnh_rejected",
-            recipient_id: user.id,
-            data: {
-              full_name: fullName,
-              status_label: statusLabel,
-            },
-          };
-          console.log("[CNH] Enviando email:", emailPayload);
-
-          const emailResp = await fetch(EDGE_FUNCTION_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": session?.access_token ? `Bearer ${session.access_token}` : "",
-              "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncGt0YmxqamxpeG15am1ocHBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTE5MjksImV4cCI6MjA4NDQ4NzkyOX0.OoTf_1N0KWWGSfnk-6ZE-M2yg5z8wmej6E83bdWKUAU",
-            },
-            body: JSON.stringify(emailPayload),
-          });
-
-          const emailResult = await emailResp.text();
-          console.log("[CNH] Resposta do email:", emailResp.status, emailResult);
-        } catch (emailErr) {
-          console.warn("[CNH] Email de notificação falhou:", emailErr);
-        }
-
-        // 5d. Recarregar dados do contexto
-        await loadFromSupabase();
+      if (updateError) {
+        console.error("[CNH] Erro ao atualizar status:", updateError);
+        toast.error("Erro ao atualizar status da CNH no banco");
       } else {
-        // Webhook nao retornou resultado valido
-        await updateRentalVerification({
-          driver_license_id: latestLicense?.id ?? null,
-          status: "pending",
-        });
-        setVerifying(false);
-        toast.info("Verificação em andamento. Vocàª será notificado em breve.");
-        await loadFromSupabase();
-        navigate(pageBackTarget);
-        return;
+        console.log("[CNH] Status atualizado com sucesso:", newStatus);
       }
+
+      await updateRentalVerification({
+        driver_license_id: latestLicense?.id ?? null,
+        status: newStatus,
+        verifiedAt: isApproved ? new Date().toISOString() : null,
+        payload: webhookResult as Json,
+      });
+
+      // 5b. Mostrar resultado na tela
+      setVerificationResult({ 
+        approved: isApproved, 
+        statusLabel, 
+        motivo,
+        camposReprovados,
+        camposAusentes,
+      });
+
+      // 5c. Enviar email
+      try {
+        const EDGE_FUNCTION_URL = `https://sgpktbljjlixmyjmhppa.supabase.co/functions/v1/send-notification-email`;
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const emailPayload = {
+          type: isApproved ? "cnh_approved" : "cnh_rejected",
+          recipient_id: user.id,
+          data: {
+            full_name: fullName,
+            status_label: statusLabel,
+          },
+        };
+
+        await fetch(EDGE_FUNCTION_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": session?.access_token ? `Bearer ${session.access_token}` : "",
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncGt0YmxqamxpeG15am1ocHBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTE5MjksImV4cCI6MjA4NDQ4NzkyOX0.OoTf_1N0KWWGSfnk-6ZE-M2yg5z8wmej6E83bdWKUAU",
+          },
+          body: JSON.stringify(emailPayload),
+        });
+      } catch (emailErr) {
+        console.warn("[CNH] Email de notificação falhou:", emailErr);
+      }
+
+      // 5d. Recarregar dados do contexto
+      await loadFromSupabase();
 
       setVerifying(false);
     } catch (err) {
