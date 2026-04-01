@@ -152,6 +152,8 @@ export default function DriverLicenseForm() {
     approved: boolean;
     statusLabel: string;
     motivo?: string | null;
+    camposReprovados?: string[];
+    camposAusentes?: string[];
   } | null>(null);
   const [rentalContext, setRentalContext] = useState<RentalVerificationContext | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
