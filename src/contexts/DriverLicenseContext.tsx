@@ -15,6 +15,7 @@ export interface LicenseData {
   frontPath?: string | null;
   backPath?: string | null;
   selfiePath?: string | null;
+  notes?: string | null;
 }
 
 export interface LicenseFiles {
@@ -82,6 +83,7 @@ function mapRecordToData(record: DriverLicenseRecord): LicenseData {
     frontPath: record.front_path,
     backPath: record.back_path,
     selfiePath: record.selfie_path,
+    notes: record.notes,
   };
 }
 
