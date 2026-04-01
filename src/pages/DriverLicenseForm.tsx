@@ -322,6 +322,8 @@ export default function DriverLicenseForm() {
     if (!cpf.trim()) newErrors.cpf = "CPF é obrigatório";
     if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Código de segurança é obrigatório";
     if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mãe é obrigatório";
+    if (!dataValidade) newErrors.dataValidade = "Data de validade é obrigatória";
+    if (!dataNascimento) newErrors.dataNascimento = "Data de nascimento é obrigatória";
 
     const hasExistingFront = licenseData?.frontPath;
     const hasExistingBack = licenseData?.backPath;
