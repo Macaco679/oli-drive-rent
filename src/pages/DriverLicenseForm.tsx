@@ -881,6 +881,71 @@ export default function DriverLicenseForm() {
                   />
                   {errors.nomeMae && <p className="text-sm text-destructive mt-1">{errors.nomeMae}</p>}
                 </div>
+
+                {/* Datas */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dataValidade">Data de Validade da CNH <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="dataValidade"
+                      type="date"
+                      value={dataValidade}
+                      onChange={(e) => setDataValidade(e.target.value)}
+                      className={`mt-1 h-12 ${errors.dataValidade ? "border-destructive" : ""}`}
+                      disabled={isViewMode}
+                    />
+                    {errors.dataValidade && <p className="text-sm text-destructive mt-1">{errors.dataValidade}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="dataNascimento">Data de Nascimento <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="dataNascimento"
+                      type="date"
+                      value={dataNascimento}
+                      onChange={(e) => setDataNascimento(e.target.value)}
+                      className={`mt-1 h-12 ${errors.dataNascimento ? "border-destructive" : ""}`}
+                      disabled={isViewMode}
+                    />
+                    {errors.dataNascimento && <p className="text-sm text-destructive mt-1">{errors.dataNascimento}</p>}
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dataPrimeiraHabilitacao">Data da Primeira Habilitação <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input
+                      id="dataPrimeiraHabilitacao"
+                      type="date"
+                      value={dataPrimeiraHabilitacao}
+                      onChange={(e) => setDataPrimeiraHabilitacao(e.target.value)}
+                      className="mt-1 h-12"
+                      disabled={isViewMode}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dataUltimaEmissao">Data da Última Emissão <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input
+                      id="dataUltimaEmissao"
+                      type="date"
+                      value={dataUltimaEmissao}
+                      onChange={(e) => setDataUltimaEmissao(e.target.value)}
+                      className="mt-1 h-12"
+                      disabled={isViewMode}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="observacoes">Observações <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                  <textarea
+                    id="observacoes"
+                    value={observacoes}
+                    onChange={(e) => setObservacoes(e.target.value)}
+                    placeholder="Informações adicionais sobre sua CNH"
+                    className="mt-1 w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                    disabled={isViewMode}
+                  />
+                </div>
               </div>
             </div>
           </div>
