@@ -723,7 +723,7 @@ export default function DriverLicenseForm() {
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validação de CNH da reserva" : "Verificacao de CNH"}</h1>
+              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validação de CNH da reserva" : "Verificação de CNH"}</h1>
               {verificationFlow === "rental" && rentalContext ? <p className="text-sm text-muted-foreground mt-1">Reserva: {rentalContext.vehicleTitle}</p> : null}
             </div>
           </div>
