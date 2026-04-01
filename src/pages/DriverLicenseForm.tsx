@@ -628,13 +628,30 @@ export default function DriverLicenseForm() {
                 <XCircle className="w-10 h-10 text-destructive" />
               </div>
               <h1 className="text-2xl font-bold text-destructive mb-2">CNH Reprovada</h1>
-              <p className="text-muted-foreground mb-2">
-                Verifique a situação da sua carteira de habilitação.
-              </p>
               {verificationResult.motivo && (
-                <p className="text-sm text-destructive/80 mb-2">
+                <p className="text-destructive/80 mb-2">
                   Motivo: <span className="font-semibold">{verificationResult.motivo.replace(/_/g, " ")}</span>
                 </p>
+              )}
+              {verificationResult.camposReprovados && verificationResult.camposReprovados.length > 0 && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mb-3 text-left">
+                  <p className="text-sm font-medium text-destructive mb-1">Campos reprovados:</p>
+                  <ul className="text-sm text-destructive/80 list-disc list-inside">
+                    {verificationResult.camposReprovados.map((campo, i) => (
+                      <li key={i}>{campo.replace(/_/g, " ")}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {verificationResult.camposAusentes && verificationResult.camposAusentes.length > 0 && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mb-3 text-left">
+                  <p className="text-sm font-medium text-destructive mb-1">Campos ausentes:</p>
+                  <ul className="text-sm text-destructive/80 list-disc list-inside">
+                    {verificationResult.camposAusentes.map((campo, i) => (
+                      <li key={i}>{campo.replace(/_/g, " ")}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
               <p className="text-muted-foreground mb-8">
                 Sua carteira de habilitação não foi aprovada na verificação. Verifique os dados informados e as fotos enviadas, ou entre em contato com o suporte.
