@@ -651,7 +651,7 @@ export default function VehicleInspection() {
             <CardContent className="p-4 space-y-2">
               <p className="text-sm font-semibold">Limite de quilometragem contratado</p>
               <p className="text-sm text-muted-foreground">
-                Este veiculo possui limite de {vehicle.mileage_limit_per_day} km por dia para esta reserva.
+                Este veículo possui limite de {vehicle.mileage_limit_per_day} km por dia para esta reserva.
               </p>
               {totalMileageLimit ? (
                 <p className="text-sm font-medium">Referencia para o periodo: {totalMileageLimit} km.</p>

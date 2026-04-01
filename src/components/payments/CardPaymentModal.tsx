@@ -171,7 +171,7 @@ export function CardPaymentModal({
             expiryYear: `20${expiryYear}`,
             cvv: cvv,
           },
-          veiculo: {
+          veículo: {
             placa: rental.vehicle?.plate || "",
           },
           parcelas: numInstallments,

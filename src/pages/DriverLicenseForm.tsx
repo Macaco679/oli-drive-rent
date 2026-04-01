@@ -83,7 +83,7 @@ function SecurityCodeHint() {
         <div>
           <p className="text-sm font-medium">Onde encontrar o codigo de seguranca</p>
           <p className="text-sm text-muted-foreground">
-            Na CNH fisica, ele aparece como um numero pequeno na faixa inferior do documento.
+            Na CNH fisica, ele aparece como um número pequeno na faixa inferior do documento.
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
@@ -223,7 +223,7 @@ export default function DriverLicenseForm() {
 
   const loadRentalContext = async () => {
     if (!rentalId) {
-      toast.error("Reserva nao encontrada para esta validacao.");
+      toast.error("Reserva nao encontrada para esta validação.");
       navigate("/reservations");
       return;
     }
@@ -243,19 +243,19 @@ export default function DriverLicenseForm() {
       .single();
 
     if (error || !rentalData) {
-      toast.error("Nao foi possivel carregar a reserva para validar a CNH.");
+      toast.error("Não foi possível carregar a reserva para validar a CNH.");
       navigate("/reservations");
       return;
     }
 
     if (rentalData.renter_id !== currentUser.id) {
-      toast.error("Essa validacao so pode ser feita pelo locatario da reserva.");
+      toast.error("Essa validação so pode ser feita pelo locatario da reserva.");
       navigate("/reservations");
       return;
     }
 
     const vehicle = await getVehicleById(rentalData.vehicle_id);
-    const vehicleTitle = vehicle?.title || `${vehicle?.brand || ""} ${vehicle?.model || ""} ${vehicle?.year || ""}`.trim() || "Veiculo";
+    const vehicleTitle = vehicle?.title || `${vehicle?.brand || ""} ${vehicle?.model || ""} ${vehicle?.year || ""}`.trim() || "Veículo";
 
     setRentalContext({
       id: rentalData.id,
@@ -310,12 +310,12 @@ export default function DriverLicenseForm() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim()) newErrors.fullName = "Nome completo e obrigatorio";
-    if (!licenseNumber.trim()) newErrors.licenseNumber = "Numero de Registro da CNH e obrigatorio";
-    if (!category) newErrors.category = "Categoria e obrigatoria";
-    if (!cpf.trim()) newErrors.cpf = "CPF e obrigatorio";
-    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Codigo de seguranca e obrigatorio";
-    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mae e obrigatorio";
+    if (!fullName.trim()) newErrors.fullName = "Nome completo e obrigatório";
+    if (!licenseNumber.trim()) newErrors.licenseNumber = "Número de Registro da CNH e obrigatório";
+    if (!category) newErrors.category = "Categoria e obrigatória";
+    if (!cpf.trim()) newErrors.cpf = "CPF e obrigatório";
+    if (!codigoSeguranca.trim()) newErrors.codigoSeguranca = "Codigo de seguranca e obrigatório";
+    if (!nomeMae.trim()) newErrors.nomeMae = "Nome da mae e obrigatório";
 
     const hasExistingFront = licenseData?.frontPath;
     const hasExistingBack = licenseData?.backPath;
@@ -339,7 +339,7 @@ export default function DriverLicenseForm() {
     e.preventDefault();
 
     if (!validate()) {
-      toast.error("Preencha todos os campos obrigatorios");
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
@@ -613,7 +613,7 @@ export default function DriverLicenseForm() {
                 ) : (
                   <>
                     <Button onClick={() => navigate("/search")} className="w-full h-12">
-                      Buscar veiculos
+                      Buscar veículos
                     </Button>
                     <Button variant="outline" onClick={() => navigate("/profile")} className="w-full h-12">
                       Voltar ao perfil
@@ -723,7 +723,7 @@ export default function DriverLicenseForm() {
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validacao de CNH da reserva" : "Verificacao de CNH"}</h1>
+              <h1 className="text-2xl font-bold">{verificationFlow === "rental" ? "Validação de CNH da reserva" : "Verificacao de CNH"}</h1>
               {verificationFlow === "rental" && rentalContext ? <p className="text-sm text-muted-foreground mt-1">Reserva: {rentalContext.vehicleTitle}</p> : null}
             </div>
           </div>
@@ -744,7 +744,7 @@ export default function DriverLicenseForm() {
             </div>
             <div>
               <p className="font-medium text-yellow-800">Em análise</p>
-              <p className="text-sm text-yellow-700">{verificationFlow === "rental" ? "A validacao desta reserva esta sendo analisada." : "Sua CNH esta sendo analisada."}</p>
+              <p className="text-sm text-yellow-700">{verificationFlow === "rental" ? "A validação desta reserva esta sendo analisada." : "Sua CNH esta sendo analisada."}</p>
             </div>
           </div>
         )}
@@ -772,7 +772,7 @@ export default function DriverLicenseForm() {
             </div>
             <div>
               <p className="font-medium text-green-800">{verificationFlow === "rental" ? "CNH validada para esta reserva" : "CNH aprovada"}</p>
-              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as proximas etapas." : "Voce pode fazer reservas."}</p>
+              <p className="text-sm text-green-700">{verificationFlow === "rental" ? "A reserva pode seguir para as proximas etapas." : "Você pode fazer reservas."}</p>
             </div>
           </div>
         )}
@@ -797,7 +797,7 @@ export default function DriverLicenseForm() {
               </div>
 
               <div>
-                <Label htmlFor="licenseNumber">Numero de Registro da CNH <span className="text-destructive">*</span></Label>
+                <Label htmlFor="licenseNumber">Número de Registro da CNH <span className="text-destructive">*</span></Label>
                 <Input
                   id="licenseNumber"
                   value={licenseNumber}
@@ -938,7 +938,7 @@ export default function DriverLicenseForm() {
               {loading ? (
                 <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Enviando...</>
               ) : verificationFlow === "rental" ? (
-                currentStatus === "rejected" ? "Reenviar validacao da reserva" : "Validar CNH para esta reserva"
+                currentStatus === "rejected" ? "Reenviar validação da reserva" : "Validar CNH para esta reserva"
               ) : currentStatus === "rejected" ? (
                 "Reenviar para verificação"
               ) : currentStatus === "pending" ? (
@@ -951,14 +951,14 @@ export default function DriverLicenseForm() {
         <AlertDialog open={warningOpen} onOpenChange={setWarningOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Antes de enviar para validacao</AlertDialogTitle>
+              <AlertDialogTitle>Antes de enviar para validação</AlertDialogTitle>
               <AlertDialogDescription>
                 Se a CNH estiver com pendencias, vencimento, bloqueio ou qualquer situacao irregular, ela nao sera aceita pela plataforma. Confira o documento antes de continuar.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Revisar dados</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmWarningAndSubmit}>Continuar com a validacao</AlertDialogAction>
+              <AlertDialogAction onClick={confirmWarningAndSubmit}>Continuar com a validação</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

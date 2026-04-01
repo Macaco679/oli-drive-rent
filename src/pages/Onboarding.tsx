@@ -147,7 +147,7 @@ export default function Onboarding() {
     try {
       const { user } = await getCurrentUser();
       if (!user) {
-        toast.error("Usuario nao encontrado");
+        toast.error("Usuário nao encontrado");
         navigate("/auth");
         return;
       }
@@ -209,7 +209,7 @@ export default function Onboarding() {
           <h1 className="text-6xl font-bold mb-6">OLI</h1>
           <p className="text-2xl mb-4">Bem-vindo!</p>
           <p className="text-white/80 text-lg">
-            Vamos configurar seu perfil para voce começar a usar a plataforma de aluguel de carros.
+            Vamos configurar seu perfil para você começar a usar a plataforma de aluguel de carros.
           </p>
         </div>
       </div>

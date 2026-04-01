@@ -437,7 +437,7 @@ export default function RegisterVehicle() {
                   </Card>
 
                   <Card className="shadow-md border-0">
-                    <CardHeader className="bg-primary/5 rounded-t-lg"><CardTitle>Localizacao</CardTitle></CardHeader>
+                    <CardHeader className="bg-primary/5 rounded-t-lg"><CardTitle>Localização</CardTitle></CardHeader>
                     <CardContent className="pt-6 space-y-4">
                       <div className="grid grid-cols-3 gap-4">
                         <FormField control={form.control} name="location_state" render={({ field }) => (<FormItem><FormLabel>Estado *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger></FormControl><SelectContent>{stateOptions.map((state) => <SelectItem key={state} value={state}>{state}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />

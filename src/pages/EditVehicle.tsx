@@ -519,7 +519,7 @@ export default function EditVehicle() {
             {/* Location */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Localizacao de retirada</CardTitle>
+                <CardTitle className="text-lg">Localização de retirada</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
