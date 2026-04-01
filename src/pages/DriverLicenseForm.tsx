@@ -83,33 +83,52 @@ function SecurityCodeHint() {
         <div>
           <p className="text-sm font-medium">Onde encontrar o código de segurança</p>
           <p className="text-sm text-muted-foreground">
-            Na CNH física, ele aparece como um número pequeno na faixa inferior do documento.
+            No <strong>verso da CNH</strong>, o código aparece no canto inferior direito, ao lado da data de emissão.
           </p>
         </div>
+        {/* Ilustração do VERSO da CNH */}
         <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="rounded-xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="h-2 w-24 rounded-full bg-slate-300" />
-                <div className="mt-2 h-2 w-32 rounded-full bg-slate-200" />
-                <div className="mt-2 h-2 w-20 rounded-full bg-slate-200" />
+          <div className="rounded-xl border border-slate-300 bg-[#e8edc8] p-3 shadow-sm">
+            {/* Topo - OBSERVAÇÕES */}
+            <div className="rounded border border-slate-400 bg-white/80 p-2 mb-2">
+              <p className="text-[9px] font-semibold text-slate-600 uppercase">Observações</p>
+              <div className="mt-1 h-6" />
+            </div>
+            {/* Assinatura */}
+            <div className="border-t border-slate-400 pt-1 mt-1">
+              <p className="text-[8px] text-center text-slate-500 uppercase">Assinatura do portador</p>
+              <div className="mt-1 h-3 border-b border-slate-300" />
+            </div>
+            {/* Linha inferior: LOCAL | DATA EMISSÃO | CÓDIGO */}
+            <div className="mt-2 flex items-end justify-between gap-1">
+              <div className="flex-1">
+                <p className="text-[8px] text-slate-500 uppercase">Local</p>
+                <div className="h-2 w-12 rounded bg-slate-300 mt-0.5" />
               </div>
-              <div className="h-14 w-12 rounded-lg bg-slate-200" />
+              <div className="flex-1 text-center">
+                <p className="text-[8px] text-slate-500 uppercase">Data emissão</p>
+                <p className="text-[9px] text-slate-600 mt-0.5">10/09/2021</p>
+              </div>
+              <div className="flex-none flex items-center gap-1">
+                <span className="text-primary font-bold text-sm">→</span>
+                <div className="rounded border-2 border-dashed border-primary bg-primary/10 px-2 py-1">
+                  <p className="text-[9px] font-bold text-primary font-mono">08596114014</p>
+                </div>
+              </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="h-2 rounded-full bg-slate-200" />
-              <div className="h-2 rounded-full bg-slate-200" />
-              <div className="h-2 rounded-full bg-slate-200" />
-              <div className="h-2 rounded-full bg-slate-200" />
-            </div>
-            <div className="mt-5 rounded-lg border border-dashed border-primary bg-primary/10 p-3 text-center">
-              <p className="text-xs font-semibold text-primary">Código de segurança</p>
-              <p className="text-[11px] text-muted-foreground">Faixa inferior da CNH</p>
+            {/* Rodapé DENATRAN/CONTRAN */}
+            <div className="mt-2 flex">
+              <div className="flex-1 bg-slate-700 py-0.5 text-center">
+                <p className="text-[8px] font-bold text-white">DENATRAN</p>
+              </div>
+              <div className="flex-1 bg-slate-700 py-0.5 text-center">
+                <p className="text-[8px] font-bold text-white">CONTRAN</p>
+              </div>
             </div>
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Ilustracao simplificada apenas para orientar o local do campo no documento.
+          Ilustração simplificada do verso da CNH. O código fica no canto inferior direito.
         </p>
       </HoverCardContent>
     </HoverCard>
