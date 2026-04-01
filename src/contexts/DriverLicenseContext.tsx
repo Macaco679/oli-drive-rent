@@ -83,6 +83,7 @@ function mapRecordToData(record: DriverLicenseRecord): LicenseData {
     frontPath: record.front_path,
     backPath: record.back_path,
     selfiePath: record.selfie_path,
+    notes: record.notes,
   };
 }
 
