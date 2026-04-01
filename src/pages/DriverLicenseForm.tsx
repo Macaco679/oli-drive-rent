@@ -81,9 +81,9 @@ function SecurityCodeHint() {
       </HoverCardTrigger>
       <HoverCardContent align="start" className="w-80 space-y-3">
         <div>
-          <p className="text-sm font-medium">Onde encontrar o codigo de seguranca</p>
+          <p className="text-sm font-medium">Onde encontrar o código de segurança</p>
           <p className="text-sm text-muted-foreground">
-            Na CNH fisica, ele aparece como um número pequeno na faixa inferior do documento.
+            Na CNH física, ele aparece como um número pequeno na faixa inferior do documento.
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
