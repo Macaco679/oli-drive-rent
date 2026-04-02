@@ -64,7 +64,9 @@ export function ChatMessageBubble({ message, isOwn, status = "sent" }: ChatMessa
           isSending && "opacity-70"
         )}
       >
-        {isImage && !imageError ? (
+        {isAudio ? (
+          <ChatAudioPlayer src={audioUrl} isOwn={isOwn} />
+        ) : isImage && !imageError ? (
           <div className="relative">
             {imageLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary rounded-xl min-h-[100px] min-w-[150px]">
