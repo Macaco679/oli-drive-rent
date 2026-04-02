@@ -185,12 +185,21 @@ export function CardPaymentModal({
       if (error) throw error;
       console.log("Card webhook response:", data);
 
-      const isApproved = data?.status === "paid" || data?.status === "CONFIRMED" || data?.status === "approved" || data?.success === true || data?.approved === true;
-      const isDeclined = data?.status === "failed" || data?.status === "DECLINED" || data?.success === false;
+      // Unwrap array response from n8n
+      const raw = Array.isArray(data) ? data[0] : data;
+      // Extract payment info from nested structure
+      const paymentInfo = raw?.ui?.payment || raw?.payment || raw;
+
+      const isApproved = paymentInfo?.approved === true 
+        || paymentInfo?.status === "CONFIRMED" 
+        || paymentInfo?.status === "paid"
+        || raw?.ok === true;
+      const isDeclined = paymentInfo?.status === "DECLINED" 
+        || paymentInfo?.status === "failed" 
+        || paymentInfo?.approved === false;
 
       if (isApproved) {
         // Insert payment record into oli_payments so realtime picks it up
-        const paymentRecord = data?.payment || data;
         const { error: insertErr } = await supabase
           .from("oli_payments")
           .insert({
@@ -200,10 +209,10 @@ export function CardPaymentModal({
             amount: amount,
             method: "credit_card",
             status: "confirmed",
-            provider: paymentRecord?.provider || "asaas",
-            provider_payment_id: paymentRecord?.id || null,
-            provider_customer_id: paymentRecord?.provider_customer_id || "",
-            external_reference: paymentRecord?.id || null,
+            provider: paymentInfo?.provider || "asaas",
+            provider_payment_id: paymentInfo?.id || null,
+            provider_customer_id: paymentInfo?.provider_customer_id || "",
+            external_reference: paymentInfo?.id || null,
             billingType: "CREDIT_CARD",
           });
 
@@ -221,8 +230,9 @@ export function CardPaymentModal({
         toast.success("Pagamento aprovado!");
         onPaymentComplete?.();
       } else if (isDeclined) {
-        setErrorMsg(data?.message || data?.error || "Pagamento recusado. Verifique os dados do cartão.");
-        toast.error(data?.message || "Pagamento recusado");
+        const msg = paymentInfo?.message || raw?.message || "Pagamento recusado. Verifique os dados do cartão.";
+        setErrorMsg(msg);
+        toast.error(msg);
       } else {
         setSuccess(true);
         toast.success("Pagamento processado!");
