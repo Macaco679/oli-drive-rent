@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Message } from "@/lib/chatService";
 import { useState } from "react";
 import { Check, CheckCheck, Clock } from "lucide-react";
+import { ChatAudioPlayer } from "./ChatAudioPlayer";
 
 export type MessageStatus = "sending" | "sent" | "delivered" | "read";
 
