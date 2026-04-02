@@ -68,6 +68,26 @@ const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
+/** Recursively search nested response for known PIX fields */
+const PIX_KEYS = ["encodedImage", "qr_code_base64", "qr_code", "pix_copy_paste", "pixCopiaECola", "payload", "expires_at", "dueDate"] as const;
+
+function flattenPixResponse(obj: unknown, depth = 0): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!obj || typeof obj !== "object" || depth > 5) return result;
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (PIX_KEYS.includes(key as any) && typeof val === "string" && val.length > 0) {
+      if (!result[key]) result[key] = val;
+    }
+    if (typeof val === "object" && val !== null) {
+      const nested = flattenPixResponse(val, depth + 1);
+      for (const [nk, nv] of Object.entries(nested)) {
+        if (!result[nk]) result[nk] = nv;
+      }
+    }
+  }
+  return result;
+}
+
 export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete, onBack }: PixPaymentModalProps) {
   const [loading, setLoading] = useState(false);
   const [pixCode, setPixCode] = useState<string | null>(null);
