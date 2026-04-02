@@ -234,7 +234,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
             {requiresDeposit && (
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Caucao via Asaas</span>
+                  <span>Caução</span>
                   <span>R$ {rental.deposit_amount?.toLocaleString("pt-BR") || "0"}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
