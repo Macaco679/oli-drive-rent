@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble, MessageStatus } from "./ChatMessageBubble";
 import { ChatImageUpload } from "./ChatImageUpload";
+import { ChatAudioRecorder } from "./ChatAudioRecorder";
 import { TypingIndicator } from "./TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 import { useNotificationSound } from "@/hooks/useNotificationSound";

@@ -311,7 +311,6 @@ export async function sendImageMessage(conversationId: string, imageUrl: string)
     .insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      // DB enum supports only 'text' | 'system'. We keep image semantics in metadata/body.
       type: "text",
       body: imageUrl,
       metadata: { imageUrl },
@@ -324,7 +323,32 @@ export async function sendImageMessage(conversationId: string, imageUrl: string)
     return null;
   }
 
-  // last_message_at is updated automatically by trigger oli_touch_conversation_last_message
+  return data;
+}
+
+// Enviar mensagem de áudio
+export async function sendAudioMessage(conversationId: string, audioUrl: string): Promise<Message | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await db
+    .from("oli_messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      type: "text",
+      body: audioUrl,
+      metadata: { audioUrl },
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao enviar áudio:", error);
+    return null;
+  }
+
+  sendMessageNotification(conversationId, user.id, "🎤 Mensagem de áudio");
 
   return data;
 }
