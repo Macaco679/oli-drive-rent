@@ -27,6 +27,7 @@ export const INSPECTION_PHOTO_SLOTS: InspectionPhotoSlot[] = [
   { id: "odometer", label: "Hodômetro", description: "Quilometragem / hodômetro visível" },
   { id: "front_interior", label: "Interior dianteiro", description: "Volante, bancos dianteiros e interior" },
   { id: "damage_focus_or_wheels", label: "Avaria / Rodas", description: "Foto de avaria principal ou roda/pneu em destaque" },
+  { id: "step_view", label: "Estribo / Step", description: "Foto do estribo (step) do veículo" },
 ];
 
 export const INSPECTION_STEPS_CONFIG: Record<InspectionStep, {

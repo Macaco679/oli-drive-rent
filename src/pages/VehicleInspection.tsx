@@ -638,7 +638,7 @@ export default function VehicleInspection() {
               <div>
                 <p className="font-semibold">{vehicle.title || `${vehicle.brand} ${vehicle.model}`}</p>
                 <p className="text-sm text-muted-foreground">
-                  {vehicle.year} â€¢ {vehicle.color} â€¢ Placa: {vehicle.plate}
+                  {vehicle.year} • {vehicle.color} • Placa: {vehicle.plate}
                 </p>
               </div>
             </CardContent>
