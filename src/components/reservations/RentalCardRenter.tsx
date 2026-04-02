@@ -210,7 +210,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
 
       return (
         <Button size="sm" onClick={onDeposit} className="gap-2">
-          <Building2 className="w-4 h-4" />Pagar caucao via Asaas
+          <Building2 className="w-4 h-4" />Pagar caução
         </Button>
       );
     }

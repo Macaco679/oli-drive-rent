@@ -290,7 +290,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
                 Revisar e enviar contrato
               </Button>
               <p className="text-xs text-muted-foreground">
-                O pagamento principal e a caucao via Asaas aparecem no fluxo do locatario, em etapas separadas.
+                O pagamento principal e a caução aparecem no fluxo do locatário, em etapas separadas.
               </p>
             </div>
           )}
