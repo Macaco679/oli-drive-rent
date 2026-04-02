@@ -3,7 +3,7 @@ import { useChatWidget } from "@/contexts/ChatWidgetContext";
 import { getMessages, sendMessage, sendImageMessage, sendAudioMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Mic, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble, MessageStatus } from "./ChatMessageBubble";
