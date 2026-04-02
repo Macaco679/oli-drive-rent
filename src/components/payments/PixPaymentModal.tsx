@@ -219,9 +219,9 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
 
       // Deep-extract PIX fields from nested response (n8n may nest under ui.payment, payment, etc.)
       const flat = flattenPixResponse(data);
-      const code = flat.pix_copy_paste || flat.payload || flat.pixCopiaECola || null;
-      const qr = flat.encodedImage || flat.qr_code_base64 || flat.qr_code || null;
-      const expiry = flat.expires_at || flat.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const code = flat.copyPaste || flat.pix_copy_paste || flat.payload || flat.pixCopiaECola || null;
+      const qr = flat.qrCodeBase64 || flat.encodedImage || flat.qr_code_base64 || flat.qr_code || null;
+      const expiry = flat.expiresAt || flat.expires_at || flat.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
       setPixCode(code);
       setQrCodeBase64(qr);
