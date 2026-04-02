@@ -418,12 +418,11 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
               onImageUploaded={handleImageUploaded}
               disabled={sending}
             />
-            <button
-              className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
-              title="Gravar áudio"
-            >
-              <Mic className="w-5 h-5" />
-            </button>
+            <ChatAudioRecorder
+              conversationId={conversationId}
+              onAudioSent={handleAudioSent}
+              disabled={sending}
+            />
           </div>
 
           <Input
