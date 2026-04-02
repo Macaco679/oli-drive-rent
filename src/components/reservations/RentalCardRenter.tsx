@@ -199,7 +199,7 @@ export function RentalCardRenter({ rental, onViewContract, onSignContract, onPay
         return (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onDeposit}>
-              <Building2 className="w-4 h-4 mr-2" />Ver caucao Asaas
+              <Building2 className="w-4 h-4 mr-2" />Pagar caução
             </Button>
             <span className="text-sm text-muted-foreground flex items-center gap-2">
               <Clock className="w-4 h-4" />Aguardando pagamento da caucao
