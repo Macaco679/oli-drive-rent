@@ -22,11 +22,16 @@ export function ChatMessageBubble({ message, isOwn, status = "sent" }: ChatMessa
   const isSending = message.id.startsWith("temp-");
   const effectiveStatus = isSending ? "sending" : status;
   
+  // Check if message is audio
+  const isAudio = (message.metadata as any)?.audioUrl ||
+    (message.body?.startsWith("https://") && message.body?.match(/audio\.webm/i));
+  const audioUrl = (message.metadata as any)?.audioUrl || message.body;
+
   // Check if message is an image (type = 'image' or body contains image URL)
-  const isImage = message.type === "image" || 
+  const isImage = !isAudio && (message.type === "image" || 
     (message.metadata as any)?.imageUrl || 
     (message.body?.startsWith("https://") && 
-     (message.body?.includes("chat-images") || message.body?.match(/\.(jpg|jpeg|png|gif|webp)$/i)));
+     (message.body?.includes("chat-images") || message.body?.match(/\.(jpg|jpeg|png|gif|webp)$/i))));
 
   const imageUrl = (message.metadata as any)?.imageUrl || message.body;
 
