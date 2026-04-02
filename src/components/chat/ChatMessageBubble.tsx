@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Message } from "@/lib/chatService";
 import { useState } from "react";
 import { Check, CheckCheck, Clock } from "lucide-react";
+import { ChatAudioPlayer } from "./ChatAudioPlayer";
 
 export type MessageStatus = "sending" | "sent" | "delivered" | "read";
 
@@ -21,11 +22,16 @@ export function ChatMessageBubble({ message, isOwn, status = "sent" }: ChatMessa
   const isSending = message.id.startsWith("temp-");
   const effectiveStatus = isSending ? "sending" : status;
   
+  // Check if message is audio
+  const isAudio = (message.metadata as any)?.audioUrl ||
+    (message.body?.startsWith("https://") && message.body?.match(/audio\.webm/i));
+  const audioUrl = (message.metadata as any)?.audioUrl || message.body;
+
   // Check if message is an image (type = 'image' or body contains image URL)
-  const isImage = message.type === "image" || 
+  const isImage = !isAudio && (message.type === "image" || 
     (message.metadata as any)?.imageUrl || 
     (message.body?.startsWith("https://") && 
-     (message.body?.includes("chat-images") || message.body?.match(/\.(jpg|jpeg|png|gif|webp)$/i)));
+     (message.body?.includes("chat-images") || message.body?.match(/\.(jpg|jpeg|png|gif|webp)$/i))));
 
   const imageUrl = (message.metadata as any)?.imageUrl || message.body;
 
@@ -58,7 +64,9 @@ export function ChatMessageBubble({ message, isOwn, status = "sent" }: ChatMessa
           isSending && "opacity-70"
         )}
       >
-        {isImage && !imageError ? (
+        {isAudio ? (
+          <ChatAudioPlayer src={audioUrl} isOwn={isOwn} />
+        ) : isImage && !imageError ? (
           <div className="relative">
             {imageLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary rounded-xl min-h-[100px] min-w-[150px]">

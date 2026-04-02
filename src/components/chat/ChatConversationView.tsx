@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
-import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
+import { getMessages, sendMessage, sendImageMessage, sendAudioMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Mic, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatMessageBubble, MessageStatus } from "./ChatMessageBubble";
 import { ChatImageUpload } from "./ChatImageUpload";
+import { ChatAudioRecorder } from "./ChatAudioRecorder";
 import { TypingIndicator } from "./TypingIndicator";
 import { useChatTypingIndicator } from "@/hooks/useChatTypingIndicator";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
@@ -301,6 +302,17 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     }
   };
 
+  const handleAudioSent = async (audioUrl: string) => {
+    setSending(true);
+    try {
+      await sendAudioMessage(conversationId, audioUrl);
+    } catch (error) {
+      console.error("Error sending audio:", error);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -406,12 +418,11 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
               onImageUploaded={handleImageUploaded}
               disabled={sending}
             />
-            <button
-              className="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground"
-              title="Gravar áudio"
-            >
-              <Mic className="w-5 h-5" />
-            </button>
+            <ChatAudioRecorder
+              conversationId={conversationId}
+              onAudioSent={handleAudioSent}
+              disabled={sending}
+            />
           </div>
 
           <Input
