@@ -179,12 +179,14 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
 
       if (error) throw error;
 
-      console.log("PIX webhook response:", data);
+      console.log("PIX webhook response:", JSON.stringify(data, null, 2));
       setWebhookResponse(data);
 
-      const code = data?.pix_copy_paste || data?.pix_code || data?.encodedImage || data?.payload || null;
-      const qr = data?.qr_code_base64 || data?.qr_code || data?.encodedImage || null;
-      const expiry = data?.expires_at || data?.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      // Deep-extract PIX fields from nested response (n8n may nest under ui.payment, payment, etc.)
+      const flat = flattenPixResponse(data);
+      const code = flat.pix_copy_paste || flat.payload || flat.pixCopiaECola || null;
+      const qr = flat.encodedImage || flat.qr_code_base64 || flat.qr_code || null;
+      const expiry = flat.expires_at || flat.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
       setPixCode(code);
       setQrCodeBase64(qr);
