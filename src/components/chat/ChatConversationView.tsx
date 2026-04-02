@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useChatWidget } from "@/contexts/ChatWidgetContext";
-import { getMessages, sendMessage, sendImageMessage, markConversationAsRead, Message } from "@/lib/chatService";
+import { getMessages, sendMessage, sendImageMessage, sendAudioMessage, markConversationAsRead, Message } from "@/lib/chatService";
 import { getCurrentUser, getProfile } from "@/lib/supabase";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Send, Mic, Loader2 } from "lucide-react";
