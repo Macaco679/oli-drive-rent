@@ -302,6 +302,17 @@ export function ChatConversationView({ conversationId, onRead }: ChatConversatio
     }
   };
 
+  const handleAudioSent = async (audioUrl: string) => {
+    setSending(true);
+    try {
+      await sendAudioMessage(conversationId, audioUrl);
+    } catch (error) {
+      console.error("Error sending audio:", error);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
