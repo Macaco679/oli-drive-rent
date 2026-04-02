@@ -234,7 +234,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
             {requiresDeposit && (
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Caucao via Asaas</span>
+                  <span>Caução</span>
                   <span>R$ {rental.deposit_amount?.toLocaleString("pt-BR") || "0"}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
@@ -290,7 +290,7 @@ export function RentalDetailsModal({ open, onOpenChange, rental, onStatusChange,
                 Revisar e enviar contrato
               </Button>
               <p className="text-xs text-muted-foreground">
-                O pagamento principal e a caucao via Asaas aparecem no fluxo do locatario, em etapas separadas.
+                O pagamento principal e a caução aparecem no fluxo do locatário, em etapas separadas.
               </p>
             </div>
           )}

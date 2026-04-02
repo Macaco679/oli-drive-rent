@@ -183,7 +183,7 @@ export function RentalCardOwner({ rental, onClick, onSendContract }: RentalCardO
     if (ownerInitialDone && paymentConfirmed && requiresDeposit && !depositConfirmed && !renterPickupDone) {
       return (
         <span className="text-muted-foreground text-sm flex items-center gap-2">
-          <Building2 className="w-4 h-4" />Aguardando caucao Asaas do locatario
+          <Building2 className="w-4 h-4" />Aguardando caução do locatário
         </span>
       );
     }

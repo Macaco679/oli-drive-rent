@@ -135,7 +135,7 @@ export function buildFullTimeline(
   if (requiresDeposit) {
     steps.push({
       key: "deposit",
-      label: "Caucao Asaas",
+      label: "Caução",
       status: bothSigned ? depositStepStatus : "pending",
     });
   }

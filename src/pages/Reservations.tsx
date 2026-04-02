@@ -124,7 +124,7 @@ export default function Reservations() {
   };
 
   const handleDepositComplete = () => {
-    toast.success("Caucao registrada. A retirada sera liberada quando a Asaas confirmar o pagamento.");
+    toast.success("Caução registrada com sucesso!");
     void loadRentals();
   };
 
