@@ -68,6 +68,26 @@ const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
+/** Recursively search nested response for known PIX fields */
+const PIX_KEYS = ["encodedImage", "qr_code_base64", "qr_code", "pix_copy_paste", "pixCopiaECola", "payload", "expires_at", "dueDate"] as const;
+
+function flattenPixResponse(obj: unknown, depth = 0): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!obj || typeof obj !== "object" || depth > 5) return result;
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (PIX_KEYS.includes(key as any) && typeof val === "string" && val.length > 0) {
+      if (!result[key]) result[key] = val;
+    }
+    if (typeof val === "object" && val !== null) {
+      const nested = flattenPixResponse(val, depth + 1);
+      for (const [nk, nv] of Object.entries(nested)) {
+        if (!result[nk]) result[nk] = nv;
+      }
+    }
+  }
+  return result;
+}
+
 export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete, onBack }: PixPaymentModalProps) {
   const [loading, setLoading] = useState(false);
   const [pixCode, setPixCode] = useState<string | null>(null);
@@ -179,12 +199,14 @@ export function PixPaymentModal({ open, onOpenChange, rental, onPaymentComplete,
 
       if (error) throw error;
 
-      console.log("PIX webhook response:", data);
+      console.log("PIX webhook response:", JSON.stringify(data, null, 2));
       setWebhookResponse(data);
 
-      const code = data?.pix_copy_paste || data?.pix_code || data?.encodedImage || data?.payload || null;
-      const qr = data?.qr_code_base64 || data?.qr_code || data?.encodedImage || null;
-      const expiry = data?.expires_at || data?.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      // Deep-extract PIX fields from nested response (n8n may nest under ui.payment, payment, etc.)
+      const flat = flattenPixResponse(data);
+      const code = flat.pix_copy_paste || flat.payload || flat.pixCopiaECola || null;
+      const qr = flat.encodedImage || flat.qr_code_base64 || flat.qr_code || null;
+      const expiry = flat.expires_at || flat.dueDate || new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
       setPixCode(code);
       setQrCodeBase64(qr);
