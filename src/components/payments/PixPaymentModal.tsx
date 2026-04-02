@@ -69,11 +69,26 @@ const formatCurrency = (value: number): string => {
 };
 
 /** Recursively search nested response for known PIX fields */
-const PIX_KEYS = ["encodedImage", "qr_code_base64", "qr_code", "pix_copy_paste", "pixCopiaECola", "payload", "expires_at", "dueDate"] as const;
+const PIX_KEYS = [
+  "encodedImage", "qr_code_base64", "qr_code", "qrCodeBase64",
+  "pix_copy_paste", "pixCopiaECola", "payload", "copyPaste",
+  "expires_at", "dueDate", "expiresAt",
+] as const;
 
 function flattenPixResponse(obj: unknown, depth = 0): Record<string, string> {
   const result: Record<string, string> = {};
-  if (!obj || typeof obj !== "object" || depth > 5) return result;
+  if (!obj || depth > 6) return result;
+  // Handle arrays — recurse into each element
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const nested = flattenPixResponse(item, depth + 1);
+      for (const [nk, nv] of Object.entries(nested)) {
+        if (!result[nk]) result[nk] = nv;
+      }
+    }
+    return result;
+  }
+  if (typeof obj !== "object") return result;
   for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
     if (PIX_KEYS.includes(key as any) && typeof val === "string" && val.length > 0) {
       if (!result[key]) result[key] = val;
